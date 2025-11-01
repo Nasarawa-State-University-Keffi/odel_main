@@ -5,11 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Application from "./pages/Application";
+import Programs from "./pages/Programs";
+import ProgramDetails from "./pages/ProgramDetails";
 import NotFound from "./pages/NotFound";
-import OdelHistory from "./pages/OdelHistory";
-import ViceChancellorMessage from "./pages/ViceChancellorMessage";
-import DirectorMessage from "./pages/DirectorMessage";
-import OurStaff from "./pages/OurStaff";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+
 
 
 const queryClient = new QueryClient();
@@ -22,11 +23,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/application" element={<Application />} />
-          <Route path="/odel-history" element={<OdelHistory />} />
-          <Route path="/vice-chancellor-message" element={<ViceChancellorMessage />} />
-          <Route path="/director-message" element={<DirectorMessage />} />
-          <Route path="/our-staff" element={<OurStaff />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/complete-profile" element={<Application />} />
+          <Route path="/programs" element={<Programs />} />
+          <Route path="/program/:id" element={<ProgramDetails />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
