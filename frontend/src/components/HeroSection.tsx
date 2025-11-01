@@ -1,96 +1,55 @@
-"use client";
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "./ui/button";
 
-const images = [
-  "https://odel.nsuk.edu.ng/wp-content/uploads/2025/07/nsuk-main-entrance-1.jpg",
-  "https://odel.nsuk.edu.ng/wp-content/uploads/2025/08/senate1-1.jpg",
-  "https://odel.nsuk.edu.ng/wp-content/uploads/2025/08/IMG-20250125-WA00092-1536x1152-1.jpg",
-  "https://odel.nsuk.edu.ng/wp-content/uploads/2025/09/WhatsApp-Image-2025-09-24-at-7.43.57-AM-1.jpeg",
-  "https://odel.nsuk.edu.ng/wp-content/uploads/2024/07/CBT-HALL.jpg",
-  "https://odel.nsuk.edu.ng/wp-content/uploads/2025/08/the-team-1-1536x712.jpg",
-];
+const backgroundImage = "https://odel.nsuk.edu.ng/wp-content/uploads/2025/07/nsuk-main-entrance-1.jpg";
+
 
 export const HeroSection = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [direction, setDirection] = useState(1);
-
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % images.length);
-  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + images.length) % images.length);
-
-  // Auto slide logic (ping-pong direction)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => {
-        let next = prev + direction;
-        if (next >= images.length) {
-          setDirection(-1);
-          next = images.length - 2;
-        } else if (next < 0) {
-          setDirection(1);
-          next = 1;
-        }
-        return next;
-      });
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [direction]);
-
-  return (
-    <section className="relative h-[500px] md:h-[600px] overflow-hidden">
-      <AnimatePresence initial={false} custom={direction}>
-        <motion.div
-          key={currentSlide}
-          className="absolute inset-0"
-          custom={direction}
-          initial={{ x: direction > 0 ? 300 : -300, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: direction > 0 ? -300 : 300, opacity: 0 }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-        >
-          <img
-            src={images[currentSlide]}
-            alt={`Slide ${currentSlide + 1}`}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/30" />
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Navigation arrows */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md"
-        onClick={prevSlide}
-      >
-        <ChevronLeft className="h-8 w-8" />
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md"
-        onClick={nextSlide}
-      >
-        <ChevronRight className="h-8 w-8" />
-      </Button>
-
-      {/* Dots indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
-        {images.map((_, index) => (
-          <button
-            key={index}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              index === currentSlide ? "bg-white w-8" : "bg-white/50"
-            }`}
-            onClick={() => setCurrentSlide(index)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-};
+  return(
+    <section
+            className="relative flex flex-col items-center justify-center min-h-screen text-center px-6 overflow-hidden"
+            style={{
+              backgroundImage: `url(${backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+              {/* Overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <div className="relative overflow-hidden bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 text-white">
+            
+    
+              <div className="container relative mx-auto px-4 py-24 md:py-32">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="max-w-4xl mx-auto text-center"
+                >
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                    Nasarawa State University Distance Learning Centre Application Portal
+                  </h1>
+                  <p className="text-lg md:text-xl mb-8 text-white/90 max-w-2xl mx-auto">
+                    Start your application into Nasarawa State University, Distance Learning Centre here. 
+                    We are available to answer all your questions.
+                  </p>
+    
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Link to="/register">
+                      <Button
+                        size="lg"
+                        className="bg-accent text-accent-foreground hover:bg-accent/90 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                      >
+                        Get Started
+                      </Button>
+                    </Link>
+                    
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </section>
+  )
+}
