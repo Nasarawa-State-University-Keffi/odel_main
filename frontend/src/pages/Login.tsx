@@ -1,178 +1,110 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, LogIn, Plus, Minus } from "lucide-react";
+import { FloatingInput } from "@/components/ui/floating-input";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Loader } from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import Loader from "@/components/Loader";
-import { ProgramAccordion } from "@/components/ProgramAccordion";
+import WhatsappFloat from "@/components/WhatsappFloat";
+import Header from "@/components/Header";
 
+const loginSchema = z.object({
+  email: z.string().email("Valid email or Applicant ID is required").min(1, "Email or Applicant ID is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
 
 const Login = () => {
-  const [loading, setLoading] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [loginData, setLoginData] = useState({
-    email: "",
-    password: "",
+  const { register, handleSubmit, formState: { errors, isValid } } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    mode: "onChange",
   });
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginData.email || !loginData.password) {
-      toast({ title: "Please fill in all fields", variant: "destructive" });
-      return;
-    }
-
-    toast({ title: "Login Successful! Redirecting to dashboard..." });
-    navigate("/dashboard");
+  const onSubmit = (data: LoginForm) => {
+    setIsLoading(true);
+    setTimeout(() => {
+      // Simulate login - redirect to application
+      navigate("/application");
+      setIsLoading(false);
+    }, 500);
   };
 
-  if (loading) return <Loader />;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex flex-col">
+    <div className="min-h-screen bg-gray-50">
+      {/*header*/}
       <Header />
+      {/*whatsapp floating*/}
 
-      <main className="flex-grow flex items-center justify-center py-12 px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center"
-        >
-          {/* Left side — Program List */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="hidden md:flex flex-col items-start justify-center px-6 text-left space-y-6 bg-muted/10 rounded-2xl p-6 border border-muted/30 shadow-sm"
-          >
-            <h2 className="text-3xl font-bold text-[#F8C201] mb-4">
-              Our Programme List
-            </h2>
+      <WhatsappFloat />
 
-            <div className="w-full space-y-4 text-[#F8C201]">
-              <ProgramAccordion
-                title="Bachelor's Program"
-                programs={[
-                  "BSc. Accounting",
-                  "BSc. Business Administration",
-                  "BSc. Computer Science",
-                  "BSc. Economics",
-                  "BSc. International Studies",
-                  "BNSc. Nursing Science",
-                  "BSc. Political Science",
-                  "BSc. Public Administration",
-                  "BSc. Sociology",
-                  "BSc. Mass Communication",
-                  "BSc. Library and Information Science",
-                ]}
-              />
+      <div className="flex items-center justify-center px-4 pt-24 pb-12">
+        <div className="w-full max-w-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-in-out">
+          <div className="bg-white rounded-lg shadow-sm border p-8">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader size="lg" />
+                <p className="text-muted-foreground mt-4">Logging in...</p>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold mb-6">Login</h2>
 
-              <ProgramAccordion
-                title="Master's Program"
-                programs={[
-                  "Postgraduate Diploma in Management",
-                  "Postgraduate Diploma in Education",
-                  "Master in Public Administration",
-                  "Master in International Affairs and Diplomacy",
-                  "Master in Public Health",
-                  "Master in Law Enforcement and Criminal Justice",
-                  "Master in Information Management",
-                  "Master in Business Administration",
-                  "Master in Accounting",
-                  "Master in Disaster and Risk Management",
-                ]}
-              />
-            </div>
-          </motion.div>
-
-          {/* Right side — Login form */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            <Card className="p-8 shadow-lg border border-muted/50 backdrop-blur-lg bg-card/80">
-              <h1 className="text-2xl font-bold mb-6 text-center text-[#F8C201]">
-                Sign In
-              </h1>
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <Input
-                  type="email"
-                  placeholder="Email address"
-                  value={loginData.email}
-                  onChange={(e) =>
-                    setLoginData({ ...loginData, email: e.target.value })
-                  }
-                  className="focus-visible:ring-primary/40"
-                />
-
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    value={loginData.password}
-                    onChange={(e) =>
-                      setLoginData({ ...loginData, password: e.target.value })
-                    }
-                    className="focus-visible:ring-primary/40"
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  <FloatingInput
+                    label="Email address / Applicant ID"
+                    type="email"
+                    icon={<Mail className="h-4 w-4" />}
+                    {...register("email")}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
+                  {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
 
-                <div className="flex justify-end">
-                  <a
-                    href="#"
-                    className="text-sm text-[#F8C201] hover:underline transition-colors"
-                  >
-                    Forgot Password?
-                  </a>
-                </div>
+                  <div className="relative">
+                    <FloatingInput
+                      label="Password"
+                      type={showPassword ? "text" : "password"}
+                      icon={<Lock className="h-4 w-4" />}
+                      {...register("password")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
 
-                <Button
-                  type="submit"
-                  className="w-full bg-accent text-[#fff] hover:bg-accent/90 flex items-center justify-center rounded-md gap-2"
-                >
-                  <LogIn size={18} />
-                  Sign In
-                </Button>
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      Not registered?{" "}
+                      <Link to="/register" className="text-teal-600 hover:underline font-medium">
+                        Register
+                      </Link>
+                    </div>
+                    <Link to="/forgot-password" className="text-teal-600 hover:underline font-medium">
+                      Forgot Password?
+                    </Link>
+                  </div>
 
-                <p className="text-sm text-center text-muted-foreground mt-4">
-                  Don’t have an account?{" "}
-                  <a
-                    href="/register"
-                    className="text-primary font-medium hover:underline"
-                  >
-                    Register here
-                  </a>
-                </p>
-              </form>
-            </Card>
-          </motion.div>
-        </motion.div>
-      </main>
-
-      <Footer />
+                  <Button type="submit" className="w-full" disabled={!isValid || isLoading}>
+                    Login
+                  </Button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
