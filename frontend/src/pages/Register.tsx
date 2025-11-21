@@ -1,242 +1,105 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import programs from "@/data/programs.json";
-import Level from "@/data/Level.json";
-import Loader from "@/components/Loader";
-import { ProgramAccordion } from "@/components/ProgramAccordion";
-
-
-
 
 const Register = () => {
-  const [loading, setLoading] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
-
-  const [registrationData, setRegistrationData] = useState({
-    selectProgram: "",
-    modeOfEntry: "",
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirmPassword: "",
   });
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleRegistration = (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registrationData.modeOfEntry) {
-      toast({ title: "Please select mode of entry", variant: "destructive" });
-      return;
-    }
-    if (!registrationData.email || !registrationData.password) {
-      toast({ title: "Please fill all required fields", variant: "destructive" });
-      return;
-    }
-    if (registrationData.password !== registrationData.confirmPassword) {
-      toast({ title: "Passwords do not match", variant: "destructive" });
-      return;
-    }
-
-    toast({ title: "Registration successful! Proceed to application." });
-    navigate("/complete-profile");
+    // Simulate registration - redirect to login
+    navigate("/login");
   };
 
-  if (loading) return <Loader />;
+  const handleReset = () => {
+    if (confirm("Are you sure you want to reset the form?")) {
+      setFormData({
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
+      setShowPassword(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex flex-col">
-      <Header />
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b px-6 py-4 flex items-center gap-3">
+        <img src="/placeholder.svg" alt="NSUK Logo" className="h-10 w-10" />
+        <h1 className="text-lg font-semibold text-foreground">NSUK - Application</h1>
+      </header>
 
-      <main className="flex-grow flex items-center justify-center py-12 px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-4xl grid md:grid-cols-2 gap-8 items-start"
-        >
-          {/* Left side — Program List */}
-                   <motion.div
-                     initial={{ opacity: 0, x: -30 }}
-                     animate={{ opacity: 1, x: 0 }}
-                     transition={{ delay: 0.2, duration: 0.6 }}
-                     className="hidden md:flex flex-col items-start justify-center px-6 text-left space-y-6 bg-muted/10 rounded-2xl p-6 border border-muted/30 shadow-sm"
-                   >
-                     <h2 className="text-3xl font-bold text-[#f8c201] mb-4">
-                       Our Programme List
-                     </h2>
-         
-                     <div className="w-full space-y-4">
-                       <ProgramAccordion
-                         title="Bachelor's Program"
-                         programs={[
-                           "BSc. Accounting",
-                           "BSc. Business Administration",
-                           "BSc. Computer Science",
-                           "BSc. Economics",
-                           "BSc. International Studies",
-                           "BNSc. Nursing Science",
-                           "BSc. Political Science",
-                           "BSc. Public Administration",
-                           "BSc. Sociology",
-                           "BSc. Mass Communication",
-                           "BSc. Library and Information Science",
-                         ]}
-                       />
-         
-                       <ProgramAccordion
-                         title="Master's Program"
-                         programs={[
-                           "Postgraduate Diploma in Management",
-                           "Postgraduate Diploma in Education",
-                           "Master in Public Administration",
-                           "Master in International Affairs and Diplomacy",
-                           "Master in Public Health",
-                           "Master in Law Enforcement and Criminal Justice",
-                           "Master in Information Management",
-                           "Master in Business Administration",
-                           "Master in Accounting",
-                           "Master in Disaster and Risk Management",
-                         ]}
-                       />
-                     </div>
-                   </motion.div>
+      <div className="flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-sm border p-8">
+            <h2 className="text-2xl font-bold mb-6">Register</h2>
 
-          {/* Right Side — Registration Form */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            <Card className="p-8 shadow-lg border border-muted/50 backdrop-blur-lg bg-card/80">
-              <form onSubmit={handleRegistration} className="space-y-4">
-                {/* Program Selection */}
-                <Select
-                  value={registrationData.selectProgram}
-                  onValueChange={(value) =>
-                    setRegistrationData({ ...registrationData, selectProgram: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Program" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(programs) &&
-                      programs
-                        .filter((p: any) => p.status?.toLowerCase() === "active")
-                        .map((p: any) => (
-                          <SelectItem key={p.id} value={String(p.id)}>
-                            {p.title}
-                          </SelectItem>
-                        ))}
-                  </SelectContent>
-                </Select>
+            <form onSubmit={handleRegister} className="space-y-4">
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
 
-                {/* Mode of Entry */}
-                <Select
-                  value={registrationData.modeOfEntry}
-                  onValueChange={(value) =>
-                    setRegistrationData({ ...registrationData, modeOfEntry: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Mode of Entry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(Level) &&
-                      Level.map((level: any) => (
-                        <SelectItem key={level.id} value={String(level.id)}>
-                          {level.level}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-
-                {/* Email */}
+              <div className="relative">
                 <Input
-                  type="email"
-                  placeholder="Email Address"
-                  value={registrationData.email}
-                  onChange={(e) =>
-                    setRegistrationData({ ...registrationData, email: e.target.value })
-                  }
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
                 />
-
-                {/* Password */}
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    value={registrationData.password}
-                    onChange={(e) =>
-                      setRegistrationData({ ...registrationData, password: e.target.value })
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-
-                {/* Confirm Password */}
-                <div className="relative">
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm Password"
-                    value={registrationData.confirmPassword}
-                    onChange={(e) =>
-                      setRegistrationData({ ...registrationData, confirmPassword: e.target.value })
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
-                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-
-                {/* Login Link */}
-                <p className="text-sm text-center text-muted-foreground mt-2">
-                  Already registered?{" "}
-                  <a href="/login" className="text-primary hover:underline">
-                    Login
-                  </a>
-                </p>
-
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  className="w-full bg-accent text-[#fff] hover:bg-accent/90"
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  Proceed
-                </Button>
-              </form>
-            </Card>
-          </motion.div>
-        </motion.div>
-      </main>
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
 
-      <Footer />
+              <Input
+                type="password"
+                placeholder="Confirm Password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                required
+              />
+
+              <div className="text-sm">
+                Already registered?{" "}
+                <Link to="/login" className="text-teal-600 hover:underline">
+                  Login here
+                </Link>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  onClick={handleReset}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Reset
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Register
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
