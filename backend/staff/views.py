@@ -11,6 +11,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 class ListApplicantsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsStaff]
     @extend_schema(
+        tags=['Staff'],
         responses={200: OpenApiResponse(response=ApplicantSerializer(many=True))},
     )
     def get(self, request):
@@ -22,6 +23,7 @@ class ListApplicantsView(APIView):
 class ListAdmittedStudentsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsStaff]
     @extend_schema(
+        tags=['Staff'],
         responses={200: OpenApiResponse(response=ApplicantSerializer(many=True))},
     )
     def get(self, request):

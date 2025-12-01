@@ -12,6 +12,7 @@ class StudentProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
+        tags=['Students'],
         responses={200: OpenApiResponse(response=StudentSerializer)},
     )
     def get(self, request):
