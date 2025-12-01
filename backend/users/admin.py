@@ -11,7 +11,9 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Applicant)
 class ApplicantAdmin(admin.ModelAdmin):
-    list_display = ('applicant_id', 'user', 'status')
+    list_display = ('applicant_id', 'user', 'programme_choice', 'mode_of_entry', 'status')
+    list_filter = ('status', 'mode_of_entry')
+    search_fields = ('applicant_id', 'user__email', 'user__first_name', 'user__last_name')
 
 
 @admin.register(Student)
