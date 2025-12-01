@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(dzw1yb4+1-=#$=j7lbp4ow4i)
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Parse ALLOWED_HOSTS from comma-separated string
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,odel-main.vercel.app').split(',')
 
 # CSRF Trusted Origins for production
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',')
