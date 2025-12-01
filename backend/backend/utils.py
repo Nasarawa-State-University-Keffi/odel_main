@@ -1,16 +1,6 @@
 from typing import Any, Optional
 
-def api_response(status: str, message: str, data: Optional[Any] = None) -> dict:
-    """Uniform API response helper.
+# Import and re-export from core.utils for backward compatibility
+from core.utils import api_response, get_serializer_error_message
 
-    status: 'success' or 'error'
-    message: human readable message
-    data: optional payload
-    """
-    payload = {
-        'status': status,
-        'message': message,
-    }
-    if data is not None:
-        payload['data'] = data
-    return payload
+__all__ = ['api_response', 'get_serializer_error_message']
