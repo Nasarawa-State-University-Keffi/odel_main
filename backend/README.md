@@ -1,127 +1,127 @@
-# ODeL Django REST API
+# LMS Service
 
-This repository contains a Django REST Framework project for an Open Distance Learning (ODeL) portal. It includes apps for users, admissions, students and staff, JWT authentication, and drf-spectacular schema/docs.
+This repository contains a Django + DRF microservice `lms_service` with an app `classroom` implementing:
 
-## Environment Setup
+- Course and Enrollment caches (read-only sync from portal DB)
+- Classroom, Session (Zoom-powered), Resource, Assignment, Submission models
+- Zoom integration (meeting create + webhook handler)
+- Permissions for enrolled students and instructors
+- Management command `sync_portal` to import data from a secondary `portal` DB
+- Celery task queue with Redis broker for async operations
+- Docker containerization for all services
 
-### 1. Create Environment File
+## Quick Start (Docker)
 
-Copy the example environment file and configure it:
-
+1. Copy the environment template:
 ```powershell
 cp .env.example .env
 ```
 
-Edit `.env` with your configuration:
+2. Edit `.env` with your credentials (Zoom API keys, etc.)
 
-```env
-# Django Settings
-SECRET_KEY=your-secret-key-here-change-this-in-production
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database
-# Development uses SQLite when DEBUG=True
-# Production (DEBUG=False) requires DATABASE_URL
-DATABASE_URL=postgresql://username:password@host:port/database_name
-
-# Email Configuration
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-app-password-here
-DEFAULT_FROM_EMAIL=noreply@odel.edu
+3. Build and start all services:
+```powershell
+docker-compose up --build
 ```
 
-### 2. Quick Setup (Windows PowerShell)
+4. Run migrations (first time only):
+```powershell
+docker-compose exec web python manage.py migrate
+```
+
+5. Create superuser (optional):
+```powershell
+docker-compose exec web python manage.py createsuperuser
+```
+
+6. Access the services:
+   - Django API: http://localhost:8000
+   - **Swagger UI**: http://localhost:8000/api/docs/
+   - **ReDoc**: http://localhost:8000/api/redoc/
+   - Flower (Celery monitoring): http://localhost:5555
+   - Admin: http://localhost:8000/admin
+
+## Environment Variables
+
+- `DJANGO_SECRET_KEY`
+- `DJANGO_DEBUG` (1/0)
+- `DJANGO_ALLOWED_HOSTS` (comma-separated)
+- `ZOOM_API_KEY`
+- `ZOOM_API_SECRET`
+- `ZOOM_WEBHOOK_SECRET`
+- `CELERY_BROKER_URL` (automatically set in Docker)
+- `CELERY_RESULT_BACKEND` (automatically set in Docker)
+- Portal DB settings via `DATABASES['portal']` environment or overrides
+
+## Local Installation (without Docker)
 
 ```powershell
-python -m venv .venv; .\.venv\Scripts\Activate.ps1
+python -m venv .venv; ..\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+### Docker Commands
+
+Start all services:
+```powershell
+docker-compose up
+```
+
+Start in background:
+```powershell
+docker-compose up -d
+```
+
+View logs:
+```powershell
+docker-compose logs -f
+```
+
+Stop all services:
+```powershell
+docker-compose down
+```
+
+Sync portal data:
+```powershell
+docker-compose exec web python manage.py sync_portal
+```
+
+### Local Commands (without Docker)
+
+Run migrations and start server:
+```powershell
 python manage.py migrate
-python manage.py createsuperuser
 python manage.py runserver
 ```
 
-### 3. Database Configuration
-
-**Development (SQLite)**
-- Set `DEBUG=True` in `.env`
-- SQLite is used automatically
-- Database file: `db.sqlite3`
-
-**Production (PostgreSQL)**
-- Set `DEBUG=False` in `.env`
-- Set `DATABASE_URL=postgresql://user:password@host:port/dbname`
-- Install PostgreSQL and create database
-- Run migrations: `python manage.py migrate`
-
-### 4. Generate Secret Key (Production)
-
-```python
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+Start Celery worker (in separate terminal):
+```powershell
+celery -A lms_service worker -l info
 ```
 
-## API Endpoints
+Optional: Start Celery Beat for periodic tasks:
+```powershell
+celery -A lms_service beat -l info
+```
 
-### Authentication
-- POST /api/auth/signup/applicant/ -- register applicant
-- POST /api/auth/signup/staff/ -- register staff
-- POST /api/auth/login/ -- obtain JWT
-- POST /api/auth/token/refresh/ -- refresh JWT
+Sync portal:
+```powershell
+python manage.py sync_portal
+```
 
-### Admissions
-- GET /api/v1/admissions/programmes/ -- list available programmes
-- GET /api/v1/admissions/my-application/ -- get active application
-- POST /api/v1/admissions/my-application/ -- create new application
-- GET /api/v1/admissions/my-applications/history/ -- view application history
-- PUT /api/v1/admissions/application/{id}/update/ -- update application
-- GET /api/v1/admissions/application/{id}/preview/ -- preview application
-- POST /api/v1/admissions/application/{id}/submit/ -- submit application
+## Architecture Notes
 
-### Faculty & Programmes
-- GET /api/v1/faculty/ -- list faculties
-- GET /api/v1/departments/ -- list departments
-- GET /api/v1/programmes/ -- list academic programmes
-
-### Students & Staff
-- GET /api/students/profile/ -- view student profile
-- GET /api/staff/applicants/ -- staff: list applicants
-
-## Documentation
-
-- Swagger UI: http://localhost:8000/api/docs/
-- OpenAPI Schema: http://localhost:8000/api/schema/
-
-## Environment Variables Reference
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| SECRET_KEY | Django secret key | (insecure default) | Yes (production) |
-| DEBUG | Debug mode | True | No |
-| ALLOWED_HOSTS | Comma-separated hosts | localhost,127.0.0.1 | Yes (production) |
-| DATABASE_URL | PostgreSQL connection string | (SQLite used) | Yes (when DEBUG=False) |
-| EMAIL_BACKEND | Email backend class | console.EmailBackend | No |
-| EMAIL_HOST | SMTP server | smtp.gmail.com | No |
-| EMAIL_PORT | SMTP port | 587 | No |
-| EMAIL_USE_TLS | Use TLS | True | No |
-| EMAIL_HOST_USER | SMTP username | - | No |
-| EMAIL_HOST_PASSWORD | SMTP password | - | No |
-| DEFAULT_FROM_EMAIL | Default sender email | noreply@odel.edu | No |
-
-## Production Deployment Checklist
-
-- [ ] Set `DEBUG=False`
-- [ ] Generate and set strong `SECRET_KEY`
-- [ ] Configure `ALLOWED_HOSTS` with your domain
-- [ ] Set up PostgreSQL database
-- [ ] Configure `DATABASE_URL`
-- [ ] Set up SMTP email backend
-- [ ] Collect static files: `python manage.py collectstatic`
-- [ ] Run migrations: `python manage.py migrate`
-- [ ] Create superuser: `python manage.py createsuperuser`
-- [ ] Set up SSL/HTTPS
-- [ ] Configure web server (nginx/Apache)
-- [ ] Set up process manager (gunicorn/uwsgi)
+- **API Documentation**: Interactive API documentation is available at:
+  - Swagger UI: `/api/docs/` - Try out API endpoints directly
+  - ReDoc: `/api/redoc/` - Beautiful API reference
+  - OpenAPI Schema: `/api/schema/` - Download OpenAPI 3.0 schema
+- **Zoom Meeting Creation**: When a Session is created with `live_provider='zoom'`, a Celery task is queued to create the Zoom meeting asynchronously. The task includes retry logic (3 retries with 60s delay).
+- **Task Queue**: Uses Redis as the message broker. The task will create the meeting, update the Session with `external_meeting_id` and `join_url`, and set status to `scheduled`.
+- **Docker Services**:
+  - `web`: Django application server
+  - `celery_worker`: Async task processor
+  - `celery_beat`: Periodic task scheduler
+  - `redis`: Message broker and result backend
+  - `flower`: Web-based Celery monitoring (http://localhost:5555)
+- **Production**: The Docker setup is production-ready. For scaling, run multiple celery_worker containers and use a reverse proxy (nginx) in front of the web service.
