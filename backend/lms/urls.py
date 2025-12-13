@@ -1,22 +1,46 @@
 """
-URL configuration for lms project.
+LMS Service URLs - API-only Backend
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+This is an API-only Learning Management System.
+All frontend has been removed. Use REST API endpoints for all operations.
+
+Available API Documentation:
+- Swagger UI: /api/docs/
+- ReDoc: /api/redoc/
+- OpenAPI Schema: /api/schema/
+
+Available API Endpoints:
+- /api/classroom/* - Classroom management APIs (courses, classrooms, enrollments)
+- /api/assessment/* - Assessment APIs (assignments, submissions, quizzes, quiz attempts)
+- /api/content/* - Learning content management APIs (file storage, YouTube videos)
+- /admin/ - Django admin panel
 """
+from django.urls import path, include
 from django.contrib import admin
-from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 urlpatterns = [
+    # Django Admin
     path('admin/', admin.site.urls),
+    
+    # Classroom APIs
+    path('', include('classroom.urls')),
+    
+    # Assessment APIs
+    path('api/assessment/', include('assessment.urls')),
+    
+    # Learning Content APIs
+    path('api/content/', include('resource.content.urls')),
+    
+    # API Documentation
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
