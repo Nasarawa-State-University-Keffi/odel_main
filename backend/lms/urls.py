@@ -10,7 +10,7 @@ Available API Documentation:
 - OpenAPI Schema: /api/schema/
 
 Available API Endpoints:
-- /api/classroom/* - Classroom management APIs (courses, classrooms, enrollments)
+- /api/courses/* - Course management APIs (courses, enrollments)
 - /api/assessment/* - Assessment APIs (assignments, submissions, quizzes, quiz attempts)
 - /api/content/* - Learning content management APIs (file storage, YouTube videos)
 - /admin/ - Django admin panel
@@ -25,8 +25,8 @@ urlpatterns = [
     # Django Admin
     path('admin/', admin.site.urls),
     
-    # Classroom APIs
-    path('', include('classroom.urls')),
+    # Courses APIs
+    path('', include('courses.urls')),
     
     # Assessment APIs
     path('api/assessment/', include('assessment.urls')),

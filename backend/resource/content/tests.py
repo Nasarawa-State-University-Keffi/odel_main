@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
-from classroom.models import CourseCache
+from courses.models import CourseCache
 from .models import LearningContent, StorageSettings, ContentAccessLog
 from .services import upload_learning_content, upload_youtube_video, delete_learning_content
 from resource.storage.base import StorageException

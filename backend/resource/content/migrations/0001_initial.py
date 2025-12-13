@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('classroom', '0001_initial'),
+        ('courses', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -48,7 +48,7 @@ class Migration(migrations.Migration):
                 ('download_count', models.IntegerField(default=0)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='learning_contents', to='classroom.coursecache')),
+                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='learning_contents', to='courses.coursecache')),
                 ('uploaded_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='uploaded_contents', to=settings.AUTH_USER_MODEL)),
             ],
             options={

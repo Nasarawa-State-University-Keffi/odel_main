@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 
 from .models import LearningContent, StorageSettings, ContentAccessLog
-from classroom.models import CourseCache
+from courses.models import CourseCache
 
 
 # ==========================================================

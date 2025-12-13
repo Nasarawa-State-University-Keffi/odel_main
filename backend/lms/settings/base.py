@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'corsheaders',
     # Local apps
-    'classroom',
+    'courses',
     'assessment',
     'resource.content',
 ]
@@ -245,7 +245,7 @@ LOGGING = {
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
             'propagate': False,
         },
-        'classroom': {
+        'courses': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': False,

@@ -8,7 +8,7 @@ import hashlib
 from django.db import models
 from django.contrib.auth.models import User
 
-from classroom.models import CourseCache
+from courses.models import CourseCache
 
 
 class StorageSettings(models.Model):

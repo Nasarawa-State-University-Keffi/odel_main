@@ -112,7 +112,7 @@ if USE_S3:
 LOGGING['handlers']['file']['filename'] = '/var/log/lms/django.log'
 LOGGING['root']['level'] = 'WARNING'
 LOGGING['loggers']['django']['level'] = 'WARNING'
-LOGGING['loggers']['classroom']['level'] = 'INFO'
+LOGGING['loggers']['courses']['level'] = 'INFO'
 
 # Performance optimizations
 CONN_MAX_AGE = 600  # Keep database connections alive for 10 minutes

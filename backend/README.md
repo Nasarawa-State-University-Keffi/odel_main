@@ -1,127 +1,336 @@
-# LMS Service
+# LMS Service - Django Backend
 
-This repository contains a Django + DRF microservice `lms_service` with an app `classroom` implementing:
+Production-ready Learning Management System with Zoom integration, classroom management, and student portal synchronization.
 
-- Course and Enrollment caches (read-only sync from portal DB)
-- Classroom, Session (Zoom-powered), Resource, Assignment, Submission models
-- Zoom integration (meeting create + webhook handler)
-- Permissions for enrolled students and instructors
-- Management command `sync_portal` to import data from a secondary `portal` DB
-- Celery task queue with Redis broker for async operations
-- Docker containerization for all services
+## Features
 
-## Quick Start (Docker)
+- Classroom and course management
+- Assignment and submission tracking
+- Student portal synchronization
+- Celery-based async task processing
+- JWT authentication
+- Auto-generated API documentation
 
-1. Copy the environment template:
+## Tech Stack
+
+- **Framework**: Django 4.2+ with Django REST Framework
+- **Database**: PostgreSQL (production) / SQLite (development)
+- **Task Queue**: Celery with Redis
+- **API Docs**: drf-spectacular (OpenAPI/Swagger)
+- **Containerization**: Docker & Docker Compose
+- **Web Server**: Gunicorn + Nginx (production)
+
+## Project Structure
+
+```
+backend/
+├── lms_service/          # Main Django project
+│   ├── settings/         # Environment-specific settings
+│   │   ├── __init__.py   # Auto-loads based on DJANGO_ENV
+│   │   ├── base.py       # Shared settings
+│   │   ├── development.py
+│   │   ├── staging.py
+│   │   └── production.py
+│   ├── celery.py         # Celery configuration
+│   ├── urls.py           # URL routing
+│   ├── wsgi.py           # WSGI entry point
+│   └── asgi.py           # ASGI entry point
+├── classroom/            # Classroom app
+├── media/                # User-uploaded files
+├── staticfiles/          # Collected static files
+├── nginx/                # Nginx configuration
+├── Dockerfile            # Production-ready Docker image
+├── docker-compose.yml    # Multi-container orchestration
+├── gunicorn_config.py    # Gunicorn server config
+├── requirements.txt      # Python dependencies
+└── .env.example          # Environment variables template
+```
+
+## Quick Start
+
+### 1. Clone and Setup Environment
+
 ```powershell
+# Copy environment template
 cp .env.example .env
+
+# Edit .env with your configuration
+# At minimum, change: DJANGO_SECRET_KEY, POSTGRES_PASSWORD, REDIS_PASSWORD
 ```
 
-2. Edit `.env` with your credentials (Zoom API keys, etc.)
+### 2. Development Setup
 
-3. Build and start all services:
 ```powershell
-docker-compose up --build
-```
+# Start all services (PostgreSQL, Redis, Django, Celery)
+docker-compose up -d
 
-4. Run migrations (first time only):
-```powershell
+# Check logs
+docker-compose logs -f web
+
+# Run migrations
 docker-compose exec web python manage.py migrate
-```
 
-5. Create superuser (optional):
-```powershell
+# Create superuser
 docker-compose exec web python manage.py createsuperuser
+
+# Access the application
+# API: http://localhost:8000/api/
+# Admin: http://localhost:8000/admin/
+# API Docs: http://localhost:8000/api/docs/
+# Celery Monitor: http://localhost:5555 (start with --profile monitoring)
 ```
 
-6. Access the services:
-   - Django API: http://localhost:8000
-   - **Swagger UI**: http://localhost:8000/api/docs/
-   - **ReDoc**: http://localhost:8000/api/redoc/
-   - Flower (Celery monitoring): http://localhost:5555
-   - Admin: http://localhost:8000/admin
+### 3. Production Deployment
+
+```powershell
+# Set environment to production in .env
+# DJANGO_ENV=production
+# DJANGO_DEBUG=0
+
+# Update .env with production values
+# - Use strong SECRET_KEY
+# - Configure proper ALLOWED_HOSTS
+# - Set up PostgreSQL connection
+# - Configure email settings
+
+# Build and start with Nginx
+docker-compose --profile production up -d
+
+# Run migrations
+docker-compose exec web python manage.py migrate
+
+# Collect static files (already done in Dockerfile)
+docker-compose exec web python manage.py collectstatic --noinput
+```
+
+## Docker Compose Profiles
+
+The setup includes optional services via profiles:
+
+```powershell
+# Start with Flower monitoring
+docker-compose --profile monitoring up -d
+
+# Start with Nginx reverse proxy (production)
+docker-compose --profile production up -d
+
+# Start everything
+docker-compose --profile monitoring --profile production up -d
+```
 
 ## Environment Variables
 
-- `DJANGO_SECRET_KEY`
-- `DJANGO_DEBUG` (1/0)
-- `DJANGO_ALLOWED_HOSTS` (comma-separated)
-- `ZOOM_API_KEY`
-- `ZOOM_API_SECRET`
-- `ZOOM_WEBHOOK_SECRET`
-- `CELERY_BROKER_URL` (automatically set in Docker)
-- `CELERY_RESULT_BACKEND` (automatically set in Docker)
-- Portal DB settings via `DATABASES['portal']` environment or overrides
+Key environment variables (see `.env.example` for full list):
 
-## Local Installation (without Docker)
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DJANGO_ENV` | Environment (development/staging/production) | development |
+| `DJANGO_SECRET_KEY` | Django secret key (REQUIRED) | - |
+| `DJANGO_DEBUG` | Enable debug mode | 1 |
+| `DATABASE_URL` | PostgreSQL connection string | - |
+| `REDIS_URL` | Redis connection for caching | - |
+| `CELERY_BROKER_URL` | Celery broker (Redis) | - |
+| `ZOOM_API_KEY` | Zoom API credentials | - |
 
-```powershell
-python -m venv .venv; ..\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+## Storage Backend Configuration
+
+The LMS supports multiple storage backends for learning content files:
+
+- **local**: Store files locally in `media/` directory
+- **s3**: Store files in Amazon S3 bucket
+- **cloudinary**: Store files in Cloudinary cloud storage
+- **youtube**: Reference YouTube videos (no actual file upload)
+
+### Credential Management
+
+**Important**: Storage credentials are managed through environment variables (`.env` file), NOT stored in the database. This follows security best practices and the [12-factor app](https://12factor.net/config) methodology.
+
+### Setup Instructions
+
+1. **Configure Credentials in `.env` file**:
+
+```env
+# AWS S3 (required if using 's3' backend)
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_STORAGE_BUCKET_NAME=your_bucket_name
+AWS_S3_REGION_NAME=us-east-1
+
+# Cloudinary (required if using 'cloudinary' backend)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# YouTube (required if using 'youtube' backend)
+YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
-### Docker Commands
+2. **Select Active Backend**:
 
-Start all services:
-```powershell
-docker-compose up
+You can manage the active storage backend through:
+
+**Option A: Django Admin Panel**
+- Navigate to `http://localhost:8000/admin/content/storagesettings/`
+- Select the desired backend (`local`, `s3`, `cloudinary`, or `youtube`)
+- Set `is_active` to `True`
+
+**Option B: API Endpoint**
+```bash
+# Create or update storage settings
+POST /api/content/storage-settings/
+{
+  "backend": "s3",
+  "is_active": true
+}
+
+# List available backends
+GET /api/content/storage-settings/
 ```
 
-Start in background:
-```powershell
-docker-compose up -d
+3. **Verify Configuration**:
+
+If you select a backend without proper credentials in `.env`, you'll receive a clear error message:
+
+- **S3**: `"AWS credentials not configured. Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_STORAGE_BUCKET_NAME in .env file"`
+- **Cloudinary**: `"Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env file"`
+- **YouTube**: Requires `YOUTUBE_API_KEY` in `.env`
+
+### Upload Content
+
+Once your storage backend is configured:
+
+```bash
+# Upload a file (works with local, s3, cloudinary)
+POST /api/content/upload/
+Content-Type: multipart/form-data
+
+course_id: "CS101"  # or UUID
+file: [select file]
+title: "Lecture 1: Introduction"
+description: "Course introduction and syllabus"
+
+# Add YouTube video reference
+POST /api/content/add-youtube/
+Content-Type: application/json
+
+{
+  "course_id": "CS101",
+  "title": "Lecture Video",
+  "description": "Week 1 lecture recording",
+  "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+}
 ```
 
-View logs:
-```powershell
-docker-compose logs -f
-```
+### Storage Backend Comparison
 
-Stop all services:
-```powershell
-docker-compose down
-```
+| Backend | Best For | Pros | Cons |
+|---------|----------|------|------|
+| **local** | Development, small deployments | Simple, no external dependencies | Not scalable, single server |
+| **s3** | Production, large files | Scalable, reliable, CDN-ready | Requires AWS account, costs |
+| **cloudinary** | Images, videos, media optimization | Auto-optimization, transformations | Costs for large storage |
+| **youtube** | Video content already on YouTube | No storage costs, YouTube player | Requires videos uploaded to YouTube |
 
-Sync portal data:
+## Management Commands
+
 ```powershell
+# Database operations
+docker-compose exec web python manage.py migrate
+docker-compose exec web python manage.py makemigrations
+docker-compose exec web python manage.py createsuperuser
+
+# Portal synchronization
 docker-compose exec web python manage.py sync_portal
+
+# Celery tasks
+docker-compose exec celery_worker celery -A lms_service inspect active
+docker-compose exec celery_worker celery -A lms_service inspect stats
+
+# Shell access
+docker-compose exec web python manage.py shell
+docker-compose exec web bash
 ```
 
-### Local Commands (without Docker)
+## API Documentation
 
-Run migrations and start server:
+Once running, access interactive API documentation:
+
+- **Swagger UI**: http://localhost:8000/api/docs/
+- **ReDoc**: http://localhost:8000/api/redoc/
+- **OpenAPI Schema**: http://localhost:8000/api/schema/
+
+## Settings Architecture
+
+Settings are split into multiple files for better maintainability:
+
+- **base.py**: Shared configuration (apps, middleware, DRF, Celery)
+- **development.py**: Local development (DEBUG=True, SQLite, etc.)
+- **staging.py**: Pre-production testing
+- **production.py**: Production (security headers, PostgreSQL, Redis cache)
+
+The correct settings file is loaded automatically based on `DJANGO_ENV`:
+
+```python
+# In lms_service/settings/__init__.py
+if environment == 'production':
+    from .production import *
+elif environment == 'staging':
+    from .staging import *
+else:
+    from .development import *
+```
+
+## Production Checklist
+
+Before deploying to production:
+
+- [ ] Change `DJANGO_SECRET_KEY` to a strong random value
+- [ ] Set `DJANGO_DEBUG=0`
+- [ ] Configure `ALLOWED_HOSTS` with your domain
+- [ ] Use PostgreSQL instead of SQLite
+- [ ] Enable SSL/HTTPS (`SECURE_SSL_REDIRECT=True`)
+- [ ] Configure email backend (SMTP)
+- [ ] Set up proper logging
+- [ ] Configure CORS for your frontend domain
+- [ ] Use strong passwords for PostgreSQL and Redis
+- [ ] Set up regular database backups
+- [ ] Configure file storage (S3 or similar)
+- [ ] Review security settings in production.py
+
+## Monitoring
+
+- **Flower**: Celery task monitoring at http://localhost:5555
+- **Django Admin**: http://localhost:8000/admin/
+- **Logs**: `docker-compose logs -f [service_name]`
+
+## Troubleshooting
+
+### Database connection issues
 ```powershell
-python manage.py migrate
-python manage.py runserver
+# Check database status
+docker-compose exec db pg_isready
+
+# View database logs
+docker-compose logs db
 ```
 
-Start Celery worker (in separate terminal):
+### Celery not processing tasks
 ```powershell
-celery -A lms_service worker -l info
+# Check worker status
+docker-compose exec celery_worker celery -A lms_service inspect active
+
+# Restart worker
+docker-compose restart celery_worker
 ```
 
-Optional: Start Celery Beat for periodic tasks:
+### Static files not loading
 ```powershell
-celery -A lms_service beat -l info
+# Collect static files
+docker-compose exec web python manage.py collectstatic --noinput
+
+# Check Nginx configuration
+docker-compose exec nginx nginx -t
 ```
 
-Sync portal:
-```powershell
-python manage.py sync_portal
-```
+## Support
 
-## Architecture Notes
-
-- **API Documentation**: Interactive API documentation is available at:
-  - Swagger UI: `/api/docs/` - Try out API endpoints directly
-  - ReDoc: `/api/redoc/` - Beautiful API reference
-  - OpenAPI Schema: `/api/schema/` - Download OpenAPI 3.0 schema
-- **Zoom Meeting Creation**: When a Session is created with `live_provider='zoom'`, a Celery task is queued to create the Zoom meeting asynchronously. The task includes retry logic (3 retries with 60s delay).
-- **Task Queue**: Uses Redis as the message broker. The task will create the meeting, update the Session with `external_meeting_id` and `join_url`, and set status to `scheduled`.
-- **Docker Services**:
-  - `web`: Django application server
-  - `celery_worker`: Async task processor
-  - `celery_beat`: Periodic task scheduler
-  - `redis`: Message broker and result backend
-  - `flower`: Web-based Celery monitoring (http://localhost:5555)
-- **Production**: The Docker setup is production-ready. For scaling, run multiple celery_worker containers and use a reverse proxy (nginx) in front of the web service.
+For issues and questions, please open an issue on GitHub or contact the development team.

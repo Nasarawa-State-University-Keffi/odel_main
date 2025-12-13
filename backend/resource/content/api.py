@@ -30,7 +30,7 @@ from .services import (
     log_content_access,
     update_storage_settings
 )
-from classroom.models import CourseCache
+from courses.models import CourseCache
 
 
 class LearningContentViewSet(viewsets.ModelViewSet):

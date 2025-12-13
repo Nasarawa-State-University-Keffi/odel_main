@@ -14,7 +14,7 @@ from django.db import transaction
 from resource.storage import get_storage_engine
 from resource.storage.base import StorageException
 from .models import LearningContent, ContentAccessLog, StorageSettings
-from classroom.models import CourseCache
+from courses.models import CourseCache
 
 
 # ==========================================================
