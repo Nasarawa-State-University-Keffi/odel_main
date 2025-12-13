@@ -5,12 +5,13 @@ export interface FloatingInputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon?: React.ReactNode;
+  error?: string;
 }
 
 const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
-  ({ className, label, icon, id, ...props }, ref) => {
+  ({ className, label, icon, id, error, ...props }, ref) => {
     const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
-    
+
     return (
       <div className="relative">
         {icon && (
@@ -40,6 +41,9 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
         >
           {label}
         </label>
+        {error && (
+          <p className="text-sm text-destructive mt-1 ml-1">{error}</p>
+        )}
       </div>
     );
   }
