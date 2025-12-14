@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
+import { Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ApplicationLayout from "@/components/ApplicationLayout";
-import PersonalDetailsStep from "@/components/application/PersonalDetailsStep";
-import ContactDetailsStep from "@/components/application/ContactDetailsStep";
-import NextOfKinStep from "@/components/application/NextOfKinStep";
-import ProgrammeStep from "@/components/application/ProgrammeStep";
-import PaymentStep from "@/components/application/PaymentStep";
+import ApplicationLayout from "@/layouts/ApplicationLayout";
+import PersonalDetailsStep from "@/features/application/components/PersonalDetailsStep";
+import ContactDetailsStep from "@/features/application/components/ContactDetailsStep";
+import NextOfKinStep from "@/features/application/components/NextOfKinStep";
+import ProgrammeStep from "@/features/application/components/ProgrammeStep";
+import PaymentStep from "@/features/application/components/PaymentStep";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +20,7 @@ const Application = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const totalSteps = 5;
-  const progress = (currentStep / totalSteps) * 100;
+
 
   const handleNext = () => {
     if (!isStepValid && currentStep < 5) {
@@ -69,18 +70,48 @@ const Application = () => {
     <ApplicationLayout>
       <div className="max-w-4xl mx-auto pt-20">
         <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs md:text-sm text-muted-foreground">{Math.round(progress)}%</span>
-            <span className="text-xs md:text-sm font-medium text-muted-foreground text-center">
-              ODEL Application
-            </span>
-            <span className="text-xs md:text-sm text-muted-foreground">100%</span>
+          <div className="flex items-center justify-between w-full px-2">
+            {Array.from({ length: totalSteps }).map((_, index) => {
+              const stepNumber = index + 1;
+              const isCompleted = stepNumber < currentStep;
+              const isActive = stepNumber === currentStep;
+              const isLastStep = stepNumber === totalSteps;
+
+              return (
+                <Fragment key={stepNumber}>
+                  {/* Step Circle */}
+                  <div className="flex flex-col items-center relative z-10">
+                    <div
+                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                        ${isActive ? 'border-primary text-primary bg-white scale-110' :
+                          isCompleted ? 'border-primary bg-primary text-primary-foreground' : 'border-gray-200 text-gray-400 bg-white'}
+                      `}
+                    >
+                      {isCompleted ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        <span className="text-sm md:text-base font-semibold">{stepNumber}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Connector Line */}
+                  {!isLastStep && (
+                    <div className="flex-1 h-[2px] bg-gray-200 mx-2">
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{ width: stepNumber < currentStep ? '100%' : '0%' }}
+                      />
+                    </div>
+                  )}
+                </Fragment>
+              );
+            })}
           </div>
-          <div className="w-full h-2 md:h-3 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-teal-500 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="mt-4 text-center">
+            <span className="text-sm font-medium text-muted-foreground">
+              Step {currentStep} of {totalSteps}
+            </span>
           </div>
         </div>
 

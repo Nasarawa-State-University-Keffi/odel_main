@@ -1,3 +1,5 @@
+// USING THIS MOCK DATA FOR NOW... AS WE WILL BE ADDING THE COUNTRIES ENDPOINT LATER
+
 export interface LocationOption {
     label: string;
     value: string;

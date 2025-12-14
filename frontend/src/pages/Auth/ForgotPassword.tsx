@@ -1,15 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion, useAnimation } from "framer-motion";
+
+
+// FRONTEND AUTH URL
+
+const authURL = import.meta.env.VITE_FRONTEND_AUTH_API;
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState("");
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+    const controls = useAnimation();
+
+    useEffect(() => {
+        controls.start({ opacity: 1, y: 0 });
+    }, [controls]);
+
+    const shakeForm = () => {
+        controls.start({
+            x: [0, -10, 10, -10, 10, 0],
+            transition: { duration: 0.5 }
+        });
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,6 +38,7 @@ const ForgotPassword = () => {
                 description: "Please enter your email address",
                 variant: "destructive",
             });
+            shakeForm();
             return;
         }
 
@@ -44,7 +63,12 @@ const ForgotPassword = () => {
     if (isSubmitted) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
-                <div className="w-full max-w-md">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="w-full max-w-md"
+                >
                     <div className="bg-card rounded-2xl shadow-2xl p-8 md:p-10 border border-border/50 backdrop-blur-sm">
                         <div className="text-center space-y-6">
                             <div className="flex justify-center">
@@ -81,14 +105,19 @@ const ForgotPassword = () => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             </div>
         );
     }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
-            <div className="w-full max-w-md">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={controls}
+                transition={{ duration: 0.5 }}
+                className="w-full max-w-md"
+            >
                 <div className="bg-card rounded-2xl shadow-2xl p-8 md:p-10 border border-border/50 backdrop-blur-sm">
                     {/* Header */}
                     <div className="text-center space-y-2 mb-8">
@@ -96,7 +125,7 @@ const ForgotPassword = () => {
                             Forgot Password?
                         </h1>
                         <p className="text-muted-foreground text-sm md:text-base">
-                            No worries! Enter your email and we'll send you reset instructions
+                            Enter your email and we'll send you reset instructions
                         </p>
                     </div>
 
@@ -143,7 +172,7 @@ const ForgotPassword = () => {
                     {/* Back to Login */}
                     <div className="mt-6 text-center">
                         <Link
-                            to="/login"
+                            to="/api/auth/login"
                             className="inline-flex items-center text-sm text-primary hover:text-primary/80 transition-colors font-medium"
                         >
                             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -164,7 +193,7 @@ const ForgotPassword = () => {
                         </a>
                     </p>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 };

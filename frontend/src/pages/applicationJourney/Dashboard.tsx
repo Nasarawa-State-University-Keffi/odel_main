@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import ApplicationLayout from "@/components/ApplicationLayout";
+import ApplicationLayout from "@/layouts/ApplicationLayout";
 import { Button } from "@/components/ui/button";
-import DetailRow from "@/components/dashboardComponents/DetailRow";
-import TimelineItem from "@/components/dashboardComponents/TimelineItem";
+import DetailRow from "@/features/dashboard/components/DetailRow";
+import TimelineItem from "@/features/dashboard/components/TimelineItem";
 import defaultProfile from "../../public/51760520.png";
 
 const Dashboard = () => {
@@ -30,10 +30,10 @@ const Dashboard = () => {
   };
 
   const timelineData = [
-    { color: "bg-green-500", title: "Admission", desc: "Open Distance and eLearning Application" },
-    { color: "bg-green-500", title: "Session", desc: "2025/2026" },
-    { color: "bg-green-500", title: "Mode of study", desc: "PART_TIME" },
-    { color: "bg-red-500", title: "Status", desc: "APPLICATION_PENDING" },
+    { color: "bg-primary", title: "Admission", desc: "Open Distance and eLearning Application" },
+    { color: "bg-primary", title: "Session", desc: "2025/2026" },
+    { color: "bg-primary", title: "Mode of study", desc: "PART_TIME" },
+    { color: "bg-destructive", title: "Status", desc: "APPLICATION_PENDING" },
   ];
 
   return (
@@ -50,7 +50,7 @@ const Dashboard = () => {
             {/* LEFT PANEL */}
             <div className="flex flex-col items-center space-y-4 w-[180px] mx-auto lg:mx-0">
               {/* Profile image */}
-              <div className="w-full h-[180px] bg-teal-500 rounded-lg overflow-hidden transition-transform transform hover:scale-105">
+              <div className="w-full h-[180px] bg-muted rounded-lg overflow-hidden transition-transform transform hover:scale-105">
                 <img
                   src={profileImage}
                   alt="Profile"
@@ -68,14 +68,15 @@ const Dashboard = () => {
                     className="hidden"
                     onChange={handleUploadImage}
                   />
-                  <Button className="w-full bg-teal-500 hover:bg-teal-600 text-sm">
+                  <Button className="w-full text-sm">
                     Upload Image
                   </Button>
                 </label>
 
                 {/* Reset */}
                 <Button
-                  className="w-full bg-red-500 hover:bg-red-600 text-sm"
+                  variant="destructive"
+                  className="w-full text-sm"
                   onClick={handleReset}
                 >
                   Reset Application
@@ -84,8 +85,8 @@ const Dashboard = () => {
                 {/* Phone update toggle */}
                 <div className="w-full flex flex-col">
                   <Button
-                    variant="outline"
-                    className="w-full border-orange-500 bg-orange-500 hover:bg-orange-600 text-white flex justify-between items-center p-2 text-xs"
+                    variant="secondary"
+                    className="w-full flex justify-between items-center p-2 text-xs"
                     onClick={() => setShowPhoneForm(!showPhoneForm)}
                   >
                     <span>Update phone</span>
@@ -110,7 +111,7 @@ const Dashboard = () => {
                         className="border border-gray-300 rounded p-2 w-full text-sm"
                       />
                       <Button
-                        className="w-full bg-green-500 hover:bg-green-600 text-white text-sm"
+                        className="w-full text-sm"
                         onClick={handleUpdatePhone}
                       >
                         Save

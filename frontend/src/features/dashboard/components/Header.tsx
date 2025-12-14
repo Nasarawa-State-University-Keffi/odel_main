@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import Cookies from "js-cookie";
 
 const Header = () => {
   const location = useLocation();
@@ -9,13 +10,14 @@ const Header = () => {
   const [dropdown, setDropdown] = useState(false); // Dropdown
   const dropdownRef = useRef(null);
 
-  // Simulated user from localStorage
-  const storedUser = JSON.parse(localStorage.getItem("user")) || {};
+  // Simulated user from cookies
+  const storedUserStr = Cookies.get("user");
+  const storedUser = storedUserStr ? JSON.parse(storedUserStr) : {};
   const username = storedUser.name || "GUEST";
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    Cookies.remove("token");
+    Cookies.remove("user");
     window.location.href = "/login";
   };
 
@@ -48,33 +50,30 @@ const Header = () => {
         <nav className="hidden md:flex items-center gap-6">
           <Link
             to="/dashboard"
-            className={`text-sm hover:text-teal-600 ${
-              location.pathname === "/dashboard"
+            className={`text-sm hover:text-teal-600 ${location.pathname === "/dashboard"
                 ? "text-teal-600 underline"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             Dashboard
           </Link>
 
           <Link
             to="/application"
-            className={`text-sm hover:text-teal-600 ${
-              location.pathname === "/application"
+            className={`text-sm hover:text-teal-600 ${location.pathname === "/application"
                 ? "text-teal-600 underline"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             Application
           </Link>
 
           <Link
             to="/data-correction"
-            className={`text-sm hover:text-teal-600 ${
-              location.pathname === "/data-correction"
+            className={`text-sm hover:text-teal-600 ${location.pathname === "/data-correction"
                 ? "text-teal-600 underline"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             Data Correction
           </Link>
@@ -87,9 +86,8 @@ const Header = () => {
             >
               {username.toUpperCase()}
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${
-                  dropdown ? "rotate-180" : "rotate-0"
-                }`}
+                className={`h-4 w-4 transition-transform ${dropdown ? "rotate-180" : "rotate-0"
+                  }`}
               />
             </button>
 
@@ -121,11 +119,10 @@ const Header = () => {
           <Link
             to="/dashboard"
             onClick={() => setOpen(false)}
-            className={`block text-sm ${
-              location.pathname === "/dashboard"
+            className={`block text-sm ${location.pathname === "/dashboard"
                 ? "text-teal-600 underline"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             Dashboard
           </Link>
@@ -133,11 +130,10 @@ const Header = () => {
           <Link
             to="/application"
             onClick={() => setOpen(false)}
-            className={`block text-sm ${
-              location.pathname === "/application"
+            className={`block text-sm ${location.pathname === "/application"
                 ? "text-teal-600 underline"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             Application
           </Link>
@@ -145,11 +141,10 @@ const Header = () => {
           <Link
             to="/data-correction"
             onClick={() => setOpen(false)}
-            className={`block text-sm ${
-              location.pathname === "/data-correction"
+            className={`block text-sm ${location.pathname === "/data-correction"
                 ? "text-teal-600 underline"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             Data Correction
           </Link>
@@ -162,9 +157,8 @@ const Header = () => {
             >
               {username.toUpperCase()}
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${
-                  dropdown ? "rotate-180" : "rotate-0"
-                }`}
+                className={`h-4 w-4 transition-transform ${dropdown ? "rotate-180" : "rotate-0"
+                  }`}
               />
             </button>
 
