@@ -79,7 +79,10 @@ class LearningContentUploadSerializer(serializers.Serializer):
     
     storage_backend = serializers.ChoiceField(
         choices=['local', 's3', 'cloudinary', 'youtube'],
-        required=False
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="Storage backend (optional - uses database default if not specified)"
     )
 
     def validate_course_id(self, value):

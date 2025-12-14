@@ -140,7 +140,7 @@ class LearningContentAdmin(admin.ModelAdmin):
     
     def course_link(self, obj):
         """Display course as link."""
-        url = reverse('admin:classroom_coursecache_change', args=[obj.course.id])
+        url = reverse('admin:courses_coursecache_change', args=[obj.course.id])
         return format_html('<a href="{}">{}</a>', url, obj.course.title)
     course_link.short_description = 'Course'
     

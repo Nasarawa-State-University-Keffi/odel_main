@@ -36,14 +36,40 @@ class SubmissionSerializer(serializers.ModelSerializer):
 class QuestionCategorySerializer(serializers.ModelSerializer):
     """Serializer for question categories"""
     questions_count = serializers.SerializerMethodField()
+    course_id = serializers.CharField(write_only=True, help_text="Course external_id or UUID")
     
     class Meta:
         model = QuestionCategory
-        fields = ['id', 'course', 'name', 'description', 'questions_count', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ['id', 'course', 'course_id', 'name', 'description', 'questions_count', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'course']
     
     def get_questions_count(self, obj):
         return obj.questions.count()
+    
+    def validate(self, attrs):
+        """Validate and convert course_id to CourseCache instance"""
+        from courses.models import CourseCache
+        import uuid
+        
+        course_id = attrs.pop('course_id', None)
+        if not course_id:
+            raise serializers.ValidationError({"course_id": "This field is required"})
+        
+        # Try external_id first
+        course = CourseCache.objects.filter(external_id=course_id).first()
+        if not course:
+            # Try UUID
+            try:
+                uuid_value = uuid.UUID(course_id)
+                course = CourseCache.objects.filter(id=uuid_value).first()
+            except (ValueError, AttributeError):
+                pass
+        
+        if not course:
+            raise serializers.ValidationError({"course_id": "Course not found"})
+        
+        attrs['course'] = course
+        return attrs
 
 
 class QuestionAnswerSerializer(serializers.ModelSerializer):
@@ -95,11 +121,18 @@ class QuestionPublicSerializer(serializers.ModelSerializer):
         ]
 
 
+class QuestionAnswerCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating question answers (without question field)"""
+    class Meta:
+        model = QuestionAnswer
+        fields = ['answer_text', 'fraction', 'feedback', 'order']
+
+
 class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating/updating questions with nested answers.
     """
-    answers = QuestionAnswerSerializer(many=True, required=False)
+    answers = QuestionAnswerCreateSerializer(many=True, required=False)
     
     class Meta:
         model = Question
@@ -156,15 +189,16 @@ class QuizSerializer(serializers.ModelSerializer):
     """Basic quiz serializer"""
     questions_count = serializers.SerializerMethodField()
     total_marks = serializers.SerializerMethodField()
+    course_id = serializers.CharField(write_only=True, help_text="Course external_id or UUID")
     
     class Meta:
         model = Quiz
         fields = [
-            'id', 'course', 'name', 'description', 'time_open', 'time_close',
+            'id', 'course', 'course_id', 'name', 'description', 'time_open', 'time_close',
             'time_limit', 'max_grade', 'shuffle_questions', 'max_attempts',
             'show_feedback', 'questions_count', 'total_marks', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'course']
     
     def get_questions_count(self, obj):
         return obj.quiz_questions.count()
@@ -173,6 +207,31 @@ class QuizSerializer(serializers.ModelSerializer):
         from django.db.models import Sum
         total = obj.quiz_questions.aggregate(total=Sum('max_mark'))['total']
         return float(total) if total else 0.0
+    
+    def validate(self, attrs):
+        """Validate and convert course_id to CourseCache instance"""
+        from courses.models import CourseCache
+        import uuid
+        
+        course_id = attrs.pop('course_id', None)
+        if not course_id:
+            raise serializers.ValidationError({"course_id": "This field is required"})
+        
+        # Try external_id first
+        course = CourseCache.objects.filter(external_id=course_id).first()
+        if not course:
+            # Try UUID
+            try:
+                uuid_value = uuid.UUID(course_id)
+                course = CourseCache.objects.filter(id=uuid_value).first()
+            except (ValueError, AttributeError):
+                pass
+        
+        if not course:
+            raise serializers.ValidationError({"course_id": "Course not found"})
+        
+        attrs['course'] = course
+        return attrs
 
 
 class QuizDetailSerializer(serializers.ModelSerializer):

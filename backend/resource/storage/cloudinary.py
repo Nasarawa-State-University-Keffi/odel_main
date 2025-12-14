@@ -26,9 +26,8 @@ class CloudinaryStorageEngine(BaseStorageEngine):
             import cloudinary.uploader
             import cloudinary.api
             
-            self.cloudinary = cloudinary
-            self.uploader = cloudinary.uploader
-            self.api = cloudinary.api
+            # Don't store module references (they can't be pickled for caching)
+            # Import them when needed instead
             
             # Load credentials from Django settings
             cloud_name = settings.CLOUDINARY_CLOUD_NAME
@@ -67,6 +66,8 @@ class CloudinaryStorageEngine(BaseStorageEngine):
             str: The public ID where file was saved
         """
         try:
+            import cloudinary.uploader
+            
             # Extract public_id from path (remove extension)
             public_id = path.rsplit('.', 1)[0] if '.' in path else path
             
@@ -74,7 +75,7 @@ class CloudinaryStorageEngine(BaseStorageEngine):
             resource_type = 'auto'  # Let Cloudinary auto-detect
             
             # Upload to Cloudinary
-            result = self.uploader.upload(
+            result = cloudinary.uploader.upload(
                 file_obj,
                 public_id=public_id,
                 resource_type=resource_type,
@@ -90,13 +91,15 @@ class CloudinaryStorageEngine(BaseStorageEngine):
     def delete(self, path: str) -> bool:
         """Delete file from Cloudinary."""
         try:
+            import cloudinary.uploader
+            
             # Extract public_id from path
             public_id = path.rsplit('.', 1)[0] if '.' in path else path
             
             # Try different resource types
             for resource_type in ['image', 'video', 'raw']:
                 try:
-                    self.uploader.destroy(public_id, resource_type=resource_type)
+                    cloudinary.uploader.destroy(public_id, resource_type=resource_type)
                     return True
                 except Exception:
                     continue
@@ -128,13 +131,15 @@ class CloudinaryStorageEngine(BaseStorageEngine):
     def exists(self, path: str) -> bool:
         """Check if resource exists in Cloudinary."""
         try:
+            import cloudinary.api
+            
             # Extract public_id from path
             public_id = path.rsplit('.', 1)[0] if '.' in path else path
             
             # Try to get resource info
             for resource_type in ['image', 'video', 'raw']:
                 try:
-                    self.api.resource(public_id, resource_type=resource_type)
+                    cloudinary.api.resource(public_id, resource_type=resource_type)
                     return True
                 except Exception:
                     continue
@@ -147,13 +152,15 @@ class CloudinaryStorageEngine(BaseStorageEngine):
     def size(self, path: str) -> Optional[int]:
         """Get resource size from Cloudinary."""
         try:
+            import cloudinary.api
+            
             # Extract public_id from path
             public_id = path.rsplit('.', 1)[0] if '.' in path else path
             
             # Try to get resource info
             for resource_type in ['image', 'video', 'raw']:
                 try:
-                    result = self.api.resource(public_id, resource_type=resource_type)
+                    result = cloudinary.api.resource(public_id, resource_type=resource_type)
                     return result.get('bytes')
                 except Exception:
                     continue

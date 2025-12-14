@@ -10,6 +10,8 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
@@ -99,6 +101,7 @@ class LearningContentViewSet(viewsets.ModelViewSet):
         responses={201: LearningContentSerializer},
         tags=['Content Upload']
     )
+    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload(self, request):
         """
@@ -135,6 +138,12 @@ class LearningContentViewSet(viewsets.ModelViewSet):
                     )
             
             # Upload file
+            # TODO: Handle storage_backend properly
+            # Force None if storage_backend not explicitly provided (will use DB default)
+            # storage_backend = serializer.validated_data.get('storage_backend')
+            # if storage_backend == '':
+            #     storage_backend = None
+            
             content = upload_learning_content(
                 file_obj=serializer.validated_data['file'],
                 course=course,

@@ -32,6 +32,16 @@ DATABASES = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF Settings - Relaxed for API testing in development
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:3000',
+]
+# Allow API endpoints to work without CSRF in development (using token auth instead)
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = False
+
 # Email Backend - Console for development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 

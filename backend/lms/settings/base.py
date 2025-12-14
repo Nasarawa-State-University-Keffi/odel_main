@@ -172,12 +172,30 @@ SPECTACULAR_SETTINGS = {
         'persistAuthorization': True,
         'displayOperationId': True,
         'filter': True,
+        'supportedSubmitMethods': ['get', 'post', 'put', 'delete', 'patch'],
     },
     'SECURITY': [
         {
             'bearerAuth': [],
+        },
+        {
+            'cookieAuth': [],
         }
     ],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            },
+            'cookieAuth': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'sessionid',
+            }
+        }
+    },
     'APPEND_COMPONENTS': {
         'securitySchemes': {
             'bearerAuth': {

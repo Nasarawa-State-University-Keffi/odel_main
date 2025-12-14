@@ -9,16 +9,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
 
 from .models import (
     Assignment, Submission,
-    QuestionCategory, Question, Quiz, QuizAttempt, QuestionAttempt
+    QuestionCategory, Question, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
 )
 from .serializers import (
     AssignmentSerializer, SubmissionSerializer,
     QuestionCategorySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
-    QuizSerializer, QuizDetailSerializer, QuizWithQuestionsSerializer,
+    QuizSerializer, QuizDetailSerializer, QuizWithQuestionsSerializer, QuizQuestionSlotSerializer,
     QuizAttemptSerializer, QuizAttemptDetailSerializer,
     StartQuizSerializer, SubmitResponseSerializer, ManualGradeSerializer
 )
@@ -179,7 +179,39 @@ class QuestionCategoryViewSet(viewsets.ModelViewSet):
     ),
     create=extend_schema(
         summary="Create question",
-        description="Create a new question with answers (instructors only)",
+        description="""Create a new question with nested answers (instructors only).
+        
+        **Required fields:**
+        - `category`: UUID of the question category
+        - `qtype`: Question type (multichoice, truefalse, shortanswer, essay)
+        - `name`: Short name for the question
+        - `question_text`: The actual question text
+        - `default_mark`: Default marks for this question (e.g., 1.0)
+        - `answers`: Array of answer objects
+        
+        **Answer object structure:**
+        - `answer_text`: The answer text
+        - `fraction`: Correctness (1.0 = correct, 0.0 = incorrect, 0.5 = partially correct)
+        - `feedback`: Feedback for this answer (optional)
+        - `order`: Display order (optional)
+        
+        **Example:**
+        ```json
+        {
+          "category": "uuid-here",
+          "qtype": "multichoice",
+          "name": "Python Basics",
+          "question_text": "What is 2 + 2?",
+          "general_feedback": "Basic arithmetic",
+          "default_mark": 1.0,
+          "penalty": 0.1,
+          "answers": [
+            {"answer_text": "3", "fraction": 0.0, "feedback": "Incorrect", "order": 1},
+            {"answer_text": "4", "fraction": 1.0, "feedback": "Correct!", "order": 2}
+          ]
+        }
+        ```
+        """,
         tags=['Question Bank']
     ),
     retrieve=extend_schema(
@@ -225,6 +257,63 @@ class QuestionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(qtype=qtype)
         
         return queryset.select_related('category').prefetch_related('answers')
+
+
+# ==========================================
+# QUIZ QUESTION SLOT APIs
+# ==========================================
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List quiz question slots",
+        description="Retrieve all question slots (links between quizzes and questions)",
+        tags=['Quiz Questions'],
+        parameters=[
+            OpenApiParameter(name='quiz', description='Filter by quiz ID', required=False, type=str),
+            OpenApiParameter(name='question', description='Filter by question ID', required=False, type=str)
+        ]
+    ),
+    retrieve=extend_schema(
+        summary="Get quiz question slot details",
+        description="Retrieve a specific quiz question slot",
+        tags=['Quiz Questions']
+    ),
+    create=extend_schema(
+        summary="Add question to quiz",
+        description="Create a link between a quiz and question with order and max_mark (instructors only)",
+        tags=['Quiz Questions']
+    ),
+    update=extend_schema(
+        summary="Update quiz question slot",
+        description="Update the order or max_mark of a question in a quiz (instructors only)",
+        tags=['Quiz Questions']
+    ),
+    destroy=extend_schema(
+        summary="Remove question from quiz",
+        description="Delete the link between a quiz and question (instructors only)",
+        tags=['Quiz Questions']
+    )
+)
+class QuizQuestionViewSet(viewsets.ModelViewSet):
+    """API endpoints for managing quiz-question slots (adding/removing questions from quizzes)"""
+    queryset = QuizQuestion.objects.all()
+    serializer_class = QuizQuestionSlotSerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    
+    def get_queryset(self):
+        queryset = QuizQuestion.objects.all()
+        
+        # Filter by quiz if provided
+        quiz_id = self.request.query_params.get('quiz')
+        if quiz_id:
+            queryset = queryset.filter(quiz_id=quiz_id)
+        
+        # Filter by question if provided
+        question_id = self.request.query_params.get('question')
+        if question_id:
+            queryset = queryset.filter(question_id=question_id)
+        
+        return queryset.select_related('quiz', 'question')
 
 
 # ==========================================
@@ -304,8 +393,7 @@ class QuizViewSet(viewsets.ModelViewSet):
         try:
             attempt = QuizService.start_attempt(
                 quiz=quiz,
-                user_external_id=user_external_id,
-                shuffle=quiz.shuffle_questions
+                user_external_id=user_external_id
             )
             response_serializer = QuizAttemptSerializer(attempt)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -315,10 +403,56 @@ class QuizViewSet(viewsets.ModelViewSet):
     
     @extend_schema(
         summary="Submit a question response",
-        description="Submit an answer for a single question in an active quiz attempt. Grading happens immediately.",
+        description="""Submit an answer for a single question in an active quiz attempt. Grading happens immediately.
+
+**Response format depends on question type:**
+
+**Multiple Choice / True-False:**
+```json
+{
+  "question_id": "uuid-of-question",
+  "response": {
+    "selected": ["uuid-of-selected-answer"]
+  }
+}
+```
+
+**Short Answer / Essay:**
+```json
+{
+  "question_id": "uuid-of-question",
+  "response": {
+    "answer_text": "Your text answer here"
+  }
+}
+```
+
+The endpoint returns immediate grading results with score and feedback.""",
         tags=['Quizzes'],
         request=SubmitResponseSerializer,
-        responses={200: dict}
+        responses={200: dict},
+        examples=[
+            OpenApiExample(
+                'Multiple Choice Response',
+                value={
+                    "question_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "response": {
+                        "selected": ["7ea85f64-5717-4562-b3fc-2c963f66afa7"]
+                    }
+                },
+                request_only=True
+            ),
+            OpenApiExample(
+                'Short Answer Response',
+                value={
+                    "question_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "response": {
+                        "answer_text": "Python"
+                    }
+                },
+                request_only=True
+            )
+        ]
     )
     @action(detail=True, methods=['post'], url_path='attempts/(?P<attempt_id>[^/.]+)/submit')
     def submit_response(self, request, pk=None, attempt_id=None):
@@ -334,10 +468,16 @@ class QuizViewSet(viewsets.ModelViewSet):
         question_id = serializer.validated_data['question_id']
         response_data = serializer.validated_data['response']
         
+        # Get the question object
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({'error': 'Question not found'}, status=status.HTTP_404_NOT_FOUND)
+        
         try:
             question_attempt = QuizService.submit_response(
-                quiz_attempt=attempt,
-                question_id=question_id,
+                attempt=attempt,
+                question=question,
                 response=response_data
             )
             

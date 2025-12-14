@@ -19,6 +19,7 @@ router.register(r'questions', apis.QuestionViewSet, basename='question')
 
 # Quiz endpoints
 router.register(r'quizzes', apis.QuizViewSet, basename='quiz')
+router.register(r'quiz-questions', apis.QuizQuestionViewSet, basename='quiz-question')
 router.register(r'quiz-attempts', apis.QuizAttemptViewSet, basename='quiz-attempt')
 
 urlpatterns = [
