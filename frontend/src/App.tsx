@@ -28,11 +28,14 @@ const MFAVerification = lazy(() => import("./pages/admin/MFAVerification"));
 
 const queryClient = new QueryClient();
 
+import OfflineBanner from "./components/OfflineBanner";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <OfflineBanner />
       <BrowserRouter>
         <AuthProvider>
           <Suspense fallback={<Loader fullscreen size="lg" text="Getting Ready..." />}>
@@ -51,7 +54,7 @@ const App = () => (
 
               {/* Protected Admin Routes */}
               <Route
-                path="/api/admin"
+                path="/api/admin/dashboard"
                 element={
                   <ProtectedRoute requiredRoles={['ADMIN', 'SUPER_ADMIN']}>
                     <AdminLayout />

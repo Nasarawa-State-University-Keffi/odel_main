@@ -8,9 +8,9 @@ import { FloatingSelect } from "@/components/ui/floating-select";
 import { FloatingMultiSelect } from "@/components/ui/floating-multi-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader } from "@/components/ui/loader";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { staffService, Title, Department, Faculty, ProgrammeType } from "../../services/staffService";
+import { staffService, Title, Department, Faculty, ProgrammeType, Role } from "../../services/staffService";
 import { CreateStaffRequest } from "../../types/staff";
 import { useState, useEffect } from "react";
 
@@ -26,7 +26,7 @@ const staffSchema = z.object({
     roles: z.array(z.string()).min(1, "At least one role is required"),
     faculties: z.array(z.number()).default([]),
     departments: z.array(z.number()).default([]),
-    programmeTypeId: z.string().or(z.number()).transform(val => Number(val)),
+    programmeTypeId: z.union([z.string(), z.number()]).optional().transform(val => val ? Number(val) : undefined),
 });
 
 type StaffFormValues = z.infer<typeof staffSchema>;
@@ -46,9 +46,11 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
     const [titles, setTitles] = useState<Title[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [faculties, setFaculties] = useState<Faculty[]>([]);
-    const [programmeTypes, setProgrammeTypes] = useState<ProgrammeType[]>([]);
 
-    const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<StaffFormValues>({
+    const [programmeTypes, setProgrammeTypes] = useState<ProgrammeType[]>([]);
+    const [rolesList, setRolesList] = useState<Role[]>([]);
+
+    const { register, handleSubmit, formState: { errors }, reset, setValue, watch, setError } = useForm<StaffFormValues>({
         resolver: zodResolver(staffSchema),
         defaultValues: {
             academic: false,
@@ -68,10 +70,12 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                     staffService.getAllTitles(),
                     staffService.getAllDepartments(),
                     staffService.getAllFaculties(),
-                    staffService.getAllProgrammeTypes()
+
+                    staffService.getAllProgrammeTypes(),
+                    staffService.getAllRoles()
                 ]);
 
-                const [titlesResult, deptsResult, facultiesResult, progsResult] = results;
+                const [titlesResult, deptsResult, facultiesResult, progsResult, rolesResult] = results;
 
                 if (titlesResult.status === 'fulfilled') {
                     setTitles(titlesResult.value);
@@ -88,11 +92,10 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                 if (progsResult.status === 'fulfilled') {
                     const progsData = progsResult.value;
                     setProgrammeTypes(progsData);
+                }
 
-                    // Set default programme type if available
-                    if (progsData.length > 0) {
-                        setValue("programmeTypeId", progsData[0].id);
-                    }
+                if (rolesResult.status === 'fulfilled') {
+                    setRolesList(rolesResult.value);
                 }
             } catch (error) {
                 // Silent fail or minimal toast, as individual failures are handled above if needed
@@ -137,9 +140,34 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
             onOpenChange(false);
         } catch (error: any) {
             console.error(error);
+            const status = error.response?.status;
+            let title = "Error";
+            let description = error.response?.data?.message || "Failed to create staff member";
+
+            if (status === 400) {
+                title = "Invalid Configuration";
+                description = "Invalid role or academic staff configuration.";
+            } else if (status === 403) {
+                title = "Access Denied";
+                description = "You do not have permission to perform this action.";
+            } else if (status === 404) {
+                title = "Not Found";
+                description = "Title, Department, or Programme type not found.";
+            } else if (status === 422) {
+                title = "Duplicate Entry";
+
+                // CATCH SOME FORM ERRORS
+                if (description.toLowerCase().includes("email")) {
+                    setError("email", { type: "manual", message: "Email already exists" });
+                }
+                if (description.toLowerCase().includes("id")) {
+                    setError("userId", { type: "manual", message: "Staff ID already exists" });
+                }
+            }
+
             toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to create staff member",
+                title: title,
+                description: description,
                 variant: "destructive",
             });
         } finally {
@@ -165,6 +193,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 id="academic"
                                 checked={watch("academic")}
                                 onCheckedChange={(checked) => setValue("academic", checked as boolean)}
+                                disabled={isLoading}
                             />
                             <Label htmlFor="academic" className="cursor-pointer">Academic Staff?</Label>
                         </div>
@@ -175,6 +204,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 label="Staff ID / User ID"
                                 {...register("userId")}
                                 error={errors.userId?.message}
+                                disabled={isLoading}
                             />
                         </div>
 
@@ -185,6 +215,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 value={watch("titleId") ? watch("titleId").toString() : ""}
                                 onChange={(e) => setValue("titleId", Number(e.target.value))}
                                 name="titleId"
+                                disabled={isLoading}
                             />
                             {errors.titleId && <p className="text-sm text-destructive">{errors.titleId.message}</p>}
                         </div>
@@ -192,14 +223,11 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                         <div className="md:col-span-3 space-y-2">
                             <FloatingSelect
                                 label="Role"
-                                options={[
-                                    { value: "ADMIN", label: "Admin" },
-                                    { value: "SUPER_ADMIN", label: "Super Admin" },
-                                    { value: "SUPPORT", label: "Support" },
-                                ]}
+                                options={rolesList.map(r => ({ value: r.name, label: r.name }))}
                                 value={watch("roles") && watch("roles")[0] ? watch("roles")[0] : ""}
                                 onChange={(e) => setValue("roles", [e.target.value])}
                                 name="roles"
+                                disabled={isLoading}
                             />
                             {errors.roles && <p className="text-sm text-destructive">{errors.roles.message}</p>}
                         </div>
@@ -213,6 +241,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 label="First Name"
                                 {...register("firstName")}
                                 error={errors.firstName?.message}
+                                disabled={isLoading}
                             />
                         </div>
                         <div className="space-y-2">
@@ -220,6 +249,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 id="middleName"
                                 label="Middle Name"
                                 {...register("middleName")}
+                                disabled={isLoading}
                             />
                         </div>
                         <div className="space-y-2">
@@ -228,6 +258,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 label="Last Name"
                                 {...register("lastName")}
                                 error={errors.lastName?.message}
+                                disabled={isLoading}
                             />
                         </div>
                     </div>
@@ -241,6 +272,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 type="email"
                                 {...register("email")}
                                 error={errors.email?.message}
+                                disabled={isLoading}
                             />
                         </div>
 
@@ -256,6 +288,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                         setValue("departments", [val]);
                                     }}
                                     name="departmentId"
+                                    disabled={isLoading}
                                 />
                             ) : (
                                 <FloatingMultiSelect
@@ -269,6 +302,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                             setValue("departmentId", numVals[0]);
                                         }
                                     }}
+                                    disabled={isLoading}
                                 />
                             )}
                             {errors.departmentId && <p className="text-sm text-destructive">{errors.departmentId.message}</p>}
@@ -284,18 +318,22 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                                 value={watch("programmeTypeId") ? watch("programmeTypeId").toString() : ""}
                                 onChange={(e) => setValue("programmeTypeId", Number(e.target.value))}
                                 name="programmeTypeId"
+                                disabled={isLoading}
                             />
                             {errors.programmeTypeId && <p className="text-sm text-destructive">{errors.programmeTypeId.message}</p>}
                         </div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button type="button" variant="link" onClick={() => reset()} disabled={isLoading} className="text-muted-foreground">
+                            Clear
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Staff
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isLoading ? "Creating Staff..." : "Create Staff"}
                         </Button>
                     </div>
                 </form>

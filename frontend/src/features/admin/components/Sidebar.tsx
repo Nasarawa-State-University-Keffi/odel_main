@@ -22,9 +22,9 @@ interface SidebarProps {
 }
 
 const sidebarItems = [
-    // { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
+    { icon: LayoutDashboard, label: "Dashboard", href: "/api/admin/dashboard" },
     // { icon: Users, label: "Users", href: "/api/admin/users" },
-    { icon: UserCog, label: "Staffs", href: "/api/admin/staffs" },
+    { icon: UserCog, label: "Staffs", href: "/api/admin/dashboard/staffs" },
     // { icon: FileText, label: "Applications", href: "/api/admin/applications" },
     // { icon: Settings, label: "Settings", href: "/api/admin/settings" },
 ];
