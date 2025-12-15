@@ -7,13 +7,13 @@ export interface Staff {
     lastName: string;
     name: string;
     email: string;
-    // phone: string; // Removed as per latest schema
     roles: string[];
     creationTime: string;
     updatedTime: string;
     enabled: boolean;
     isAdmin: boolean;
 }
+
 
 export interface CreateStaffRequest {
     titleId: number;
@@ -28,4 +28,12 @@ export interface CreateStaffRequest {
     faculties: number[];
     departments: number[];
     programmeTypeId: number;
+}
+
+export interface UpdateStaffRequest {
+    staffId: string;
+    gender: string;
+    dob: string;
+    professionalTitle: string;
+    phone: string;
 }
