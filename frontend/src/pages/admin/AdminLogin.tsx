@@ -176,6 +176,7 @@ const AdminLogin = () => {
                                     <FloatingInput
                                         id="username"
                                         label="Username or Email"
+                                        disabled={isLoading}
                                         icon={<Mail className="h-4 w-4" />}
                                         {...register("username")}
                                         className="bg-background/50"
@@ -190,6 +191,7 @@ const AdminLogin = () => {
                                         <FloatingInput
                                             id="password"
                                             label="Password"
+                                            disabled={isLoading}
                                             type={showPassword ? "text" : "password"}
                                             icon={<Lock className="h-4 w-4" />}
                                             {...register("password")}

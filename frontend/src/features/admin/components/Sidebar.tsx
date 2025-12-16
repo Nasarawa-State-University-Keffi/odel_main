@@ -22,18 +22,16 @@ interface SidebarProps {
 }
 
 const sidebarItems = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/api/admin/dashboard" },
-    // { icon: Users, label: "Users", href: "/api/admin/users" },
-    { icon: UserCog, label: "Staffs", href: "/api/admin/dashboard/staffs" },
-    // { icon: FileText, label: "Applications", href: "/api/admin/applications" },
-    // { icon: Settings, label: "Settings", href: "/api/admin/settings" },
+    { icon: LayoutDashboard, label: "Dashboard", href: "/api/admin/dashboard", roles: [] },
+    { icon: UserCog, label: "Staffs", href: "/api/admin/dashboard/staffs", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: FileText, label: "Admission", href: "/api/admin/dashboard/applications", roles: ['ADMISSION_OFFICER', 'SUPER_ADMIN'] },
 ];
 
 const Sidebar = ({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) => {
     const location = useLocation();
 
     // handles user logout
-    const { logout } = useAuth();
+    const { logout, hasAnyRole } = useAuth(); // Destructure hasAnyRole
 
     return (
         <TooltipProvider delayDuration={0}>
@@ -105,6 +103,11 @@ const Sidebar = ({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProp
                 {/* Navigation */}
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {sidebarItems.map((item) => {
+                        // FILTER ITEMS BASED ON ROLE
+                        if (item.roles && item.roles.length > 0 && !hasAnyRole(item.roles)) {
+                            return null;
+                        }
+
                         const isActive = location.pathname === item.href;
                         const navItem = (
                             <Link
@@ -156,9 +159,7 @@ const Sidebar = ({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProp
                             <TooltipTrigger asChild>
                                 <button
                                     className="flex items-center justify-center w-full px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
-                                    onClick={() => {
-                                        window.location.href = "/admin/login";
-                                    }}
+                                    onClick={logout}
                                 >
                                     <LogOut className="h-5 w-5 flex-shrink-0" />
                                 </button>

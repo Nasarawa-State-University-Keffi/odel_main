@@ -8,7 +8,7 @@ export interface Department { id: number; name: string; faculty: any; }
 export interface Faculty { id: number; name: string; }
 
 export interface ProgrammeType { id: number; name: string; }
-export interface Role { id: number; name: string; guard_name: string; }
+export interface Role { id: number; name: string; value: string; guard_name: string; }
 
 
 // HANDLES STAFF OPERATIONS
