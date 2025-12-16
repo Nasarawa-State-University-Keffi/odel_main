@@ -181,7 +181,8 @@ const StaffList = () => {
             roles: roles,
             enabled: user.enabled ?? false,
             senate: item.senate || user.senate, // Get senate from staff or user object
-        } as Staff & { senate?: string };
+            title: item.title?.title || item.title || "N/A"
+        } as Staff & { senate?: string, title?: string };
     }) || [];
 
     // Senate filter logic removed - using all staffs
@@ -331,11 +332,12 @@ const StaffList = () => {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="hover:bg-transparent">
+                                            <TableHead className="h-12 w-[5%]">S/N</TableHead>
+                                            <TableHead className="h-12 w-[15%]">Title</TableHead>
                                             <TableHead className="h-12 w-[25%]">Name</TableHead>
                                             <TableHead className="h-12 w-[25%]">Contact</TableHead>
-                                            <TableHead className="h-12 w-[20%]">Role</TableHead>
-                                            <TableHead className="h-12 w-[15%]">Status</TableHead>
-                                            <TableHead className="text-right h-12 w-[15%]">
+                                            <TableHead className="h-12 w-[20%]">Role(s)</TableHead>
+                                            <TableHead className="text-right h-12 w-[10%]">
                                                 Actions
                                             </TableHead>
                                         </TableRow>
@@ -392,11 +394,21 @@ const StaffList = () => {
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            filteredStaffs.map((staff) => (
+                                            filteredStaffs.map((staff, idx) => (
                                                 <TableRow
                                                     key={staff.id}
                                                     className={`hover:bg-muted/50 ${isPlaceholderData ? 'opacity-50' : ''}`}
                                                 >
+                                                    <TableCell className="w-[5%] font-medium">
+                                                        {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}
+                                                    </TableCell>
+
+                                                    <TableCell className="w-[15%] max-w-0">
+                                                        <span className="font-medium truncate block" title={staff.title || "N/A"}>
+                                                            {staff.title || "N/A"}
+                                                        </span>
+                                                    </TableCell>
+
                                                     <TableCell className="w-[25%] max-w-0">
                                                         <div className="flex flex-col">
                                                             <span className="font-medium truncate">
@@ -435,22 +447,7 @@ const StaffList = () => {
                                                         )}
                                                     </TableCell>
 
-                                                    <TableCell className="w-[15%]">
-                                                        <Badge
-                                                            variant={
-                                                                staff.enabled
-                                                                    ? "default"
-                                                                    : "destructive"
-                                                            }
-                                                            className={
-                                                                staff.enabled
-                                                                    ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                                                    : ""
-                                                            }
-                                                        >
-                                                            {staff.enabled ? "Active" : "Disabled"}
-                                                        </Badge>
-                                                    </TableCell>
+
 
                                                     <TableCell className="text-right w-[15%]">
                                                         <DropdownMenu>

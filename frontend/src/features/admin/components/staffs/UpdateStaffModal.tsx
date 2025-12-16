@@ -72,10 +72,10 @@ const UpdateStaffModal = ({
 
                 // THESE INFORMATIONS CAN BE PREPOPULATED IF AVAILABLE ELSE... LEMME JUST ALLOW USER INPUT IT MANUALLY
                 staffId: staff.userId || "",
-                gender: (staff as any).gender || "",
-                dob: (staff as any).dob || "",
-                professionalTitle: (staff as any).professionalTitle || "",
-                phone: (staff as any).phone || "",
+                gender: staff.gender || "",
+                dob: staff.dob || "",
+                professionalTitle: staff.professionalTitle || "",
+                phone: staff.phone || "",
             });
         }
     }, [open, staff, form]);
@@ -91,8 +91,9 @@ const UpdateStaffModal = ({
             onSuccess();
             queryClient.invalidateQueries({ queryKey: ["staffs"] });
         },
-        onError: (error: any) => {
-            if (error.response?.status === 422) {
+        onError: (error: unknown) => {
+            const err = error as any; // Temporary cast for axios error structure, or use a proper type
+            if (err.response?.status === 422) {
                 form.setError("phone", {
                     type: "manual",
                     message: "Phone number already exists"
@@ -106,7 +107,7 @@ const UpdateStaffModal = ({
                 toast({
                     variant: "destructive",
                     title: "Error",
-                    description: error.response?.data?.message || "Failed to update staff profile",
+                    description: err.response?.data?.message || "Failed to update staff profile",
                 });
             }
         },
@@ -114,8 +115,7 @@ const UpdateStaffModal = ({
 
     const onSubmit = (data: UpdateStaffFormValues) => {
 
-        //EXPLICIT CAST TO UPDATESTAFFREQUEST TYPE COMPATIBILITY
-        updateStaff(data as unknown as import("../../types/staff").UpdateStaffRequest);
+        updateStaff(data);
     };
 
     return (

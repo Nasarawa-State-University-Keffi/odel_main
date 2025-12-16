@@ -38,7 +38,7 @@ interface CreateStaffModalProps {
 }
 
 const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalProps) => {
-    console.log("CreateStaffModal rendered. Open:", open);
+
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -96,6 +96,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
 
                 if (rolesResult.status === 'fulfilled') {
                     setRolesList(rolesResult.value);
+
                 }
             } catch (error) {
                 // Silent fail or minimal toast, as individual failures are handled above if needed
@@ -138,11 +139,12 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
             reset();
             onSuccess();
             onOpenChange(false);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            const status = error.response?.status;
+            const err = error as any;
+            const status = err.response?.status;
             let title = "Error";
-            let description = error.response?.data?.message || "Failed to create staff member";
+            let description = err.response?.data?.message || "Failed to create staff member";
 
             if (status === 400) {
                 title = "Invalid Configuration";
@@ -201,7 +203,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                         <div className="md:col-span-3 space-y-2">
                             <FloatingInput
                                 id="userId"
-                                label="Staff ID / User ID"
+                                label="Staff ID"
                                 {...register("userId")}
                                 error={errors.userId?.message}
                                 disabled={isLoading}
@@ -223,7 +225,7 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
                         <div className="md:col-span-3 space-y-2">
                             <FloatingSelect
                                 label="Role"
-                                options={rolesList.map(r => ({ value: r.name, label: r.name }))}
+                                options={rolesList.map(r => ({ value: r.value, label: r.value }))}
                                 value={watch("roles") && watch("roles")[0] ? watch("roles")[0] : ""}
                                 onChange={(e) => setValue("roles", [e.target.value])}
                                 name="roles"

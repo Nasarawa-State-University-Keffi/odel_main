@@ -12,6 +12,10 @@ export interface Staff {
     updatedTime: string;
     enabled: boolean;
     isAdmin: boolean;
+    gender?: string;
+    dob?: string;
+    professionalTitle?: string;
+    phone?: string;
 }
 
 

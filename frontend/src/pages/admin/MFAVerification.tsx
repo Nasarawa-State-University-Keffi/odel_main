@@ -85,11 +85,11 @@ const MFAVerification = () => {
         setError(null);
 
         try {
-            console.log('Sending MFA verification (PUT request):', {
-                endpoint: '/api/auth/admin/verify-mfa',
-                userId: userId,
-                codeLength: code.length
-            });
+            // console.log('Sending MFA verification (PUT request):', {
+            //     endpoint: '/api/auth/admin/verify-mfa',
+            //     userId: userId,
+            //     codeLength: code.length
+            // });
 
             // verify the mfa code following the type MFAVerifyResponse
             const response: MFAVerifyResponse = await authAPI.verifyMFA({
@@ -106,7 +106,12 @@ const MFAVerification = () => {
                 const newRefreshToken = response.refreshToken || '';
 
                 const storedUserStr = Cookies.get('admin_user');
-                let userData = storedUserStr ? JSON.parse(storedUserStr) : null;
+                let userData = null;
+                try {
+                    userData = storedUserStr ? JSON.parse(storedUserStr) : null;
+                } catch (e) {
+                    console.error("Failed to parse stored user data", e);
+                }
 
                 if (response.jwt) {
                     userData = {
@@ -136,30 +141,31 @@ const MFAVerification = () => {
                 });
                 shakeForm();
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as any;
             console.error("MFA verification error:", {
-                status: err.response?.status,
-                statusText: err.response?.statusText,
-                data: err.response?.data,
-                url: err.config?.url,
-                method: err.config?.method,
-                fullError: err
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                url: error.config?.url,
+                method: error.config?.method,
+                fullError: error
             });
 
             let errorMessage = "An error occurred during verification. Please try again.";
 
-            if (err.response?.status === 422) {
+            if (error.response?.status === 422) {
                 errorMessage = "Invalid verification code. Please check your authenticator app and try again.";
-            } else if (err.response?.status === 405) {
+            } else if (error.response?.status === 405) {
                 errorMessage = "Method Not Allowed - Please contact support.";
-            } else if (err.response?.status === 401 || err.response?.status === 403) {
+            } else if (error.response?.status === 401 || error.response?.status === 403) {
                 errorMessage = "Invalid or expired verification code. Please try again.";
-            } else if (err.response?.status === 400) {
-                errorMessage = err.response?.data?.message || "Invalid request. Please try again.";
-            } else if (err.response?.data?.message) {
-                errorMessage = err.response.data.message;
-            } else if (err.message && !err.message.includes('status code')) {
-                errorMessage = err.message;
+            } else if (error.response?.status === 400) {
+                errorMessage = error.response?.data?.message || "Invalid request. Please try again.";
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message && !error.message.includes('status code')) {
+                errorMessage = error.message;
             }
 
             setError(errorMessage);
