@@ -124,7 +124,7 @@ const MFAVerification = () => {
                 });
 
                 setTimeout(() => {
-                    navigate("/api/admin", { replace: true });
+                    navigate("/api/admin/dashboard", { replace: true });
                 }, 200);
             } else {
                 setError(response.message || "Invalid verification code. Please try again.");
