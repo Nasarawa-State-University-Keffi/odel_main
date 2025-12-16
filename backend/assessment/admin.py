@@ -5,30 +5,64 @@ Django admin configurations for question bank, quizzes, and attempts.
 """
 from django.contrib import admin
 from .models import (
-    Assignment, Submission,
+    Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
     QuestionCategory, Question, QuestionAnswer,
     Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
 )
 
 
 # ==========================================
-# ASSIGNMENT ADMINS (Legacy)
+# ASSIGNMENT ADMINS
 # ==========================================
+
+class AssignmentContentInline(admin.TabularInline):
+    model = AssignmentContent
+    extra = 1
+    fields = ('content_type', 'title', 'original_filename', 'storage_backend', 'is_published')
+    readonly_fields = ('original_filename',)
+
 
 @admin.register(Assignment)
 class AssignmentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'course', 'due_at', 'created_by', 'created_at')
-    list_filter = ('course', 'created_at')
-    search_fields = ('title', 'description', 'created_by')
+    list_display = ('id', 'title', 'course', 'open_at', 'due_at', 'is_published', 'created_by', 'created_at')
+    list_filter = ('course', 'is_published', 'created_at')
+    search_fields = ('title', 'description')
     date_hierarchy = 'created_at'
+    inlines = [AssignmentContentInline]
+    readonly_fields = ('created_at',)
 
 
-@admin.register(Submission)
-class SubmissionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'assignment', 'student_external_id', 'marks', 'created_at', 'graded_at')
-    list_filter = ('assignment', 'created_at', 'graded_at')
-    search_fields = ('student_external_id', 'feedback')
+class AssignmentSubmissionFileInline(admin.TabularInline):
+    model = AssignmentSubmissionFile
+    extra = 0
+    fields = ('original_filename', 'file_size', 'mime_type', 'storage_backend', 'created_at')
+    readonly_fields = ('original_filename', 'file_size', 'mime_type', 'created_at')
+
+
+@admin.register(AssignmentSubmission)
+class AssignmentSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'assignment', 'student_external_id', 'attempt_number', 'status', 'submitted_at', 'graded_at')
+    list_filter = ('assignment', 'status', 'submitted_at', 'graded_at')
+    search_fields = ('student_external_id',)
     date_hierarchy = 'created_at'
+    inlines = [AssignmentSubmissionFileInline]
+    readonly_fields = ('attempt_number', 'created_at')
+
+
+@admin.register(AssignmentContent)
+class AssignmentContentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'assignment', 'title', 'content_type', 'storage_backend', 'file_size', 'download_count', 'is_published')
+    list_filter = ('assignment', 'content_type', 'storage_backend', 'is_published')
+    search_fields = ('title', 'description', 'original_filename')
+    readonly_fields = ('content_hash', 'created_at')
+
+
+@admin.register(AssignmentSubmissionFile)
+class AssignmentSubmissionFileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'submission', 'original_filename', 'file_size', 'storage_backend', 'created_at')
+    list_filter = ('storage_backend', 'created_at')
+    search_fields = ('original_filename',)
+    readonly_fields = ('content_hash', 'created_at')
 
 
 # ==========================================

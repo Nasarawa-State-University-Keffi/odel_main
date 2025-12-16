@@ -12,42 +12,89 @@ from .models import StorageSettings, LearningContent, ContentAccessLog
 
 @admin.register(StorageSettings)
 class StorageSettingsAdmin(admin.ModelAdmin):
-    """Admin for storage settings."""
+    """
+    Admin for storage settings.
     
-    list_display = ['backend', 'is_active', 'created_at', 'updated_at']
+    Note: Credentials (AWS keys, Cloudinary keys, etc.) are configured in the .env file,
+    not in the database. This admin only controls which backend is active.
+    """
+    
+    list_display = ['backend', 'is_active', 'created_at', 'updated_at', 'credential_status']
     list_filter = ['backend', 'is_active']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at', 'credential_info']
     
     fieldsets = (
-        ('General', {
-            'fields': ('backend', 'is_active')
+        ('Storage Backend', {
+            'fields': ('backend', 'is_active'),
+            'description': 'Select the active storage backend. Credentials must be configured in .env file.'
         }),
-        ('AWS S3 Configuration', {
-            'fields': (
-                'aws_access_key_id',
-                'aws_secret_access_key',
-                'aws_storage_bucket_name',
-                'aws_s3_region_name'
-            ),
-            'classes': ('collapse',)
-        }),
-        ('Cloudinary Configuration', {
-            'fields': (
-                'cloudinary_cloud_name',
-                'cloudinary_api_key',
-                'cloudinary_api_secret'
-            ),
-            'classes': ('collapse',)
-        }),
-        ('YouTube Configuration', {
-            'fields': ('youtube_api_key',),
-            'classes': ('collapse',)
+        ('Credential Information', {
+            'fields': ('credential_info',),
+            'description': 'Credentials are loaded from environment variables (.env file), not stored in database.'
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         })
     )
+    
+    def credential_status(self, obj):
+        """Show if credentials are configured for this backend"""
+        import os
+        
+        if obj.backend == 'local':
+            return format_html('<span style="color: green;">✓ No credentials required</span>')
+        elif obj.backend == 's3':
+            required = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_STORAGE_BUCKET_NAME']
+            configured = all(os.getenv(key) for key in required)
+            if configured:
+                return format_html('<span style="color: green;">✓ Configured in .env</span>')
+            else:
+                return format_html('<span style="color: red;">✗ Missing in .env</span>')
+        elif obj.backend == 'cloudinary':
+            required = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']
+            configured = all(os.getenv(key) for key in required)
+            if configured:
+                return format_html('<span style="color: green;">✓ Configured in .env</span>')
+            else:
+                return format_html('<span style="color: red;">✗ Missing in .env</span>')
+        elif obj.backend == 'youtube':
+            configured = os.getenv('YOUTUBE_API_KEY')
+            if configured:
+                return format_html('<span style="color: green;">✓ Configured in .env</span>')
+            else:
+                return format_html('<span style="color: red;">✗ Missing in .env</span>')
+        
+        return '-'
+    
+    credential_status.short_description = 'Credential Status'
+    
+    def credential_info(self, obj):
+        """Display required environment variables for each backend"""
+        info = {
+            'local': 'No credentials required. Files stored in media/ directory.',
+            's3': '''
+                <strong>Required environment variables in .env:</strong><br>
+                - AWS_ACCESS_KEY_ID<br>
+                - AWS_SECRET_ACCESS_KEY<br>
+                - AWS_STORAGE_BUCKET_NAME<br>
+                - AWS_S3_REGION_NAME (optional, defaults to us-east-1)
+            ''',
+            'cloudinary': '''
+                <strong>Required environment variables in .env:</strong><br>
+                - CLOUDINARY_CLOUD_NAME<br>
+                - CLOUDINARY_API_KEY<br>
+                - CLOUDINARY_API_SECRET
+            ''',
+            'youtube': '''
+                <strong>Required environment variables in .env:</strong><br>
+                - YOUTUBE_API_KEY
+            '''
+        }
+        
+        return format_html(info.get(obj.backend, 'Unknown backend'))
+    
+    credential_info.short_description = 'How to Configure'
     
     def save_model(self, request, obj, form, change):
         """Clear cache when settings are saved."""

@@ -1,10 +1,13 @@
 import uuid
 from django.db import models
 from django.contrib.postgres.fields import JSONField as PostgresJSONField
+from django.contrib.auth.models import User
 from django.conf import settings
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
+
+from courses.models import CourseCache
 
 try:
     # Django 3.1+ has built-in JSONField
@@ -17,42 +20,222 @@ def submission_upload_to(instance, filename):
     """Upload path for assignment submissions"""
     return f'submissions/{instance.assignment.id}/{instance.student_external_id}/{filename}'
 
-
 class Assignment(models.Model):
-    """Assignment model for coursework"""
-    course = models.ForeignKey('courses.CourseCache', on_delete=models.CASCADE, related_name='assignments')
+    """
+    Assignment definition (teacher-owned).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    course = models.ForeignKey(
+        CourseCache,
+        on_delete=models.CASCADE,
+        related_name='assignments'
+    )
+
     title = models.CharField(max_length=512)
     description = models.TextField(blank=True)
+
+    open_at = models.DateTimeField()
     due_at = models.DateTimeField()
-    created_by = models.CharField(max_length=255)
+    close_at = models.DateTimeField(null=True, blank=True)
+
+    max_attempts = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Null means unlimited attempts"
+    )
+
+    allow_late_submission = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=False)
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='created_assignments'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'Assignment'
-        verbose_name_plural = 'Assignments'
+        indexes = [
+            models.Index(fields=['course']),
+            models.Index(fields=['open_at', 'due_at']),
+        ]
 
     def __str__(self):
-        return f"{self.title}"
+        return self.title
+    
 
+class AssignmentContent(models.Model):
+    """
+    Files attached to assignment (instructions, rubric, datasets, etc.)
+    """
 
-class Submission(models.Model):
-    """Student submissions for assignments"""
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions')
-    student_external_id = models.CharField(max_length=255)
-    file = models.FileField(upload_to=submission_upload_to)
-    marks = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
-    feedback = models.TextField(blank=True, null=True)
+    CONTENT_TYPE_CHOICES = (
+        ('instruction', 'Instruction'),
+        ('resource', 'Resource'),
+        ('example', 'Example'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    assignment = models.ForeignKey(
+        Assignment,
+        on_delete=models.CASCADE,
+        related_name='contents'
+    )
+
+    content_type = models.CharField(
+        max_length=20,
+        choices=CONTENT_TYPE_CHOICES,
+        db_index=True
+    )
+
+    title = models.CharField(max_length=512)
+    description = models.TextField(blank=True)
+
+    storage_path = models.CharField(max_length=512, db_index=True)
+    original_filename = models.CharField(max_length=512)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    mime_type = models.CharField(max_length=100, blank=True)
+
+    storage_backend = models.CharField(max_length=20, default='local')
+    content_hash = models.CharField(max_length=64, blank=True, db_index=True)
+
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+    is_published = models.BooleanField(default=True)
+    download_count = models.PositiveIntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
-    graded_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Submission'
-        verbose_name_plural = 'Submissions'
+        indexes = [
+            models.Index(fields=['assignment', 'content_type']),
+        ]
 
     def __str__(self):
-        return f"{self.student_external_id} - {self.assignment.title}"
+        return f"{self.assignment.title} - {self.title}"
+
+    @property
+    def url(self):
+        from resource.storage import get_storage_engine
+        try:
+            return get_storage_engine(self.storage_backend).url(self.storage_path)
+        except Exception:
+            return ""
+
+    def increment_downloads(self):
+        self.download_count = models.F('download_count') + 1
+        self.save(update_fields=['download_count'])
+
+    def delete(self, *args, **kwargs):
+        """Delete file from storage backend before deleting DB entry"""
+        from resource.storage import get_storage_engine
+        try:
+            engine = get_storage_engine(self.storage_backend)
+            engine.delete(self.storage_path)
+        except Exception:
+            pass
+        super().delete(*args, **kwargs)
+
+
+class AssignmentSubmission(models.Model):
+    """
+    A single submission attempt by a student.
+    """
+
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('graded', 'Graded'),
+        ('reopened', 'Reopened'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    assignment = models.ForeignKey(
+        Assignment,
+        on_delete=models.CASCADE,
+        related_name='submissions'
+    )
+
+    student_external_id = models.CharField(max_length=255, db_index=True)
+
+    attempt_number = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft'
+    )
+
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    graded_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = (
+            'assignment',
+            'student_external_id',
+            'attempt_number',
+        )
+        indexes = [
+            models.Index(fields=['assignment', 'student_external_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.assignment.title} | {self.student_external_id} | Attempt {self.attempt_number}"
+
+class AssignmentSubmissionFile(models.Model):
+    """
+    Student-uploaded files using same storage abstraction.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    submission = models.ForeignKey(
+        AssignmentSubmission,
+        on_delete=models.CASCADE,
+        related_name='files'
+    )
+
+    storage_path = models.CharField(max_length=512)
+    original_filename = models.CharField(max_length=512)
+    file_size = models.BigIntegerField()
+    mime_type = models.CharField(max_length=100)
+
+    storage_backend = models.CharField(max_length=20, default='local')
+    content_hash = models.CharField(max_length=64, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.submission.assignment.title} - {self.original_filename}"
+
+    @property
+    def url(self):
+        from resource.storage import get_storage_engine
+        try:
+            return get_storage_engine(self.storage_backend).url(self.storage_path)
+        except Exception:
+            return ""
+
+    def delete(self, *args, **kwargs):
+        """Delete file from storage backend before deleting DB entry"""
+        from resource.storage import get_storage_engine
+        try:
+            engine = get_storage_engine(self.storage_backend)
+            engine.delete(self.storage_path)
+        except Exception:
+            pass
+        super().delete(*args, **kwargs)
 
 
 # ==========================================

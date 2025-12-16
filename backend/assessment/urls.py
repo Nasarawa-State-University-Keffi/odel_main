@@ -9,9 +9,11 @@ from . import apis
 
 router = DefaultRouter()
 
-# Legacy assignment endpoints
+# Assignment endpoints
 router.register(r'assignments', apis.AssignmentViewSet, basename='assignment')
-router.register(r'submissions', apis.SubmissionViewSet, basename='submission')
+router.register(r'assignment-content', apis.AssignmentContentViewSet, basename='assignment-content')
+router.register(r'assignment-submissions', apis.AssignmentSubmissionViewSet, basename='assignment-submission')
+router.register(r'assignment-submission-files', apis.AssignmentSubmissionFileViewSet, basename='assignment-submission-file')
 
 # Question bank endpoints
 router.register(r'question-categories', apis.QuestionCategoryViewSet, basename='question-category')

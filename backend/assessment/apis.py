@@ -3,117 +3,404 @@ API Views for the Assessment app - Moodle-style Quiz System
 
 DRF ViewSets for assignments, question bank, quizzes, and attempts.
 """
+from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.utils import timezone
 from django.db import transaction
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from .models import (
-    Assignment, Submission,
+    Assignment, AssignmentSubmission, AssignmentContent, AssignmentSubmissionFile,
     QuestionCategory, Question, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
 )
 from .serializers import (
-    AssignmentSerializer, SubmissionSerializer,
+    AssignmentSerializer, AssignmentContentSerializer, AssignmentSubmissionSerializer, AssignmentSubmissionFileSerializer,
+    AssignmentContentUploadSerializer, AssignmentSubmissionFileUploadSerializer,
     QuestionCategorySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
     QuizSerializer, QuizDetailSerializer, QuizWithQuestionsSerializer, QuizQuestionSlotSerializer,
     QuizAttemptSerializer, QuizAttemptDetailSerializer,
-    StartQuizSerializer, SubmitResponseSerializer, ManualGradeSerializer
+    StartQuizSerializer, SubmitResponseSerializer, ManualGradeSerializer, StartAssignmentSubmissionSerializer,
+    SubmitAssignmentSerializer
 )
-from .services import QuizService, QuestionService
+from .services import QuizService, QuestionService, create_submission, submit_submission, upload_assignment_content, upload_submission_file
 from .permissions import IsInstructorOrReadOnly
 
 
 @extend_schema_view(
     list=extend_schema(
         summary="List assignments",
-        description="Retrieve a list of all assignments in classrooms",
-        tags=['Assignments']
-    ),
-    create=extend_schema(
-        summary="Create a new assignment",
-        description="Create a new assignment for a classroom (instructors only)",
-        tags=['Assignments']
+        description="Retrieve all assignments available to the user."
     ),
     retrieve=extend_schema(
-        summary="Get assignment details",
-        description="Retrieve detailed information about a specific assignment",
-        tags=['Assignments']
+        summary="Retrieve assignment",
+        description="Get detailed information about an assignment."
+    ),
+    create=extend_schema(
+        summary="Create assignment (staff only)",
+        description="Create a new assignment for a course."
     ),
     update=extend_schema(
-        summary="Update assignment",
-        description="Update an assignment (instructors only)",
-        tags=['Assignments']
-    ),
-    partial_update=extend_schema(
-        summary="Partially update assignment",
-        description="Update specific fields of an assignment",
-        tags=['Assignments']
+        summary="Update assignment"
     ),
     destroy=extend_schema(
-        summary="Delete assignment",
-        description="Delete an assignment (instructors only)",
-        tags=['Assignments']
-    )
+        summary="Delete assignment"
+    ),
 )
 class AssignmentViewSet(viewsets.ModelViewSet):
-    """API endpoints for Assignment management"""
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
 
 
 @extend_schema_view(
     list=extend_schema(
-        summary="List submissions",
-        description="Retrieve a list of all assignment submissions",
-        tags=['Submissions']
-    ),
-    create=extend_schema(
-        summary="Submit an assignment",
-        description="Submit a file for an assignment (students only)",
-        tags=['Submissions']
+        summary="List assignment submissions",
+        description="List submissions. Can be filtered by assignment or student.",
+        parameters=[
+            OpenApiParameter(
+                name="assignment",
+                description="Assignment UUID - filter submissions for a specific assignment (staff use)",
+                required=False,
+                type=str,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="student_external_id",
+                description="External student identifier - filter submissions for a specific student",
+                required=False,
+                type=str,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="status",
+                description="Submission status - filter by status (draft/submitted/graded/reopened)",
+                required=False,
+                type=str,
+                location=OpenApiParameter.QUERY,
+            )
+        ],
     ),
     retrieve=extend_schema(
-        summary="Get submission details",
-        description="Retrieve detailed information about a specific submission",
-        tags=['Submissions']
+        summary="Retrieve submission",
+        description="Retrieve a specific assignment submission."
     ),
-    update=extend_schema(
-        summary="Update submission",
-        description="Update submission (for grading)",
-        tags=['Submissions']
-    ),
-    partial_update=extend_schema(
-        summary="Grade submission",
-        description="Grade a submission (add marks and feedback)",
-        tags=['Submissions']
-    )
 )
-class SubmissionViewSet(viewsets.ModelViewSet):
-    """API endpoints for Submission management"""
-    queryset = Submission.objects.all()
-    serializer_class = SubmissionSerializer
+class AssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = AssignmentSubmissionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = AssignmentSubmission.objects.all().select_related('assignment')
+        
+        # Apply filters for list action
+        if self.action == 'list':
+            # Filter by assignment (staff use - see all submissions for an assignment)
+            assignment_id = self.request.query_params.get('assignment')
+            if assignment_id:
+                queryset = queryset.filter(assignment_id=assignment_id)
+            
+            # Filter by student
+            student_id = self.request.query_params.get('student_external_id')
+            if student_id:
+                queryset = queryset.filter(student_external_id=student_id)
+            
+            # Filter by status
+            submission_status = self.request.query_params.get('status')
+            if submission_status:
+                queryset = queryset.filter(status=submission_status)
+        
+        return queryset
 
     @extend_schema(
-        summary="Submit an assignment",
-        description="Submit a file for an assignment. The student_external_id is automatically set from the authenticated user.",
-        tags=['Submissions']
-    )
-    def create(self, request, *args, **kwargs):
-        # student-only submit
-        user_external = getattr(request.user, 'username', None) or request.META.get('HTTP_X_USER_EXTERNAL_ID')
-        if not user_external:
-            return Response({'detail': 'No external id supplied'}, status=status.HTTP_400_BAD_REQUEST)
+        summary="Start assignment submission",
+        description="""
+        Creates a new submission attempt for an assignment.
 
-        data = request.data.copy()
-        data['student_external_id'] = user_external
-        serializer = self.get_serializer(data=data)
+        Rules:
+        - Assignment must be open
+        - Attempt limits are enforced
+        - Late submission rules apply
+        """,
+        request=StartAssignmentSubmissionSerializer,
+        responses={
+            201: AssignmentSubmissionSerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
+    )
+    @action(detail=False, methods=['post'])
+    def start(self, request):
+        assignment_id = request.data.get('assignment_id')
+        student_id = request.data.get('student_external_id')
+
+        assignment = get_object_or_404(Assignment, id=assignment_id)
+
+        try:
+            submission = create_submission(assignment, student_id)
+            return Response(
+                AssignmentSubmissionSerializer(submission).data,
+                status=status.HTTP_201_CREATED
+            )
+        except ValueError as e:
+            return Response(
+                {
+                    'status': 'error',
+                    'detail': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @extend_schema(
+        summary="Submit assignment",
+        description="""
+        Finalize a submission attempt.
+
+        - Locks the submission
+        - Prevents further file uploads
+        - Changes status to `submitted`
+        """,
+        request=SubmitAssignmentSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=dict,
+                description="Submission successfully submitted"
+            ),
+            400: OpenApiResponse(description="Invalid submission state"),
+        },
+    )
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        submission = self.get_object()
+        
+        try:
+            submit_submission(submission)
+            return Response({
+                'status': 'success',
+                'message': 'Assignment submitted successfully',
+                'submission_id': str(submission.id),
+                'submitted_at': submission.submitted_at
+            })
+        except ValueError as e:
+            return Response(
+                {
+                    'status': 'error',
+                    'detail': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+@extend_schema_view(
+    list=extend_schema(exclude=True),  # Hidden - content fetched with assignment
+    retrieve=extend_schema(exclude=True),  # Hidden - content fetched with assignment
+    create=extend_schema(exclude=True),  # Hidden - use /upload/ instead
+    update=extend_schema(exclude=True),  # Hidden - not supported
+    partial_update=extend_schema(exclude=True),  # Hidden - not supported
+    destroy=extend_schema(
+        summary="Delete assignment content",
+        description="Delete a content file from an assignment (instructors only)",
+        tags=['Assignments']
+    )
+)
+class AssignmentContentViewSet(viewsets.ModelViewSet):
+    """
+    API endpoints for assignment content management.
+    
+    Content files are automatically included when fetching assignments.
+    This ViewSet only exposes:
+    - /upload/ - Upload new content files (instructors)
+    - DELETE /{id}/ - Remove content files (instructors)
+    """
+    queryset = AssignmentContent.objects.all()
+    serializer_class = AssignmentContentSerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
+    def list(self, request, *args, **kwargs):
+        """Disabled - content files are included in assignment endpoint"""
+        return Response(
+            {"detail": "Content files are automatically included when fetching assignments. Use GET /api/assessment/assignments/{id}/"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Disabled - content files are included in assignment endpoint"""
+        return Response(
+            {"detail": "Content files are automatically included when fetching assignments. Use GET /api/assessment/assignments/{id}/"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    def create(self, request, *args, **kwargs):
+        """Disabled - use /upload/ endpoint instead"""
+        return Response(
+            {"detail": "Use POST /api/assessment/assignment-content/upload/ to add content files"},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    def update(self, request, *args, **kwargs):
+        """Disabled - not supported"""
+        return Response(
+            {"detail": "Assignment content cannot be updated. Delete and re-upload if needed."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Disabled - not supported"""
+        return Response(
+            {"detail": "Assignment content cannot be updated. Delete and re-upload if needed."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    @extend_schema(
+        summary="Upload assignment content file",
+        description="Upload instruction files, resources, or examples for an assignment",
+        request=AssignmentContentUploadSerializer,
+        responses={201: AssignmentContentSerializer},
+        tags=['Assignments']
+    )
+    @method_decorator(csrf_exempt)
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload(self, request):
+        """Upload assignment content file"""
+        serializer = AssignmentContentUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        try:
+            # Get assignment
+            assignment = get_object_or_404(Assignment, id=serializer.validated_data['assignment'])
+            
+            # Upload file
+            content = upload_assignment_content(
+                file_obj=serializer.validated_data['file'],
+                assignment=assignment,
+                content_type=serializer.validated_data['content_type'],
+                user=request.user,
+                title=serializer.validated_data['title'],
+                description=serializer.validated_data.get('description', ''),
+                is_published=serializer.validated_data.get('is_published', True)
+            )
+            
+            return Response(
+                AssignmentContentSerializer(content).data,
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            return Response(
+                {'status': 'error', 'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+@extend_schema_view(
+    list=extend_schema(exclude=True),  # Hidden - files included in submission
+    retrieve=extend_schema(exclude=True),  # Hidden - files included in submission
+    create=extend_schema(exclude=True),  # Hidden - use /upload/ instead
+    update=extend_schema(exclude=True),  # Hidden - not supported
+    partial_update=extend_schema(exclude=True),  # Hidden - not supported
+    destroy=extend_schema(
+        summary="Delete submission file",
+        description="Remove a file from a submission (only allowed in draft status)",
+        tags=['Assignments']
+    )
+)
+class AssignmentSubmissionFileViewSet(viewsets.ModelViewSet):
+    """
+    API endpoints for submission file management.
+    
+    Submission files are automatically included when fetching submissions.
+    This ViewSet only exposes:
+    - /upload/ - Upload files to a submission (students, draft only)
+    - DELETE /{id}/ - Remove files from a submission (students, draft only)
+    """
+    queryset = AssignmentSubmissionFile.objects.all()
+    serializer_class = AssignmentSubmissionFileSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
+    def list(self, request, *args, **kwargs):
+        """Disabled - files are included in submission endpoint"""
+        return Response(
+            {"detail": "Submission files are automatically included when fetching submissions. Use GET /api/assessment/assignment-submissions/{id}/"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Disabled - files are included in submission endpoint"""
+        return Response(
+            {"detail": "Submission files are automatically included when fetching submissions. Use GET /api/assessment/assignment-submissions/{id}/"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    def create(self, request, *args, **kwargs):
+        """Disabled - use /upload/ endpoint instead"""
+        return Response(
+            {"detail": "Use POST /api/assessment/assignment-submission-files/upload/ to add files"},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    def update(self, request, *args, **kwargs):
+        """Disabled - not supported"""
+        return Response(
+            {"detail": "Submission files cannot be updated. Delete and re-upload if needed."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Disabled - not supported"""
+        return Response(
+            {"detail": "Submission files cannot be updated. Delete and re-upload if needed."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    @extend_schema(
+        summary="Upload submission file",
+        description="Upload a file as part of an assignment submission",
+        request=AssignmentSubmissionFileUploadSerializer,
+        responses={201: AssignmentSubmissionFileSerializer},
+        tags=['Assignments']
+    )
+    @method_decorator(csrf_exempt)
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload(self, request):
+        """Upload submission file"""
+        serializer = AssignmentSubmissionFileUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Get submission
+            submission = get_object_or_404(AssignmentSubmission, id=serializer.validated_data['submission'])
+            
+            # Upload file
+            submission_file = upload_submission_file(
+                file_obj=serializer.validated_data['file'],
+                submission=submission
+            )
+            
+            return Response(
+                AssignmentSubmissionFileSerializer(submission_file).data,
+                status=status.HTTP_201_CREATED
+            )
+            
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'status': 'error', 'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 # ==========================================

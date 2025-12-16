@@ -5,28 +5,94 @@ DRF serializers for the quiz and question bank system.
 """
 from rest_framework import serializers
 from .models import (
-    Assignment, Submission,
+    Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
     QuestionCategory, Question, QuestionAnswer,
     Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
 )
 
 
 # ==========================================
-# ASSIGNMENT SERIALIZERS (Legacy)
+# ASSIGNMENT SERIALIZERS 
 # ==========================================
+# this is to be used by swagger doc
+class StartAssignmentSubmissionSerializer(serializers.Serializer):
+    assignment_id = serializers.UUIDField()
+    student_external_id = serializers.CharField(max_length=255)
 
+class SubmitAssignmentSerializer(serializers.Serializer):
+    # no body required, but Swagger likes explicitness
+    confirm = serializers.BooleanField(
+        default=True,
+        help_text="Confirm submission"
+    )
+# =========================================
+# ASSIGNMENT SERIALIZERS
+# ==========================================
+# main serializers for assignments and submissions
 class AssignmentSerializer(serializers.ModelSerializer):
+    content_files = serializers.SerializerMethodField()
+    
     class Meta:
         model = Assignment
-        fields = ['id', 'course', 'title', 'description', 'due_at', 'created_by', 'created_at']
-        read_only_fields = ['created_at']
+        fields = '__all__'
+        read_only_fields = ('created_by', 'created_at')
+    
+    def get_content_files(self, obj):
+        """Get all content files attached to this assignment"""
+        contents = obj.contents.filter(is_published=True)
+        return AssignmentContentSerializer(contents, many=True).data
 
 
-class SubmissionSerializer(serializers.ModelSerializer):
+class AssignmentContentSerializer(serializers.ModelSerializer):
+    url = serializers.ReadOnlyField()
+
     class Meta:
-        model = Submission
-        fields = ['id', 'assignment', 'student_external_id', 'file', 'marks', 'feedback', 'created_at', 'graded_at']
-        read_only_fields = ['created_at', 'graded_at']
+        model = AssignmentContent
+        fields = '__all__'
+
+
+class AssignmentSubmissionFileSerializer(serializers.ModelSerializer):
+    url = serializers.ReadOnlyField()
+
+    class Meta:
+        model = AssignmentSubmissionFile
+        fields = '__all__'
+        read_only_fields = ('created_at',)
+
+
+class AssignmentSubmissionSerializer(serializers.ModelSerializer):
+    files = AssignmentSubmissionFileSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = AssignmentSubmission
+        fields = '__all__'
+        read_only_fields = (
+            'attempt_number',
+            'status',
+            'submitted_at',
+            'graded_at',
+            'created_at',
+        )
+
+
+# Upload Serializers
+class AssignmentContentUploadSerializer(serializers.Serializer):
+    """Serializer for uploading assignment content files"""
+    assignment = serializers.UUIDField(help_text="Assignment ID")
+    content_type = serializers.ChoiceField(
+        choices=[('instruction', 'Instruction'), ('resource', 'Resource'), ('example', 'Example')],
+        help_text="Type of content"
+    )
+    title = serializers.CharField(max_length=512, help_text="Content title")
+    description = serializers.CharField(required=False, allow_blank=True, help_text="Content description")
+    file = serializers.FileField(help_text="File to upload")
+    is_published = serializers.BooleanField(default=True, help_text="Publish immediately")
+
+
+class AssignmentSubmissionFileUploadSerializer(serializers.Serializer):
+    """Serializer for uploading submission files"""
+    submission = serializers.UUIDField(help_text="Submission ID")
+    file = serializers.FileField(help_text="File to upload")
 
 
 # ==========================================

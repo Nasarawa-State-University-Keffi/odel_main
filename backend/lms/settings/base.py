@@ -113,6 +113,7 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
 
+
 # Cloudinary
 CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
 CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
@@ -174,37 +175,26 @@ SPECTACULAR_SETTINGS = {
         'filter': True,
         'supportedSubmitMethods': ['get', 'post', 'put', 'delete', 'patch'],
     },
-    'SECURITY': [
-        {
-            'bearerAuth': [],
-        },
-        {
-            'cookieAuth': [],
-        }
-    ],
     'APPEND_COMPONENTS': {
         'securitySchemes': {
             'bearerAuth': {
                 'type': 'http',
                 'scheme': 'bearer',
                 'bearerFormat': 'JWT',
+                'description': 'JWT token obtained from /api/token/ endpoint'
             },
             'cookieAuth': {
                 'type': 'apiKey',
                 'in': 'cookie',
                 'name': 'sessionid',
+                'description': 'Session cookie from Django admin login'
             }
         }
     },
-    'APPEND_COMPONENTS': {
-        'securitySchemes': {
-            'bearerAuth': {
-                'type': 'http',
-                'scheme': 'bearer',
-                'bearerFormat': 'JWT',
-            }
-        }
-    },
+    'SECURITY': [
+        {'bearerAuth': []},
+        {'cookieAuth': []}
+    ],
 }
 
 
