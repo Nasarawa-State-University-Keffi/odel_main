@@ -1,49 +1,119 @@
-import axios from 'axios';
-import Cookies from 'js-cookie';
+import axios from "axios";
+import Cookies from "js-cookie";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://test.nsuk.edu.ng/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
     headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
     },
 });
 
-// Request interceptor for adding auth token
+
+// REQUEST INTERCEPTOR
 apiClient.interceptors.request.use(
     (config) => {
-        const token = Cookies.get('admin_token');
+        const token = Cookies.get("admin_token");
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
-// Response interceptor for handling errors
+
+// FRIENDLY ERROR PARSER
+const getFriendlyErrorMessage = (error: any): string | null => {
+    const status = error.response?.status;
+    const rawMessage: string = error.response?.data?.message || "";
+
+    //  DUPLICATE PHONE NUMBER
+    if (
+        status === 400 &&
+        rawMessage.includes("Duplicate entry") &&
+        rawMessage.includes("user_phone_unique")
+    ) {
+        return "This phone number is already registered. Please use another one.";
+    }
+
+    // DUPLICATE EMAIL 
+    if (
+        status === 400 &&
+        rawMessage.includes("Duplicate entry") &&
+        rawMessage.includes("email")
+    ) {
+        return "This email address is already registered.";
+    }
+
+    // VALIDATION ERROR (422) - SPECIFIC FIELDS
+    if (status === 422) {
+        if (rawMessage.toLowerCase().includes("phone")) {
+            return "This phone number is already registered.";
+        }
+        if (rawMessage.toLowerCase().includes("email")) {
+            return "An account with this email already exists.";
+        }
+    }
+
+    // GENERIC HANDLERS
+    if (status === 400) {
+        return "Invalid request. Please check your data and try again.";
+    }
+
+    if (status === 404) {
+        return "The requested resource was not found.";
+    }
+
+    if (status === 500) {
+        return "An internal server error occurred. Please try again later.";
+    }
+
+    return null;
+};
+
+
+// RESPONSE INTERCEPTOR
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
+        const friendlyMessage = getFriendlyErrorMessage(error);
 
-        // Check if the error is 401 and the request was NOT to the login endpoint
+        if (friendlyMessage) {
+            error.message = friendlyMessage;
 
-        if (error.response?.status === 401 && !error.config.url?.includes('/authenticate')) {
-
-            // Unauthorized - clear token and redirect to login
-            Cookies.remove('admin_token');
-            Cookies.remove('admin_refresh_token');
-            Cookies.remove('admin_user');
-            Cookies.remove('pending_mfa_user');
-            window.location.href = '/api/auth/admin/login';
+            if (error.response?.data) {
+                error.response.data.message = friendlyMessage;
+            }
+        } else if (error.response?.data?.message) {
+            // Propagate backend message if no friendly message is defined
+            error.message = error.response.data.message;
         }
+
+        const isAuthPage =
+            window.location.pathname.includes("/api/v2/application/register") ||
+            window.location.pathname.includes("/api/auth/login") ||
+            window.location.pathname.includes("/api/auth/forgot-password");
+
+        if (
+            error.response?.status === 401 &&
+            !error.config?.url?.includes("/authenticate") &&
+            !isAuthPage
+        ) {
+            Cookies.remove("admin_token");
+            Cookies.remove("admin_refresh_token");
+            Cookies.remove("admin_user");
+            Cookies.remove("pending_mfa_user");
+
+            window.location.href = "/api/auth/admin/login";
+        }
+
         return Promise.reject(error);
     }
 );
 
+// TYPES
 export interface AuthCredentials {
     username: string;
     password: string;
@@ -77,6 +147,7 @@ export interface CurrentUser {
     userId: string;
     username: string;
     email: string;
+    phone?: string;
     firstName?: string;
     lastName?: string;
     fullName?: string;
@@ -87,35 +158,37 @@ export interface CurrentUser {
     lastLogin?: string;
 }
 
-// HANDLES AUTHENTICATION ENDPOINT
 
+// AUTH API
 export const authAPI = {
     login: async (credentials: AuthCredentials): Promise<AuthResponse> => {
-        const response = await apiClient.post<AuthResponse>('/authenticate', credentials);
+        const response = await apiClient.post<AuthResponse>(
+            "/authenticate",
+            credentials
+        );
         return response.data;
     },
 
-    // HANDLES MFA ENDPOINT
-
-    verifyMFA: async (data: MFAVerification): Promise<MFAVerificationResponse> => {
-        // verifying the OTP sent
-        const response = await apiClient.put<MFAVerificationResponse>('/verify-mfa', data);
+    verifyMFA: async (
+        data: MFAVerification
+    ): Promise<MFAVerificationResponse> => {
+        const response = await apiClient.put<MFAVerificationResponse>(
+            "/verify-mfa",
+            data
+        );
         return response.data;
     },
 
-    // HANDLES CURRENT USER ENDPOINT
     getCurrentUser: async (): Promise<CurrentUser> => {
-        const response = await apiClient.get<CurrentUser>('/get-current-user');
-        return response.data;
+        const response = await apiClient.get<any>("/get-current-user");
+        return response.data.data;
     },
-
-    // HANDLES LOGOUT FUNCTIONALITY
 
     logout: async (): Promise<void> => {
-        Cookies.remove('admin_token');
-        Cookies.remove('admin_refresh_token');
-        Cookies.remove('admin_user');
-        Cookies.remove('pending_mfa_user');
+        Cookies.remove("admin_token");
+        Cookies.remove("admin_refresh_token");
+        Cookies.remove("admin_user");
+        Cookies.remove("pending_mfa_user");
     },
 };
 

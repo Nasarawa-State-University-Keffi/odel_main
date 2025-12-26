@@ -1,5 +1,4 @@
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,33 +7,38 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-    Form,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import { FloatingInput } from "@/components/ui/floating-input";
+    FloatingInput,
+} from "@/components/ui/floating-input";
 import { FloatingSelect } from "@/components/ui/floating-select";
-import { useToast } from "@/hooks/use-toast";
-import { Staff } from "../../types/staff";
-import { staffService } from "../../services/staffService";
+import { FloatingMultiSelect } from "@/components/ui/floating-multi-select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { Staff, staffService, Title, Department, Faculty, ProgrammeType, Role } from "../../services/staffService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
-const updateStaffSchema = z.object({
-    staffId: z.string(),
-    gender: z.string().min(1, "Gender is required"),
-    dob: z.string().min(1, "Date of Birth is required"),
-    professionalTitle: z.string().min(1, "Professional Title is required"),
-    phone: z.string().min(1, "Phone number is required"),
+// Schema matching UpdateStaffFromAdminRequest
+const updateStaffAdminSchema = z.object({
+    titleId: z.string().or(z.number()).transform(val => Number(val)),
+    userId: z.string().min(1, "User ID is required"),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    middleName: z.string().optional(),
+    email: z.string().email("Invalid email address"),
+    departmentId: z.string().or(z.number()).transform(val => Number(val)),
+    academic: z.boolean(),
+    roles: z.array(z.string()).min(1, "At least one role is required"),
+    faculties: z.array(z.number()).default([]),
+    departments: z.array(z.number()).default([]),
+    programmeTypeId: z.string().or(z.number()).optional().transform(val => val ? Number(val) : 0),
 });
 
-type UpdateStaffFormValues = z.infer<typeof updateStaffSchema>;
+type UpdateStaffAdminFormValues = z.infer<typeof updateStaffAdminSchema>;
 
 interface UpdateStaffModalProps {
     open: boolean;
@@ -51,37 +55,120 @@ const UpdateStaffModal = ({
 }: UpdateStaffModalProps) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
 
-    const form = useForm<UpdateStaffFormValues>({
-        resolver: zodResolver(updateStaffSchema),
+    // Metadata States
+    const [titles, setTitles] = useState<Title[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [faculties, setFaculties] = useState<Faculty[]>([]);
+    const [programmeTypes, setProgrammeTypes] = useState<ProgrammeType[]>([]);
+    const [rolesList, setRolesList] = useState<Role[]>([]);
+
+    const form = useForm<UpdateStaffAdminFormValues>({
+        resolver: zodResolver(updateStaffAdminSchema),
         defaultValues: {
-            staffId: "",
-            gender: "",
-            dob: "",
-            professionalTitle: "",
-            phone: "",
+            academic: false,
+            roles: [],
+            faculties: [],
+            departments: [],
+            middleName: "",
+            titleId: 0,
+            departmentId: 0,
+            programmeTypeId: 0,
         },
     });
 
-    const { formState: { errors } } = form;
-
-    // HANDLES FORM RESETTING WHEN STAFF CHANGES
+    // Fetch Metadata
     useEffect(() => {
-        if (open && staff) {
-            form.reset({
+        if (!open) return;
 
-                // THESE INFORMATIONS CAN BE PREPOPULATED IF AVAILABLE ELSE... LEMME JUST ALLOW USER INPUT IT MANUALLY
-                staffId: staff.userId || "",
-                gender: staff.gender || "",
-                dob: staff.dob || "",
-                professionalTitle: staff.professionalTitle || "",
-                phone: staff.phone || "",
+        const fetchMetadata = async () => {
+            setIsLoadingMetadata(true);
+            try {
+                const [titlesData, deptsData, facultiesData, progsData, rolesData] = await Promise.all([
+                    staffService.getAllTitles(),
+                    staffService.getAllDepartments(),
+                    staffService.getAllFaculties(),
+                    staffService.getAllProgrammeTypes(),
+                    staffService.getAllRoles(),
+                ]);
+
+                setTitles(titlesData);
+                setDepartments(deptsData);
+                setFaculties(facultiesData);
+                setProgrammeTypes(progsData);
+                setRolesList(rolesData);
+            } catch (error) {
+                console.error("Failed to fetch metadata", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Failed to load form options.",
+                });
+            } finally {
+                setIsLoadingMetadata(false);
+            }
+        };
+
+        fetchMetadata();
+    }, [open, toast]);
+
+    // Populate Form
+    useEffect(() => {
+        if (open && staff && titles.length > 0) {
+            // Attempt to infer IDs from staff object or names if IDs are missing
+            const staffAny = staff as any; // Access potential hidden fields
+
+            // Infer Title ID
+            const foundTitle = titles.find(t => t.title === staff.title || t.id === staffAny.titleId);
+            const titleId = foundTitle ? foundTitle.id : (staffAny.titleId || 0);
+
+            // Infer Department ID
+            // If staff has department object or departmentId
+            const deptId = staffAny.departmentId || staffAny.department?.id || 0;
+
+            // Infer Programme Type ID
+            const progTypeId = staffAny.programmeTypeId || staffAny.programmeType?.id || 0;
+
+            form.reset({
+                userId: staff.userId || "",
+                firstName: staff.firstName || "",
+                lastName: staff.lastName || "",
+                middleName: staff.middleName || "",
+                email: staff.email || "",
+                academic: staffAny.academic || false,
+                roles: staff.roles || [],
+                titleId: titleId,
+                departmentId: deptId,
+                programmeTypeId: progTypeId,
+                faculties: staffAny.faculties || [], // These might not exist on staff object, defaulting to empty
+                departments: staffAny.departments || (deptId ? [deptId] : []),
             });
         }
-    }, [open, staff, form]);
+    }, [open, staff, titles, form]);
 
     const { mutate: updateStaff, isPending } = useMutation({
-        mutationFn: staffService.updateStaff,
+        mutationFn: (data: UpdateStaffAdminFormValues) => {
+            if (!staff) throw new Error("No staff selected");
+
+            // Explicitly cast to prevent type issues, matching the interface exactly
+            const payload = {
+                titleId: Number(data.titleId),
+                userId: data.userId,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                middleName: data.middleName || "",
+                email: data.email,
+                departmentId: Number(data.departmentId),
+                academic: data.academic,
+                roles: data.roles,
+                faculties: data.faculties,
+                departments: data.departments,
+                programmeTypeId: Number(data.programmeTypeId || 0),
+            };
+
+            return staffService.updateStaffFromAdmin(staff.id, payload);
+        },
         onSuccess: () => {
             toast({
                 title: "Success",
@@ -89,132 +176,174 @@ const UpdateStaffModal = ({
             });
             onOpenChange(false);
             onSuccess();
+            // Invalidate queries to refresh the list
             queryClient.invalidateQueries({ queryKey: ["staffs"] });
         },
-        onError: (error: unknown) => {
-            const err = error as any; // Temporary cast for axios error structure, or use a proper type
-            if (err.response?.status === 422) {
-                form.setError("phone", {
-                    type: "manual",
-                    message: "Phone number already exists"
-                });
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Phone number already exists",
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: err.response?.data?.message || "Failed to update staff profile",
-                });
+        onError: (error: any) => {
+            console.error("Update failed", error);
+            const message = error.message || "Failed to update staff profile";
+
+            if (message.includes("Email already taken")) {
+                form.setError("email", { type: "manual", message });
             }
+
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: message,
+            });
         },
     });
 
-    const onSubmit = (data: UpdateStaffFormValues) => {
-
+    const onSubmit = (data: UpdateStaffAdminFormValues) => {
         updateStaff(data);
     };
 
+    const isLoading = isLoadingMetadata || isPending;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Update Staff Profile</DialogTitle>
+                    <DialogTitle>Update Staff Profile (Admin)</DialogTitle>
+                    <DialogDescription>
+                        Modify staff details, roles, and assignments.
+                    </DialogDescription>
                 </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                        <FormField
-                            control={form.control}
-                            name="gender"
-                            render={({ field }) => (
-                                <div className="space-y-1">
-                                    <FloatingSelect
-                                        label="Gender"
-                                        options={[
-                                            { value: "MALE", label: "Male" },
-                                            { value: "FEMALE", label: "Female" }
-                                        ]}
-                                        value={field.value}
-                                        onChange={(e) => field.onChange(e.target.value)}
-                                        name="gender"
-                                        disabled={isPending}
-                                    />
-                                    <FormMessage />
-                                </div>
-                            )}
+
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                        {/* Row 1: Academic Checkbox, Staff ID, Title, Role */}
+                        <div className="md:col-span-3 flex items-center space-x-2 h-12">
+                            <Checkbox
+                                id="academic"
+                                checked={form.watch("academic")}
+                                onCheckedChange={(checked) => form.setValue("academic", checked as boolean)}
+                                disabled={isLoading}
+                            />
+                            <Label htmlFor="academic" className="cursor-pointer">Academic Staff?</Label>
+                        </div>
+
+                        <div className="md:col-span-3 space-y-2">
+                            <FloatingInput
+                                id="userId"
+                                label="Staff ID"
+                                {...form.register("userId")}
+                                error={form.formState.errors.userId?.message}
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <div className="md:col-span-3 space-y-2">
+                            <FloatingSelect
+                                label="Title"
+                                options={titles.map(t => ({ value: t.id.toString(), label: t.title || t.value }))}
+                                value={form.watch("titleId")?.toString() || ""}
+                                onChange={(e) => form.setValue("titleId", Number(e.target.value))}
+                                name="titleId"
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <div className="md:col-span-3 space-y-2">
+                            <FloatingSelect
+                                label="Role"
+                                options={rolesList.map(r => ({ value: r.value, label: r.name || r.value }))}
+                                value={form.watch("roles")?.[0] || ""}
+                                onChange={(e) => form.setValue("roles", [e.target.value])}
+                                name="roles"
+                                disabled={isLoading}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Row 2: Names */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FloatingInput
+                            id="firstName"
+                            label="First Name"
+                            {...form.register("firstName")}
+                            error={form.formState.errors.firstName?.message}
+                            disabled={isLoading}
+                        />
+                        <FloatingInput
+                            id="middleName"
+                            label="Middle Name"
+                            {...form.register("middleName")}
+                            disabled={isLoading}
+                        />
+                        <FloatingInput
+                            id="lastName"
+                            label="Last Name"
+                            {...form.register("lastName")}
+                            error={form.formState.errors.lastName?.message}
+                            disabled={isLoading}
+                        />
+                    </div>
+
+                    {/* Row 3: Email & Dept */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FloatingInput
+                            id="email"
+                            label="Email"
+                            type="email"
+                            {...form.register("email")}
+                            error={form.formState.errors.email?.message}
+                            disabled={isLoading}
                         />
 
-                        <FormField
-                            control={form.control}
-                            name="dob"
-                            render={({ field }) => (
-                                <div className="space-y-1">
-                                    <FloatingInput
-                                        id="dob"
-                                        type="date"
-                                        label="Date of Birth"
-                                        {...field}
-                                        error={errors.dob?.message}
-                                        disabled={isPending}
-                                    />
-                                    <FormMessage />
-                                </div>
+                        <div className="space-y-2">
+                            {form.watch("academic") ? (
+                                <FloatingSelect
+                                    label="Primary Department"
+                                    options={departments.map(d => ({ value: d.id.toString(), label: d.name }))}
+                                    value={form.watch("departmentId")?.toString() || ""}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        form.setValue("departmentId", val);
+                                        form.setValue("departments", [val]);
+                                    }}
+                                    name="departmentId"
+                                    disabled={isLoading}
+                                />
+                            ) : (
+                                <FloatingMultiSelect
+                                    label="Departments"
+                                    options={departments.map(d => ({ value: d.id.toString(), label: d.name }))}
+                                    selected={form.watch("departments")?.map(String) || []}
+                                    onChange={(vals) => {
+                                        const numVals = vals.map(Number);
+                                        form.setValue("departments", numVals);
+                                        if (numVals.length > 0) form.setValue("departmentId", numVals[0]);
+                                    }}
+                                    disabled={isLoading}
+                                />
                             )}
-                        />
+                        </div>
+                    </div>
 
-                        <FormField
-                            control={form.control}
-                            name="professionalTitle"
-                            render={({ field }) => (
-                                <div className="space-y-1">
-                                    <FloatingInput
-                                        id="professionalTitle"
-                                        label="Professional Title"
-                                        {...field}
-                                        error={errors.professionalTitle?.message}
-                                        disabled={isPending}
-                                    />
-                                    <FormMessage />
-                                </div>
-                            )}
+                    {/* Row 4: Programme Type */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FloatingSelect
+                            label="Programme Type"
+                            options={programmeTypes.map(p => ({ value: p.id.toString(), label: p.name }))}
+                            value={form.watch("programmeTypeId")?.toString() || ""}
+                            onChange={(e) => form.setValue("programmeTypeId", Number(e.target.value))}
+                            name="programmeTypeId"
+                            disabled={isLoading}
                         />
+                    </div>
 
-                        <FormField
-                            control={form.control}
-                            name="phone"
-                            render={({ field }) => (
-                                <div className="space-y-1">
-                                    <FloatingInput
-                                        id="phone"
-                                        label="Phone Number"
-                                        {...field}
-                                        error={errors.phone?.message}
-                                        disabled={isPending}
-                                    />
-                                    <FormMessage />
-                                </div>
-                            )}
-                        />
-
-                        <DialogFooter>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => onOpenChange(false)}
-                                disabled={isPending}
-                            >
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={isPending}>
-                                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Update Staff
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isLoading}>
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Update Staff
+                        </Button>
+                    </div>
+                </form>
             </DialogContent>
         </Dialog>
     );

@@ -2,14 +2,11 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floating-input";
-import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, useAnimation } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 
-
-// FRONTEND AUTH URL
-
-const authURL = import.meta.env.VITE_FRONTEND_AUTH_API;
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState("");
@@ -62,138 +59,139 @@ const ForgotPassword = () => {
 
     if (isSubmitted) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
+            <div className="min-h-[100dvh] w-full flex items-center justify-center relative overflow-hidden bg-background">
+                {/* Background Effects */}
+                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5 pointer-events-none z-0" />
+                <div className="absolute -top-[10%] -right-[10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0" />
+
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="w-full max-w-md"
+                    className="w-full max-w-md px-6"
                 >
-                    <div className="bg-card rounded-2xl shadow-2xl p-8 md:p-10 border border-border/50 backdrop-blur-sm">
-                        <div className="text-center space-y-6">
-                            <div className="flex justify-center">
-                                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-                                    <CheckCircle className="h-10 w-10 text-primary" />
-                                </div>
+                    <Card className="w-full rounded-3xl border-border/50 shadow-2xl bg-card/60 backdrop-blur-xl flex flex-col overflow-hidden">
+                        <CardContent className="px-8 py-10 flex flex-col items-center">
+                            <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 ring-4 ring-primary/5">
+                                <CheckCircle className="h-10 w-10 text-primary" />
                             </div>
 
-                            <div className="space-y-2">
-                                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                                    Check Your Email
-                                </h1>
-                                <p className="text-muted-foreground">
-                                    We've sent password reset instructions to
-                                </p>
-                                <p className="font-semibold text-foreground">{email}</p>
-                            </div>
+                            <h2 className="text-2xl font-black tracking-tighter text-foreground uppercase text-center mb-2">
+                                Check Your Email
+                            </h2>
+                            <p className="text-center text-muted-foreground font-medium text-sm mb-8">
+                                We've sent password reset instructions to <br />
+                                <span className="text-primary font-bold">{email}</span>
+                            </p>
 
-                            <div className="pt-4 space-y-3">
+                            <div className="w-full space-y-3">
                                 <Button
                                     onClick={handleReset}
                                     variant="outline"
-                                    className="w-full"
+                                    className="w-full h-12 rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary font-bold tracking-wide"
                                 >
                                     Try Another Email
                                 </Button>
 
-                                <Link to="/login" className="block">
-                                    <Button variant="ghost" className="w-full">
-                                        <ArrowLeft className="mr-2 h-4 w-4" />
-                                        Back to Login
-                                    </Button>
-                                </Link>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => window.location.href = '/login'}
+                                    className="w-full text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                    Return to Login
+                                </Button>
                             </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </motion.div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={controls}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-md"
-            >
-                <div className="bg-card rounded-2xl shadow-2xl p-8 md:p-10 border border-border/50 backdrop-blur-sm">
-                    {/* Header */}
-                    <div className="text-center space-y-2 mb-8">
-                        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                            Forgot Password?
-                        </h1>
-                        <p className="text-muted-foreground text-sm md:text-base">
-                            Enter your email and we'll send you reset instructions
-                        </p>
-                    </div>
+        <div className="min-h-[100dvh] w-full flex items-center justify-center relative overflow-hidden bg-background">
+            {/* Background Effects */}
+            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5 pointer-events-none z-0" />
+            <div className="absolute -top-[10%] -right-[10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0 animate-pulse" />
+            <div className="absolute -bottom-[10%] -left-[10%] w-[50%] h-[50%] bg-accent/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <FloatingInput
-                                label="Email Address"
-                                type="email"
-                                icon={<Mail className="h-4 w-4" />}
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-3">
-                            <Button
-                                type="submit"
-                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-[1.02]"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                                        Sending...
+            <div className="relative z-10 w-full max-w-md px-6 flex items-center justify-center">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={controls}
+                    transition={{ duration: 0.5 }}
+                    className="w-full"
+                >
+                    <Card className="w-full rounded-3xl border-border/50 shadow-2xl bg-card/60 backdrop-blur-xl flex flex-col overflow-hidden">
+                        <CardHeader className="pt-10 pb-6">
+                            <div className="flex flex-col items-center">
+                                <motion.div
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="relative mb-6"
+                                >
+                                    <div className="absolute -inset-4 bg-primary/20 blur-2xl rounded-full" />
+                                    <div className="relative h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center border-2 border-background shadow-lg">
+                                        <Mail className="h-8 w-8 text-primary" />
                                     </div>
-                                ) : (
-                                    "Send Reset Link"
-                                )}
-                            </Button>
+                                </motion.div>
+                                <CardTitle className="text-center">
+                                    <span className="block text-2xl font-black tracking-tighter text-foreground uppercase">
+                                        Forgot Password?
+                                    </span>
+                                    <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mt-2 max-w-[200px] mx-auto leading-relaxed">
+                                        Enter your email to receive reset instructions
+                                    </span>
+                                </CardTitle>
+                            </div>
+                        </CardHeader>
 
-                            <Button
-                                type="button"
-                                onClick={handleReset}
-                                variant="outline"
-                                className="w-full"
+                        <CardContent className="px-8 pb-8">
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="space-y-2">
+                                    <div className="group transition-all">
+                                        <FloatingInput
+                                            label="Email Address"
+                                            type="email"
+                                            icon={<Mail className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                            className="bg-background/40 border-border/50 h-14 rounded-2xl group-focus-within:border-primary/50 group-focus-within:ring-primary/20"
+                                        />
+                                    </div>
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    className="w-full h-14 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all bg-primary hover:bg-primary/90"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            Sending Link...
+                                        </div>
+                                    ) : (
+                                        "Send Reset Link"
+                                    )}
+                                </Button>
+                            </form>
+                        </CardContent>
+
+                        <CardFooter className="flex justify-center pb-8 border-t border-border/10 pt-6">
+                            <Link
+                                to="/api/auth/admin/login"
+                                className="flex items-center text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors gap-2"
                             >
-                                Clear
-                            </Button>
-                        </div>
-                    </form>
-
-                    {/* Back to Login */}
-                    <div className="mt-6 text-center">
-                        <Link
-                            to="/api/auth/login"
-                            className="inline-flex items-center text-sm text-primary hover:text-primary/80 transition-colors font-medium"
-                        >
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Login
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Additional Help */}
-                <div className="mt-6 text-center">
-                    <p className="text-sm text-muted-foreground">
-                        Still having trouble?{" "}
-                        <a
-                            href="mailto:support@odel.edu.ng"
-                            className="text-primary hover:text-primary/80 font-medium"
-                        >
-                            Contact Support
-                        </a>
-                    </p>
-                </div>
-            </motion.div>
+                                <ArrowLeft className="h-3 w-3" />
+                                Back to Login
+                            </Link>
+                        </CardFooter>
+                    </Card>
+                </motion.div>
+            </div>
         </div>
     );
 };

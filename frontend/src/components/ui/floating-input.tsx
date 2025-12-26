@@ -1,15 +1,18 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+import { Loader2 } from "lucide-react";
+
 export interface FloatingInputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon?: React.ReactNode;
   error?: string;
+  isLoading?: boolean;
 }
 
 const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
-  ({ className, label, icon, id, error, ...props }, ref) => {
+  ({ className, label, icon, id, error, isLoading, ...props }, ref) => {
     const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
 
     return (
@@ -25,9 +28,11 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
           className={cn(
             "peer h-12 w-full border-2 border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 rounded-md transition-all",
             icon && "pl-10",
+            isLoading && "pr-10",
             className
           )}
           placeholder={label}
+          disabled={isLoading || props.disabled}
           {...props}
         />
         <label
@@ -41,6 +46,11 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
         >
           {label}
         </label>
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        )}
         {error && (
           <p className="text-sm text-destructive mt-1 ml-1">{error}</p>
         )}
