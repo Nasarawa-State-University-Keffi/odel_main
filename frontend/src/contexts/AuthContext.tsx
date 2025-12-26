@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import Cookies from 'js-cookie';
 
 // DEFINING THE TYPE OF DATA USER SHOULD TAKE
@@ -83,13 +84,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // HANDLES LOGOUT AND REMOVING DATA FROM THE COOKIES
 
+    const queryClient = useQueryClient();
+
     const logout = () => {
         Cookies.remove('admin_user');
         Cookies.remove('admin_token');
         Cookies.remove('admin_refresh_token');
         Cookies.remove('pending_mfa_user');
+
+        // Clear React Query cache for currentUser
+        queryClient.removeQueries({ queryKey: ['currentUser'] });
+        queryClient.clear(); // Clear all queries to be safe
+
         setUser(null);
-        navigate('/api/auth/admin/login');
+        navigate('/api/auth/login');
     };
 
     // CHECKING IF THE USER IS AUTHENTICATED

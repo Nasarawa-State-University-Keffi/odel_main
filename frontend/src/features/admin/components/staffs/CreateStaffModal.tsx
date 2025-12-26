@@ -139,37 +139,20 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
             reset();
             onSuccess();
             onOpenChange(false);
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error(error);
-            const err = error as any;
-            const status = err.response?.status;
-            let title = "Error";
-            let description = err.response?.data?.message || "Failed to create staff member";
+            const message = error.message || "Failed to create staff member";
 
-            if (status === 400) {
-                title = "Invalid Configuration";
-                description = "Invalid role or academic staff configuration.";
-            } else if (status === 403) {
-                title = "Access Denied";
-                description = "You do not have permission to perform this action.";
-            } else if (status === 404) {
-                title = "Not Found";
-                description = "Title, Department, or Programme type not found.";
-            } else if (status === 422) {
-                title = "Duplicate Entry";
-
-                // CATCH SOME FORM ERRORS
-                if (description.toLowerCase().includes("email")) {
-                    setError("email", { type: "manual", message: "Email already exists" });
-                }
-                if (description.toLowerCase().includes("id")) {
-                    setError("userId", { type: "manual", message: "Staff ID already exists" });
-                }
+            // Handle field-specific manual errors if message allows identification
+            if (message.includes("Email")) {
+                setError("email", { type: "manual", message });
+            } else if (message.includes("Staff ID")) {
+                setError("userId", { type: "manual", message });
             }
 
             toast({
-                title: title,
-                description: description,
+                title: "Error",
+                description: message,
                 variant: "destructive",
             });
         } finally {

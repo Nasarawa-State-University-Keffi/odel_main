@@ -6,8 +6,8 @@ export const useCurrentUser = () => {
     return useQuery({
         queryKey: ['currentUser'],
         queryFn: authAPI.getCurrentUser,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
         retry: 1,
-        enabled: !!Cookies.get('admin_token'), // Only fetch if token exists
+        enabled: !!Cookies.get('admin_token'),
     });
 };

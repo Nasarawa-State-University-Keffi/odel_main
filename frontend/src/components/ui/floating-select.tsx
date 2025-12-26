@@ -8,6 +8,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { Loader2 } from "lucide-react";
+
 export interface FloatingSelectProps {
   label: string;
   icon?: React.ReactNode;
@@ -17,10 +19,11 @@ export interface FloatingSelectProps {
   name?: string;
   className?: string;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 const FloatingSelect = React.forwardRef<HTMLButtonElement, FloatingSelectProps>(
-  ({ className, label, icon, options, value, onChange, name, disabled, ...props }, ref) => {
+  ({ className, label, icon, options, value, onChange, name, disabled, isLoading, ...props }, ref) => {
     const [open, setOpen] = React.useState(false);
     const hasValue = !!value;
 
@@ -35,12 +38,12 @@ const FloatingSelect = React.forwardRef<HTMLButtonElement, FloatingSelectProps>(
         <Select
           value={value}
           onValueChange={(newValue) => {
-            if (onChange && name) {
-              onChange({ target: { value: newValue, name } });
+            if (onChange) {
+              onChange({ target: { value: newValue, name: name || "" } });
             }
           }}
           onOpenChange={setOpen}
-          disabled={disabled}
+          disabled={disabled || isLoading}
         >
           <SelectTrigger
             ref={ref}
@@ -49,10 +52,11 @@ const FloatingSelect = React.forwardRef<HTMLButtonElement, FloatingSelectProps>(
               icon && "pl-10",
               className
             )}
+            {...props}
           >
             <SelectValue placeholder="" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-80">
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -71,6 +75,12 @@ const FloatingSelect = React.forwardRef<HTMLButtonElement, FloatingSelectProps>(
         >
           {label}
         </label>
+
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 bg-background flex items-center justify-center p-1 cursor-not-allowed">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
       </div>
     );
   }

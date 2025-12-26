@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "@/features/admin/components/Sidebar";
-import AdminHeader from "@/features/admin/components/AdminHeader";
+import Sidebar from "@/features/admin/components/dashboard-components/Sidebar";
+import AdminHeader from "@/features/admin/components/dashboard-components/AdminHeader";
 
 const AdminLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     return (
-        <div className="flex h-screen w-full bg-background overflow-hidden">
+        <div className="flex fixed inset-0 w-full bg-background overflow-hidden">
             <Sidebar
                 isOpen={sidebarOpen}
                 isCollapsed={sidebarCollapsed}
@@ -17,9 +17,13 @@ const AdminLayout = () => {
             />
 
             <div className="flex-1 flex flex-col h-full overflow-hidden">
-                <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
+                <AdminHeader
+                    onMenuClick={() => setSidebarOpen(true)}
+                    onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    isCollapsed={sidebarCollapsed}
+                />
 
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
                     <Outlet />
                 </main>
             </div>
