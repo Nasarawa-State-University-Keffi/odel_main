@@ -91,3 +91,51 @@ export interface AddCoursesToProgrammeResponse {
         title: string;
     };
 }
+
+export interface UploadCoursesResponse {
+    success: number;
+    failed: number;
+    errors: string[];
+}
+
+export interface UpdateSemesterSettingsRequest {
+    totalCreditUnit: number;
+    minimumCreditUnit: number;
+    numberOfElectives: number;
+    passMark: number;
+    isSiwes: boolean;
+}
+
+export interface UpdateProgrammeCourseRequest {
+    itemId: number;
+    creditUnit: number;
+    category: 'COMPULSORY' | 'REQUIRED' | 'ELECTIVE';
+    alias?: number | null;
+    aliasSession?: number | null;
+    effectiveSessionId?: number;
+    modeOfEntries?: number[];
+}
+
+export interface UpdateProgrammeCourseResponse {
+    id: number;
+    course: {
+        id: number;
+        courseCode: string;
+    };
+    creditUnit: number;
+    courseType: 'COMPULSORY' | 'REQUIRED' | 'ELECTIVE';
+    alias: {
+        id: number;
+        courseCode: string;
+    } | null;
+    aliasSession: {
+        id: number;
+        title: string;
+    } | null;
+    modeOfEntries: {
+        id: number;
+        name: string;
+    }[];
+}
+
+export type EditProgrammeCourseRequest = Omit<UpdateProgrammeCourseRequest, 'itemId'>;

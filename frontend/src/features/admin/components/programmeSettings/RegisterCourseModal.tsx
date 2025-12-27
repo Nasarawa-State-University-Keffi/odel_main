@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
 import { modeOfEntryService } from "../../services/modeOfEntryService";
+import { programmeService } from "../../services/programmeService";
 import { admissionService } from "../../services/admissionService";
 import {
     Dialog,
@@ -45,11 +46,20 @@ const RegisterCourseModal = ({
     const [selectedModes, setSelectedModes] = useState<number[]>([]);
     const [effectiveSessionId, setEffectiveSessionId] = useState<string>("");
 
+    // Fetch Programme Details to get authoritative Programme Type
+    const { data: programme } = useQuery({
+        queryKey: ["programme-details", programmeId],
+        queryFn: () => programmeService.getProgrammeById(programmeId),
+        enabled: open && !!programmeId
+    });
+
+    const activeProgrammeTypeId = programme?.programmeType?.id || programmeTypeId;
+
     // Fetch Mode of Entries
     const { data: modes, isPending: isLoadingModes } = useQuery({
-        queryKey: ["mode-of-entries", programmeTypeId],
-        queryFn: () => modeOfEntryService.getAllModeOfEntries(programmeTypeId),
-        enabled: open && !!programmeTypeId
+        queryKey: ["mode-of-entries", activeProgrammeTypeId],
+        queryFn: () => modeOfEntryService.getAllModeOfEntries(activeProgrammeTypeId),
+        enabled: open && !!activeProgrammeTypeId
     });
 
     // Fetch Sessions for Effective Session
@@ -58,6 +68,14 @@ const RegisterCourseModal = ({
         queryFn: admissionService.getAllSessions,
         enabled: open
     });
+
+    useEffect(() => {
+        if (open) {
+            console.log('--- Register Modal Debug ---');
+            console.log('Prop programmeId:', programmeId);
+            console.log('Prop programmeTypeId:', programmeTypeId);
+        }
+    }, [open, programmeId, programmeTypeId]);
 
     // Set default session and select all modes by default
     useEffect(() => {
@@ -108,6 +126,9 @@ const RegisterCourseModal = ({
             semesterId: semesterId,
             effectiveSessionId: Number(effectiveSessionId)
         };
+
+        console.log('Sending Payload:', payload);
+        console.log('Active Programme Type ID used for modes:', activeProgrammeTypeId);
 
         registerMutation.mutate(payload);
     };

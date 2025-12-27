@@ -1,30 +1,46 @@
+
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
 import { programmeService } from "../../services/programmeService";
 import { staffService } from "../../services/staffService";
 import { admissionService } from "../../services/admissionService";
-import { Loader2, Settings, Filter, AlertCircle, Book, TrendingDown, Layers, Target } from "lucide-react";
+import { Loader2, Settings, Filter, AlertCircle, Book, TrendingDown, Layers, Target, Settings2, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 // Refactored Components
 import ConfigurationFilters from "./ConfigurationFilters";
 import ParameterCard from "./ParameterCard";
 import CourseCategorySection from "./CourseCategorySection";
+import EditSemesterSettingsModal from "./EditSemesterSettingsModal";
 import AcademicSummaryCard from "./AcademicSummaryCard";
 import AvailableCoursesSection from "./AvailableCoursesSection";
 
 const ProgrammeSettingsView = () => {
-    const { hasAnyRole } = useAuth();
+    const { hasAnyRole, hasRole } = useAuth();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+
     const [selectedProgrammeType, setSelectedProgrammeType] = useState<string>("");
     const [selectedProgramme, setSelectedProgramme] = useState<string>("");
     const [selectedLevel, setSelectedLevel] = useState<string>("");
     const [selectedSemester, setSelectedSemester] = useState<string>("");
     const [selectedSession, setSelectedSession] = useState<string>("");
     const [showAvailableCourses, setShowAvailableCourses] = useState<boolean>(false);
+    const [isEditSettingsModalOpen, setIsEditSettingsModalOpen] = useState(false);
+    const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
     // Fetch Programme Types for ODEL filtering
     const { data: programmeTypes } = useQuery({
@@ -56,6 +72,71 @@ const ProgrammeSettingsView = () => {
         enabled: !!selectedProgrammeType
     });
 
+    const refetchSettings = () => {
+        queryClient.invalidateQueries({ queryKey: ["programme-settings"] });
+    };
+
+    const syncMutation = useMutation({
+        mutationFn: (semesterId: number) => programmeSettingsService.syncOptionalSemester(semesterId),
+        onSuccess: () => {
+            toast({
+                title: "Synchronization Complete",
+                description: "Courses have been synchronized from the main semester.",
+            });
+            setIsSyncDialogOpen(false);
+            refetchSettings();
+        },
+        onError: (error: any) => {
+            toast({
+                variant: "destructive",
+                title: "Synchronization Failed",
+                description: error?.response?.data?.message || "Failed to sync optional semester.",
+            });
+            setIsSyncDialogOpen(false);
+        }
+    });
+
+    const handleSync = () => {
+        console.log("Handle Sync called. Selected Semester:", selectedSemester);
+        if (selectedSemester) {
+            syncMutation.mutate(Number(selectedSemester));
+        }
+    };
+
+    const downloadReportMutation = useMutation({
+        mutationFn: ({ semesterId, programmeId }: { semesterId: number, programmeId: number }) =>
+            programmeSettingsService.downloadCourseReport(semesterId, 'programme', programmeId),
+        onSuccess: (data) => {
+            const url = window.URL.createObjectURL(new Blob([data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `courses_report_prog_${selectedProgramme}_sem_${selectedSemester}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            toast({
+                title: "Report Downloaded",
+                description: "Course report has been downloaded successfully.",
+            });
+        },
+        onError: (error: any) => {
+            toast({
+                variant: "destructive",
+                title: "Download Failed",
+                description: error?.response?.data?.message || "Failed to download course report.",
+            });
+        }
+    });
+
+    const handleDownloadReport = () => {
+        if (selectedSemester && selectedProgramme) {
+            downloadReportMutation.mutate({
+                semesterId: Number(selectedSemester),
+                programmeId: Number(selectedProgramme)
+            });
+        }
+    };
+
     // Fetch Levels based on selected type
     const { data: levels } = useQuery({
         queryKey: ["levels-by-type", selectedProgrammeType],
@@ -85,7 +166,7 @@ const ProgrammeSettingsView = () => {
     }, [sessions]);
 
     // Fetch Settings
-    const { data: settings, isPending: isLoadingSettings, error: settingsError, refetch } = useQuery({
+    const { data: settings, isPending: isLoadingSettings, error: settingsError } = useQuery({
         queryKey: ["programme-settings", selectedProgramme, selectedLevel, selectedSemester],
         queryFn: () => programmeSettingsService.fetchProgrammeSettings({
             programme: Number(selectedProgramme),
@@ -196,7 +277,7 @@ const ProgrammeSettingsView = () => {
                                     return message || error?.message || "An unexpected error occurred.";
                                 })()}
                             </AlertDescription>
-                            <Button variant="outline" className="mt-4 bg-white/20 border-white/40 font-bold" onClick={() => refetch()}>
+                            <Button variant="outline" className="mt-4 bg-white/20 border-white/40 font-bold" onClick={() => refetchSettings()}>
                                 Retry Request
                             </Button>
                         </Alert>
@@ -226,17 +307,70 @@ const ProgrammeSettingsView = () => {
                             <ParameterCard label="Max Units" value={settings?.semesterSettings?.totalCreditUnit} icon={Book} color="blue" />
                             <ParameterCard label="Min Units" value={settings?.semesterSettings?.minimumCreditUnit} icon={TrendingDown} color="amber" />
                             <ParameterCard label="Electives Required" value={settings?.semesterSettings?.numberOfElectives} icon={Layers} color="purple" />
-                            <ParameterCard label="Pass Mark" value={`${settings?.semesterSettings?.passMark}%`} icon={Target} color="emerald" />
+                            <ParameterCard label="Pass Mark" value={`${settings?.semesterSettings?.passMark}% `} icon={Target} color="emerald" />
+                        </div>
+
+                        {/* Edit Button */}
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleDownloadReport}
+                                disabled={downloadReportMutation.isPending}
+                                className="gap-2 font-bold text-slate-500 hover:text-emerald-600"
+                            >
+                                {downloadReportMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                Download Report
+                            </Button>
+
+                            {(hasRole("ADMIN") || hasRole("SUPER_ADMIN")) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsSyncDialogOpen(true)}
+                                    className="gap-2 font-bold text-slate-500 hover:text-indigo-600"
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Sync Courses
+                                </Button>
+                            )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsEditSettingsModalOpen(true)}
+                                className="gap-2 font-bold text-slate-500 hover:text-primary"
+                            >
+                                <Settings2 className="h-4 w-4" />
+                                Edit Configuration
+                            </Button>
                         </div>
 
                         {/* Courses Grid Layout */}
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             <div className="space-y-6">
-                                <CourseCategorySection title="Compulsory Courses" courses={settings?.compulsoryCourses} type="COMPULSORY" />
-                                <CourseCategorySection title="Required Courses" courses={settings?.requiredCourses} type="REQUIRED" />
+                                <CourseCategorySection
+                                    title="Compulsory Courses"
+                                    courses={settings?.compulsoryCourses}
+                                    type="COMPULSORY"
+                                    programmeTypeId={Number(selectedProgrammeType)}
+                                    onRefresh={refetchSettings}
+                                />
+                                <CourseCategorySection
+                                    title="Required Courses"
+                                    courses={settings?.requiredCourses}
+                                    type="REQUIRED"
+                                    programmeTypeId={Number(selectedProgrammeType)}
+                                    onRefresh={refetchSettings}
+                                />
                             </div>
                             <div className="space-y-6">
-                                <CourseCategorySection title="Elective Courses" courses={settings?.electiveCourses} type="ELECTIVE" />
+                                <CourseCategorySection
+                                    title="Elective Courses"
+                                    courses={settings?.electiveCourses}
+                                    type="ELECTIVE"
+                                    programmeTypeId={Number(selectedProgrammeType)}
+                                    onRefresh={refetchSettings}
+                                />
 
                                 <AcademicSummaryCard
                                     totalCourses={(settings?.compulsoryCourses?.length || 0) + (settings?.requiredCourses?.length || 0) + (settings?.electiveCourses?.length || 0)}
@@ -247,6 +381,57 @@ const ProgrammeSettingsView = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <EditSemesterSettingsModal
+                open={isEditSettingsModalOpen}
+                onOpenChange={setIsEditSettingsModalOpen}
+                settings={settings?.semesterSettings || null}
+                onSuccess={() => refetchSettings()}
+            />
+
+            <Dialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] rounded-3xl p-0 overflow-hidden bg-slate-50 border-0 shadow-2xl">
+                    <DialogHeader className="p-6 bg-white border-b border-slate-100">
+                        <DialogTitle className="flex items-center gap-2 text-xl font-black text-slate-800">
+                            <RefreshCw className="h-5 w-5 text-indigo-600" />
+                            Sync Optional Semester
+                        </DialogTitle>
+                        <DialogDescription>
+                            Confirm synchronization of courses from the main semester.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6">
+                        <p className="text-slate-600 text-sm font-medium leading-relaxed">
+                            This action will synchronize courses from the main semester to this optional semester.
+                            Existing courses might be updated.
+                        </p>
+                        <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                                <h4 className="text-sm font-bold text-amber-800">Warning</h4>
+                                <p className="text-xs text-amber-700 font-medium">
+                                    Are you sure you want to proceed? This action cannot be undone.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-6 bg-slate-50 pt-0">
+                        <Button variant="ghost" onClick={() => setIsSyncDialogOpen(false)} disabled={syncMutation.isPending} className="font-bold text-slate-500 hover:text-slate-700">
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSync}
+                            disabled={syncMutation.isPending}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-200"
+                        >
+                            {syncMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {syncMutation.isPending ? "Syncing..." : "Confirm Sync"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

@@ -3,11 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, AlertCircle, CheckSquare, Square, PlusCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckSquare, Square, PlusCircle, Upload } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import RegisterCourseModal from "./RegisterCourseModal";
+import UploadCoursesModal from "./UploadCoursesModal";
 
 interface AvailableCoursesSectionProps {
     selectedProgramme: string;
@@ -24,6 +25,7 @@ const AvailableCoursesSection = ({
 }: AvailableCoursesSectionProps) => {
     const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     const { data: courses, isPending, error, refetch } = useQuery({
         queryKey: ["unregistered-courses", selectedProgramme, selectedLevel, selectedSemester],
@@ -93,17 +95,28 @@ const AvailableCoursesSection = ({
                         <CardTitle className="text-lg font-black tracking-tight text-slate-800">Available for Registration</CardTitle>
                     </div>
 
-                    {selectedCourseIds.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <Button
-                                onClick={() => setIsRegisterModalOpen(true)}
-                                className="bg-[#01402c] hover:bg-[#01402c]/90 text-white gap-2 font-black text-[10px] uppercase tracking-widest px-6 h-10 rounded-xl shadow-lg shadow-emerald-900/10 transition-all hover:scale-105 active:scale-95"
-                            >
-                                <PlusCircle className="h-4 w-4" />
-                                Register {selectedCourseIds.length} Selected
-                            </Button>
-                        </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsUploadModalOpen(true)}
+                            className="bg-white border-dashed border-slate-300 text-slate-600 hover:text-slate-800 hover:bg-slate-50 gap-2 font-bold text-xs uppercase tracking-wider h-9 rounded-lg"
+                        >
+                            <Upload className="h-3.5 w-3.5" />
+                            Upload Excel
+                        </Button>
+
+                        {selectedCourseIds.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={() => setIsRegisterModalOpen(true)}
+                                    className="bg-[#01402c] hover:bg-[#01402c]/90 text-white gap-2 font-black text-[10px] uppercase tracking-widest px-6 h-10 rounded-xl shadow-lg shadow-emerald-900/10 transition-all hover:scale-105 active:scale-95"
+                                >
+                                    <PlusCircle className="h-4 w-4" />
+                                    Register {selectedCourseIds.length} Selected
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0 overflow-hidden">
@@ -184,6 +197,14 @@ const AvailableCoursesSection = ({
                     setSelectedCourseIds([]);
                     refetch();
                 }}
+            />
+
+            <UploadCoursesModal
+                open={isUploadModalOpen}
+                onOpenChange={setIsUploadModalOpen}
+                programmeId={Number(selectedProgramme)}
+                semesterId={Number(selectedSemester)}
+                onSuccess={() => refetch()}
             />
         </Card>
     );
