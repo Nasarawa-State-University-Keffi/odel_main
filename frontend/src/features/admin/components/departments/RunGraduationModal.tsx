@@ -33,7 +33,7 @@ const RunGraduationModal = ({ isOpen, onClose, departmentId }: RunGraduationModa
         queryFn: staffService.getAllProgrammes,
     });
 
-    const relevantProgrammes = programmes?.filter(p => p.department.id === departmentId) || [];
+    const relevantProgrammes = programmes?.filter(p => p.department?.id === departmentId) || [];
 
     useEffect(() => {
         if (activeAdmission?.semester?.id) {

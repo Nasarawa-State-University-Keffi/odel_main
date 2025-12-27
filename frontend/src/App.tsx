@@ -38,7 +38,10 @@ const AdminGrades = lazy(() => import("./pages/admin/Grades/GradeManagement"));
 const AdminLevels = lazy(() => import("./features/admin/components/levels/LevelList"));
 const AdminModeOfEntries = lazy(() => import("./features/admin/components/mode-of-entry/ModeOfEntryList"));
 const AdminProgrammes = lazy(() => import("./features/admin/components/programmes/ProgrammeList"));
+const AdminProgrammeTypes = lazy(() => import("./features/admin/components/programmeType/ProgrammeTypeManagement"));
 const AdminProgrammeSettings = lazy(() => import("./pages/admin/ProgrammeSettings/AdminProgrammeSettings"));
+const AdminSchools = lazy(() => import("./features/admin/components/school/SchoolManagement"));
+const AdminSessions = lazy(() => import("./features/admin/components/session/SessionManagement"));
 
 
 const queryClient = new QueryClient();
@@ -140,10 +143,34 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="programme-types"
+                    element={
+                      <ProtectedRoute requiredRoles={['ADMIN', 'SUPER_ADMIN', 'ADMISSION_OFFICER']}>
+                        <AdminProgrammeTypes />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="programme-settings"
                     element={
                       <ProtectedRoute requiredRoles={['ADMIN', 'SUPER_ADMIN', 'ADMISSION_OFFICER']}>
                         <AdminProgrammeSettings />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="schools"
+                    element={
+                      <ProtectedRoute requiredRoles={['ADMIN', 'SUPER_ADMIN']}>
+                        <AdminSchools />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="sessions"
+                    element={
+                      <ProtectedRoute requiredRoles={['ADMIN', 'SUPER_ADMIN']}>
+                        <AdminSessions />
                       </ProtectedRoute>
                     }
                   />

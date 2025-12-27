@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, UserCog, LogOut, FileText, GraduationCap, BookOpen, Book, Building2, Award, University, Layers, ScrollText, Settings } from "lucide-react";
+import { LayoutDashboard, UserCog, LogOut, FileText, GraduationCap, BookOpen, Book, Building2, Award, University, Layers, ScrollText, Settings, Globe, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,19 +24,20 @@ interface SidebarProps {
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/api/admin/dashboard", roles: [] },
     { icon: FileText, label: "Admission", href: "/api/admin/dashboard/applications", roles: ['ADMISSION_OFFICER', 'SUPER_ADMIN'] },
-    { icon: Building2, label: "Departments", href: "/api/admin/dashboard/departments", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: BookOpen, label: "Course Reg", href: "/api/admin/dashboard/course-registration", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Book, label: "Courses", href: "/api/admin/dashboard/courses", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: Building2, label: "Departments", href: "/api/admin/dashboard/departments", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: University, label: "Faculty", href: "/api/admin/dashboard/faculties", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Award, label: "Grades", href: "/api/admin/dashboard/grades", roles: ['ADMIN', 'SUPER_ADMIN'] },
-    { icon: UserCog, label: "Staffs", href: "/api/admin/dashboard/staffs", roles: ['ADMIN', 'SUPER_ADMIN'] },
-    { icon: GraduationCap, label: "Students", href: "/api/admin/dashboard/students", roles: ['ADMIN', 'SUPER_ADMIN', 'ADMISSION_OFFICER'] },
-
-
     { icon: Layers, label: "Levels", href: "/api/admin/dashboard/levels", roles: [] },
-    { icon: BookOpen, label: "Programmes", href: "/api/admin/dashboard/programmes", roles: [] },
-    { icon: Settings, label: "Prog Settings", href: "/api/admin/dashboard/programme-settings", roles: ['ADMIN', 'SUPER_ADMIN', 'ADMISSION_OFFICER'] },
     { icon: ScrollText, label: "Mode of Entry", href: "/api/admin/dashboard/mode-of-entries", roles: [] },
+    { icon: Settings, label: "Prog Settings", href: "/api/admin/dashboard/programme-settings", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: Globe, label: "Prog Types", href: "/api/admin/dashboard/programme-types", roles: [] },
+    { icon: BookOpen, label: "Programmes", href: "/api/admin/dashboard/programmes", roles: [] },
+    { icon: Building2, label: "Schools", href: "/api/admin/dashboard/schools", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: Calendar, label: "Sessions", href: "/api/admin/dashboard/sessions", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: UserCog, label: "Staffs", href: "/api/admin/dashboard/staffs", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: GraduationCap, label: "Students", href: "/api/admin/dashboard/students", roles: ['ADMIN', 'SUPER_ADMIN'] },
 ];
 
 const Sidebar = ({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) => {
@@ -93,14 +94,63 @@ const Sidebar = ({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProp
 
                 {/* Navigation Items */}
                 <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto custom-scrollbar">
+                    {/* Dashboard Item (Separate) */}
+                    {sidebarItems.filter(i => i.label === 'Dashboard').map((item) => {
+                        const isActive = location.pathname === item.href;
+                        const navItem = (
+                            <Link
+                                key={item.href}
+                                to={item.href}
+                                onClick={() => onClose()}
+                                className={cn(
+                                    "flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden mb-6", // Added mb-6
+                                    isCollapsed && !isOpen ? "justify-center" : "",
+                                    isActive
+                                        ? "bg-white/20 text-white shadow-lg shadow-black/5"
+                                        : "text-white/70 hover:text-white hover:bg-white/10"
+                                )}
+                            >
+                                {isActive && (
+                                    <div className="absolute left-0 top-0 h-full w-1 bg-white rounded-r-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                                )}
+                                <item.icon className={cn(
+                                    "h-5 w-5 flex-shrink-0 transition-transform duration-300 group-hover:scale-110",
+                                    isActive ? "text-white" : "text-white/60 group-hover:text-white"
+                                )} />
+                                <span className={cn(
+                                    "font-bold text-sm whitespace-nowrap transition-all duration-500 origin-left",
+                                    (!isCollapsed || isOpen)
+                                        ? "opacity-100 translate-x-0 w-auto"
+                                        : "opacity-0 -translate-x-4 w-0 overflow-hidden"
+                                )}>
+                                    {item.label}
+                                </span>
+                            </Link>
+                        );
+
+                        if (isCollapsed && !isOpen) {
+                            return (
+                                <Tooltip key={item.href}>
+                                    <TooltipTrigger asChild>
+                                        {navItem}
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="font-bold border-none bg-white text-[#00A774] px-3 py-1.5 rounded-lg shadow-xl translate-x-1">
+                                        {item.label}
+                                    </TooltipContent>
+                                </Tooltip>
+                            );
+                        }
+                        return navItem;
+                    })}
+
                     <div className={cn(
-                        "mb-4 px-3 flex flex-col transition-all duration-500",
+                        "mb-2 px-3 flex flex-col transition-all duration-500", // reduced mb-4 to mb-2
                         isCollapsed && !isOpen ? "items-center opacity-0 h-0 overflow-hidden" : "opacity-100"
                     )}>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Main Menu</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Main Menu</span>
                     </div>
 
-                    {sidebarItems.map((item) => {
+                    {sidebarItems.filter(i => i.label !== 'Dashboard').map((item) => {
                         if (item.roles && item.roles.length > 0 && !hasAnyRole(item.roles)) {
                             return null;
                         }

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { User, Users, Plus, Search, Filter, Settings2, Building2, Trash2, Loader2, AlertTriangle, MoreHorizontal, X, Lock, Unlock, CalendarClock, GraduationCap, BookOpen } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -246,6 +247,14 @@ const DepartmentList = () => {
         return items;
     }, [data, searchQuery, selectedHodId, hods, showAccessibleOnly]);
 
+    const activeFiltersCount = useMemo(() => {
+        let count = 0;
+        if (selectedHodId !== "all") count++;
+        if (showAccessibleOnly) count++;
+        if (showHods) count++;
+        return count;
+    }, [selectedHodId, showAccessibleOnly, showHods]);
+
     const totalPages = Math.ceil(filteredDepartments.length / ITEMS_PER_PAGE);
     const paginatedDepartments = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -373,73 +382,111 @@ const DepartmentList = () => {
                         </div>
 
                         {/* Filters Group */}
+                        {/* Filters Group Consolidation */}
                         <div className="flex items-center gap-2">
-                            {/* HOD Filter */}
-                            <div className="flex items-center gap-1">
-                                <div className="w-[160px] md:w-[200px]">
-                                    <Select value={selectedHodId} onValueChange={setSelectedHodId}>
-                                        <SelectTrigger id="hod-filter" className="h-10 bg-white border-dashed text-xs">
-                                            <SelectValue placeholder="All HODs" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All HODs</SelectItem>
-                                            {hods?.filter(h => h.department.name.toLowerCase().includes("odel")).map((hod) => (
-                                                <SelectItem key={hod.id} value={hod.id.toString()}>
-                                                    {hod.user.firstName} {hod.user.lastName}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {selectedHodId !== "all" && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setSelectedHodId("all")}
-                                        className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-slate-100"
-                                        title="Reset Filter"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                )}
-                            </div>
-
-                            {/* My Departments Toggle */}
-                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-md border border-dashed border-border/60 h-10">
-                                <Label htmlFor="accessible-only" className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap cursor-pointer hidden sm:block">My Depts</Label>
-                                <Switch
-                                    id="accessible-only"
-                                    checked={showAccessibleOnly}
-                                    onCheckedChange={(checked) => {
-                                        setShowAccessibleOnly(checked);
-                                        setCurrentPage(1);
-                                    }}
-                                    className="scale-75"
-                                />
-                            </div>
-
-                            {/* View Options */}
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" size="icon" className="h-10 w-10 border-dashed sm:w-auto sm:px-3 sm:gap-2 sm:font-semibold">
-                                        <Filter className="h-4 w-4 text-muted-foreground" />
-                                        <span className="hidden sm:inline text-xs">View</span>
+                                    <Button
+                                        variant="outline"
+                                        className="h-10 px-4 border-dashed bg-slate-50/50 hover:bg-slate-100 flex items-center gap-2 font-bold text-xs transition-all relative"
+                                    >
+                                        <Filter className="h-4 w-4 text-[#8cc63f]" />
+                                        <span>Filters</span>
+                                        {activeFiltersCount > 0 && (
+                                            <Badge
+                                                className="ml-1 h-5 w-5 p-0 flex items-center justify-center bg-[#8cc63f] text-white border-0 text-[10px] animate-in zoom-in-50"
+                                            >
+                                                {activeFiltersCount}
+                                            </Badge>
+                                        )}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-56" align="end">
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <h4 className="font-medium leading-none">View Options</h4>
-                                            <p className="text-sm text-muted-foreground">Customize your data view</p>
+                                <PopoverContent className="w-80 p-5" align="end">
+                                    <div className="space-y-6">
+                                        <div className="space-y-1">
+                                            <h4 className="font-black text-sm text-[#0F3F2A] uppercase tracking-wider">Refine Directory</h4>
+                                            <p className="text-[10px] text-muted-foreground font-bold">Filter by HOD, accessibility, or view details</p>
                                         </div>
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="show-hods" className="text-sm">Show HOD Details</Label>
-                                            <Switch
-                                                id="show-hods"
-                                                checked={showHods}
-                                                onCheckedChange={setShowHods}
-                                            />
+
+                                        <div className="space-y-4">
+                                            {/* HOD Selection */}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="hod-filter" className="text-[10px] font-black uppercase text-muted-foreground/70">Head of Department</Label>
+                                                <div className="flex gap-2">
+                                                    <Select value={selectedHodId} onValueChange={setSelectedHodId}>
+                                                        <SelectTrigger id="hod-filter" className="h-9 text-xs bg-slate-50/50">
+                                                            <SelectValue placeholder="All HODs" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">All HODs</SelectItem>
+                                                            {hods?.filter(h => h.department.name.toLowerCase().includes("odel")).map((hod) => (
+                                                                <SelectItem key={hod.id} value={hod.id.toString()}>
+                                                                    {hod.user.firstName} {hod.user.lastName}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {selectedHodId !== "all" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-9 w-9 shrink-0 hover:bg-red-50 hover:text-red-500"
+                                                            onClick={() => setSelectedHodId("all")}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <DropdownMenuSeparator className="bg-slate-100" />
+
+                                            {/* Toggles */}
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between group/toggle">
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor="accessible-only-popover" className="text-xs font-bold cursor-pointer">My Departments</Label>
+                                                        <p className="text-[10px] text-muted-foreground font-medium">Show only your assigned units</p>
+                                                    </div>
+                                                    <Switch
+                                                        id="accessible-only-popover"
+                                                        checked={showAccessibleOnly}
+                                                        onCheckedChange={(checked) => {
+                                                            setShowAccessibleOnly(checked);
+                                                            setCurrentPage(1);
+                                                        }}
+                                                        className="data-[state=checked]:bg-[#8cc63f]"
+                                                    />
+                                                </div>
+
+                                                <div className="flex items-center justify-between group/toggle">
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor="show-hods-popover" className="text-xs font-bold cursor-pointer">Show HOD Details</Label>
+                                                        <p className="text-[10px] text-muted-foreground font-medium">Display HOD name in table</p>
+                                                    </div>
+                                                    <Switch
+                                                        id="show-hods-popover"
+                                                        checked={showHods}
+                                                        onCheckedChange={setShowHods}
+                                                        className="data-[state=checked]:bg-[#8cc63f]"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
+
+                                        {(selectedHodId !== "all" || showAccessibleOnly || showHods) && (
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full h-8 text-[11px] font-black uppercase tracking-widest text-[#8cc63f] hover:text-[#7ab62f] hover:bg-[#8cc63f]/5 border border-dashed border-[#8cc63f]/20"
+                                                onClick={() => {
+                                                    setSelectedHodId("all");
+                                                    setShowAccessibleOnly(false);
+                                                    setShowHods(false);
+                                                }}
+                                            >
+                                                Reset All Filters
+                                            </Button>
+                                        )}
                                     </div>
                                 </PopoverContent>
                             </Popover>

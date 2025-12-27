@@ -62,7 +62,7 @@ const ConfigurationFilters = ({
                             <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 transition-all font-semibold">
                                 <SelectValue placeholder="Select Programme" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-[300px]">
                                 {programmes?.map(p => (
                                     <SelectItem key={p.id} value={p.id.toString()} className="font-semibold text-sm py-3">
                                         {p.name}
@@ -78,7 +78,7 @@ const ConfigurationFilters = ({
                             <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 transition-all font-semibold">
                                 <SelectValue placeholder="Select Level" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-[300px]">
                                 {levels?.map(l => (
                                     <SelectItem key={l.id} value={l.id.toString()} className="font-semibold text-sm py-3">
                                         {l.title}
@@ -94,7 +94,7 @@ const ConfigurationFilters = ({
                             <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-primary/20 transition-all font-semibold">
                                 <SelectValue placeholder="Select Semester" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-[300px]">
                                 {semesters?.map(s => (
                                     <SelectItem key={s.id} value={s.id.toString()} className="font-semibold text-sm py-3">
                                         {s.title || s.name}

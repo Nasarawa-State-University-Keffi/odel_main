@@ -1,8 +1,9 @@
-import { ApplicationType } from "../../../types/admission";
+import { ApplicationType } from "@/features/admin/types/admission";
 import { Badge } from "@/components/ui/badge";
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Globe, UserCheck, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ApplicationCategoryHeaderProps {
     type: ApplicationType;
@@ -10,6 +11,7 @@ interface ApplicationCategoryHeaderProps {
 }
 
 const ApplicationCategoryHeader = ({ type, onEdit }: ApplicationCategoryHeaderProps) => {
+    const { isAdmin } = useAuth();
     return (
         <CardHeader className="p-0 border-b border-border/50">
             <div className="bg-gradient-to-br from-primary/10 via-background to-background p-6">
@@ -29,17 +31,19 @@ const ApplicationCategoryHeader = ({ type, onEdit }: ApplicationCategoryHeaderPr
 
                     </div>
 
-                    <div className="flex flex-col items-end gap-1.5 md:text-right">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onEdit(type)}
-                            className="h-8 gap-2 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground font-bold shadow-sm transition-all"
-                        >
-                            <Settings2 className="h-3.5 w-3.5" />
-                            Edit Config
-                        </Button>
-                    </div>
+                    {!isAdmin && (
+                        <div className="flex flex-col items-end gap-1.5 md:text-right">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => onEdit(type)}
+                                className="h-8 gap-2 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground font-bold shadow-sm transition-all"
+                            >
+                                <Settings2 className="h-3.5 w-3.5" />
+                                Edit Config
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
 
