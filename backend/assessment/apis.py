@@ -2,6 +2,7 @@
 API Views for the Assessment app - Moodle-style Quiz System
 
 DRF ViewSets for assignments, question bank, quizzes, and attempts.
+REFACTORED: Separated Student and Staff endpoints for clean role-based access.
 """
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -17,66 +18,52 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 
 from .models import (
     Assignment, AssignmentSubmission, AssignmentContent, AssignmentSubmissionFile,
-    QuestionCategory, Question, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
+    QuestionCategory, QuestionTypeAvailability, Question, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
 )
 from .serializers import (
     AssignmentSerializer, AssignmentContentSerializer, AssignmentSubmissionSerializer, AssignmentSubmissionFileSerializer,
     AssignmentContentUploadSerializer, AssignmentSubmissionFileUploadSerializer,
-    QuestionCategorySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
+    QuestionCategorySerializer, QuestionTypeAvailabilitySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
     QuizSerializer, QuizDetailSerializer, QuizWithQuestionsSerializer, QuizQuestionSlotSerializer,
     QuizAttemptSerializer, QuizAttemptDetailSerializer,
     StartQuizSerializer, SubmitResponseSerializer, ManualGradeSerializer, StartAssignmentSubmissionSerializer,
-    SubmitAssignmentSerializer
+    SubmitAssignmentSerializer, GradeAssignmentSerializer, GradeSerializer
 )
-from .services import QuizService, QuestionService, create_submission, submit_submission, upload_assignment_content, upload_submission_file
+from .services import QuizService, QuestionService, create_submission, submit_submission, upload_assignment_content, upload_submission_file, grade_assignment_submission
 from .permissions import IsInstructorOrReadOnly
 
 
+# ==========================================
+# STUDENT - ASSIGNMENT APIs
+# ==========================================
+
 @extend_schema_view(
     list=extend_schema(
-        summary="List assignments",
-        description="Retrieve all assignments available to the user."
+        summary="List assignments (students)",
+        description="Students can view published assignments.",
+        tags=['Student - Assignments']
     ),
     retrieve=extend_schema(
-        summary="Retrieve assignment",
-        description="Get detailed information about an assignment."
-    ),
-    create=extend_schema(
-        summary="Create assignment (staff only)",
-        description="Create a new assignment for a course."
-    ),
-    update=extend_schema(
-        summary="Update assignment"
-    ),
-    destroy=extend_schema(
-        summary="Delete assignment"
+        summary="View assignment details (students)",
+        description="Get detailed information about an assignment including content files.",
+        tags=['Student - Assignments']
     ),
 )
-class AssignmentViewSet(viewsets.ModelViewSet):
-    queryset = Assignment.objects.all()
+class StudentAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
+    """Student read-only access to assignments"""
+    queryset = Assignment.objects.filter(is_published=True)
     serializer_class = AssignmentSerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-
-
 
 @extend_schema_view(
     list=extend_schema(
-        summary="List assignment submissions",
-        description="List submissions. Can be filtered by assignment or student.",
+        summary="List my submissions (students)",
+        description="Students can only view their own submissions.",
         parameters=[
             OpenApiParameter(
                 name="assignment",
-                description="Assignment UUID - filter submissions for a specific assignment (staff use)",
-                required=False,
-                type=str,
-                location=OpenApiParameter.QUERY,
-            ),
-            OpenApiParameter(
-                name="student_external_id",
-                description="External student identifier - filter submissions for a specific student",
+                description="Assignment UUID - filter submissions for a specific assignment",
                 required=False,
                 type=str,
                 location=OpenApiParameter.QUERY,
@@ -89,35 +76,35 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 location=OpenApiParameter.QUERY,
             )
         ],
+        tags=['Student - Assignments']
     ),
     retrieve=extend_schema(
-        summary="Retrieve submission",
-        description="Retrieve a specific assignment submission."
+        summary="View my submission (students)",
+        description="Retrieve a specific submission (students can only access their own).",
+        tags=['Student - Assignments']
     ),
 )
-class AssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
+class StudentAssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
+    """Student ViewSet for assignment submissions"""
     serializer_class = AssignmentSubmissionSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = AssignmentSubmission.objects.all().select_related('assignment')
+        """Students can only see their own submissions"""
+        student_id = self.request.user.username
         
-        # Apply filters for list action
-        if self.action == 'list':
-            # Filter by assignment (staff use - see all submissions for an assignment)
-            assignment_id = self.request.query_params.get('assignment')
-            if assignment_id:
-                queryset = queryset.filter(assignment_id=assignment_id)
-            
-            # Filter by student
-            student_id = self.request.query_params.get('student_external_id')
-            if student_id:
-                queryset = queryset.filter(student_external_id=student_id)
-            
-            # Filter by status
-            submission_status = self.request.query_params.get('status')
-            if submission_status:
-                queryset = queryset.filter(status=submission_status)
+        queryset = AssignmentSubmission.objects.filter(
+            student_external_id=student_id
+        ).select_related('assignment')
+        
+        # Apply filters
+        assignment_id = self.request.query_params.get('assignment')
+        if assignment_id:
+            queryset = queryset.filter(assignment_id=assignment_id)
+        
+        submission_status = self.request.query_params.get('status')
+        if submission_status:
+            queryset = queryset.filter(status=submission_status)
         
         return queryset
 
@@ -136,11 +123,12 @@ class AssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
             201: AssignmentSubmissionSerializer,
             400: OpenApiResponse(description="Validation error"),
         },
+        tags=['Student - Assignments']
     )
     @action(detail=False, methods=['post'])
     def start(self, request):
         assignment_id = request.data.get('assignment_id')
-        student_id = request.data.get('student_external_id')
+        student_id = request.user.username
 
         assignment = get_object_or_404(Assignment, id=assignment_id)
 
@@ -152,10 +140,7 @@ class AssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
             )
         except ValueError as e:
             return Response(
-                {
-                    'status': 'error',
-                    'detail': str(e)
-                },
+                {'status': 'error', 'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -176,10 +161,18 @@ class AssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
             ),
             400: OpenApiResponse(description="Invalid submission state"),
         },
+        tags=['Student - Assignments']
     )
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         submission = self.get_object()
+        
+        # Verify student owns this submission
+        if submission.student_external_id != request.user.username:
+            return Response(
+                {'status': 'error', 'detail': 'You can only submit your own assignments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         try:
             submit_submission(submission)
@@ -191,81 +184,243 @@ class AssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
             })
         except ValueError as e:
             return Response(
-                {
-                    'status': 'error',
-                    'detail': str(e)
-                },
+                {'status': 'error', 'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
 
 @extend_schema_view(
-    list=extend_schema(exclude=True),  # Hidden - content fetched with assignment
-    retrieve=extend_schema(exclude=True),  # Hidden - content fetched with assignment
-    create=extend_schema(exclude=True),  # Hidden - use /upload/ instead
-    update=extend_schema(exclude=True),  # Hidden - not supported
-    partial_update=extend_schema(exclude=True),  # Hidden - not supported
+    list=extend_schema(exclude=True),
+    retrieve=extend_schema(exclude=True),
+    create=extend_schema(exclude=True),
+    update=extend_schema(exclude=True),
+    partial_update=extend_schema(exclude=True),
     destroy=extend_schema(
-        summary="Delete assignment content",
-        description="Delete a content file from an assignment (instructors only)",
-        tags=['Assignments']
+        summary="Delete my submission file",
+        description="Remove a file from my submission (only allowed in draft status)",
+        tags=['Student - Assignments']
     )
 )
-class AssignmentContentViewSet(viewsets.ModelViewSet):
-    """
-    API endpoints for assignment content management.
+class StudentAssignmentSubmissionFileViewSet(viewsets.ModelViewSet):
+    """Student ViewSet for managing their own submission files"""
+    queryset = AssignmentSubmissionFile.objects.all()
+    serializer_class = AssignmentSubmissionFileSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
-    Content files are automatically included when fetching assignments.
-    This ViewSet only exposes:
-    - /upload/ - Upload new content files (instructors)
-    - DELETE /{id}/ - Remove content files (instructors)
-    """
+    def get_queryset(self):
+        """Students can only access their own submission files"""
+        student_id = self.request.user.username
+        return AssignmentSubmissionFile.objects.filter(
+            submission__student_external_id=student_id
+        ).select_related('submission')
+    
+    @extend_schema(
+        summary="Upload submission file",
+        description="Upload a file as part of an assignment submission",
+        request=AssignmentSubmissionFileUploadSerializer,
+        responses={201: AssignmentSubmissionFileSerializer},
+        tags=['Student - Assignments']
+    )
+    @method_decorator(csrf_exempt)
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload(self, request):
+        """Upload submission file"""
+        serializer = AssignmentSubmissionFileUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            submission = get_object_or_404(AssignmentSubmission, id=serializer.validated_data['submission'])
+            
+            # Verify student owns this submission
+            if submission.student_external_id != request.user.username:
+                return Response(
+                    {'status': 'error', 'detail': 'You can only upload to your own submissions'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            submission_file = upload_submission_file(
+                file_obj=serializer.validated_data['file'],
+                submission=submission
+            )
+            
+            return Response(
+                AssignmentSubmissionFileSerializer(submission_file).data,
+                status=status.HTTP_201_CREATED
+            )
+            
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+# ==========================================
+# STAFF - ASSIGNMENT APIs
+# ==========================================
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all assignments (staff)",
+        description="Staff can view all assignments including unpublished ones.",
+        tags=['Staff - Assignments']
+    ),
+    retrieve=extend_schema(
+        summary="View assignment details (staff)",
+        description="Get detailed information about any assignment.",
+        tags=['Staff - Assignments']
+    ),
+    create=extend_schema(
+        summary="Create assignment (staff)",
+        description="Create a new assignment for a course.",
+        tags=['Staff - Assignments']
+    ),
+    update=extend_schema(
+        summary="Update assignment (staff)",
+        description="Update an assignment.",
+        tags=['Staff - Assignments']
+    ),
+    destroy=extend_schema(
+        summary="Delete assignment (staff)",
+        description="Delete an assignment.",
+        tags=['Staff - Assignments']
+    ),
+)
+class StaffAssignmentViewSet(viewsets.ModelViewSet):
+    """Staff full CRUD access to assignments"""
+    queryset = Assignment.objects.all()
+    serializer_class = AssignmentSerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all submissions (staff)",
+        description="Staff can view all submissions with filtering options.",
+        parameters=[
+            OpenApiParameter(
+                name="assignment",
+                description="Assignment UUID - filter submissions for a specific assignment",
+                required=False,
+                type=str,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="student_external_id",
+                description="External student identifier - filter submissions for a specific student",
+                required=False,
+                type=str,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="status",
+                description="Submission status - filter by status (draft/submitted/graded/reopened)",
+                required=False,
+                type=str,
+                location=OpenApiParameter.QUERY,
+            )
+        ],
+        tags=['Staff - Assignments']
+    ),
+    retrieve=extend_schema(
+        summary="View any submission (staff)",
+        description="Retrieve detailed information about any student submission.",
+        tags=['Staff - Assignments']
+    ),
+)
+class StaffAssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
+    """Staff ViewSet for assignment submissions"""
+    serializer_class = AssignmentSubmissionSerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    def get_queryset(self):
+        """Staff can see all submissions with comprehensive filtering"""
+        queryset = AssignmentSubmission.objects.all().select_related('assignment')
+        
+        assignment_id = self.request.query_params.get('assignment')
+        if assignment_id:
+            queryset = queryset.filter(assignment_id=assignment_id)
+        
+        student_id = self.request.query_params.get('student_external_id')
+        if student_id:
+            queryset = queryset.filter(student_external_id=student_id)
+        
+        submission_status = self.request.query_params.get('status')
+        if submission_status:
+            queryset = queryset.filter(status=submission_status)
+        
+        return queryset
+
+    @extend_schema(
+        summary="Grade assignment submission",
+        description="""
+        Grade an assignment submission (instructors only).
+
+        - Creates or updates a Grade record
+        - Updates submission status to 'graded'
+        - Sets graded_at timestamp
+        - Automatically calculates percentage and letter grade
+        """,
+        request=GradeAssignmentSerializer,
+        responses={
+            200: GradeSerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
+        tags=['Staff - Assignments']
+    )
+    @action(detail=True, methods=['post'])
+    def grade(self, request, pk=None):
+        """Grade an assignment submission"""
+        submission = self.get_object()
+        
+        serializer = GradeAssignmentSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        marks = serializer.validated_data['marks']
+        
+        try:
+            grade = grade_assignment_submission(submission.id, marks)
+            return Response(
+                GradeSerializer(grade).data,
+                status=status.HTTP_200_OK
+            )
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+@extend_schema_view(
+    list=extend_schema(exclude=True),
+    retrieve=extend_schema(exclude=True),
+    create=extend_schema(exclude=True),
+    update=extend_schema(exclude=True),
+    partial_update=extend_schema(exclude=True),
+    destroy=extend_schema(
+        summary="Delete assignment content (staff)",
+        description="Delete a content file from an assignment",
+        tags=['Staff - Assignments']
+    )
+)
+class StaffAssignmentContentViewSet(viewsets.ModelViewSet):
+    """Staff ViewSet for managing assignment content files"""
     queryset = AssignmentContent.objects.all()
     serializer_class = AssignmentContentSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    
-    def list(self, request, *args, **kwargs):
-        """Disabled - content files are included in assignment endpoint"""
-        return Response(
-            {"detail": "Content files are automatically included when fetching assignments. Use GET /api/assessment/assignments/{id}/"},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    def retrieve(self, request, *args, **kwargs):
-        """Disabled - content files are included in assignment endpoint"""
-        return Response(
-            {"detail": "Content files are automatically included when fetching assignments. Use GET /api/assessment/assignments/{id}/"},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    def create(self, request, *args, **kwargs):
-        """Disabled - use /upload/ endpoint instead"""
-        return Response(
-            {"detail": "Use POST /api/assessment/assignment-content/upload/ to add content files"},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
-    
-    def update(self, request, *args, **kwargs):
-        """Disabled - not supported"""
-        return Response(
-            {"detail": "Assignment content cannot be updated. Delete and re-upload if needed."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
-    
-    def partial_update(self, request, *args, **kwargs):
-        """Disabled - not supported"""
-        return Response(
-            {"detail": "Assignment content cannot be updated. Delete and re-upload if needed."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
     
     @extend_schema(
         summary="Upload assignment content file",
         description="Upload instruction files, resources, or examples for an assignment",
         request=AssignmentContentUploadSerializer,
         responses={201: AssignmentContentSerializer},
-        tags=['Assignments']
+        tags=['Staff - Assignments']
     )
     @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
@@ -275,10 +430,8 @@ class AssignmentContentViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         
         try:
-            # Get assignment
             assignment = get_object_or_404(Assignment, id=serializer.validated_data['assignment'])
             
-            # Upload file
             content = upload_assignment_content(
                 file_obj=serializer.validated_data['file'],
                 assignment=assignment,
@@ -301,346 +454,29 @@ class AssignmentContentViewSet(viewsets.ModelViewSet):
             )
 
 
-@extend_schema_view(
-    list=extend_schema(exclude=True),  # Hidden - files included in submission
-    retrieve=extend_schema(exclude=True),  # Hidden - files included in submission
-    create=extend_schema(exclude=True),  # Hidden - use /upload/ instead
-    update=extend_schema(exclude=True),  # Hidden - not supported
-    partial_update=extend_schema(exclude=True),  # Hidden - not supported
-    destroy=extend_schema(
-        summary="Delete submission file",
-        description="Remove a file from a submission (only allowed in draft status)",
-        tags=['Assignments']
-    )
-)
-class AssignmentSubmissionFileViewSet(viewsets.ModelViewSet):
-    """
-    API endpoints for submission file management.
-    
-    Submission files are automatically included when fetching submissions.
-    This ViewSet only exposes:
-    - /upload/ - Upload files to a submission (students, draft only)
-    - DELETE /{id}/ - Remove files from a submission (students, draft only)
-    """
-    queryset = AssignmentSubmissionFile.objects.all()
-    serializer_class = AssignmentSubmissionFileSerializer
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-    
-    def list(self, request, *args, **kwargs):
-        """Disabled - files are included in submission endpoint"""
-        return Response(
-            {"detail": "Submission files are automatically included when fetching submissions. Use GET /api/assessment/assignment-submissions/{id}/"},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    def retrieve(self, request, *args, **kwargs):
-        """Disabled - files are included in submission endpoint"""
-        return Response(
-            {"detail": "Submission files are automatically included when fetching submissions. Use GET /api/assessment/assignment-submissions/{id}/"},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    def create(self, request, *args, **kwargs):
-        """Disabled - use /upload/ endpoint instead"""
-        return Response(
-            {"detail": "Use POST /api/assessment/assignment-submission-files/upload/ to add files"},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
-    
-    def update(self, request, *args, **kwargs):
-        """Disabled - not supported"""
-        return Response(
-            {"detail": "Submission files cannot be updated. Delete and re-upload if needed."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
-    
-    def partial_update(self, request, *args, **kwargs):
-        """Disabled - not supported"""
-        return Response(
-            {"detail": "Submission files cannot be updated. Delete and re-upload if needed."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
-    
-    @extend_schema(
-        summary="Upload submission file",
-        description="Upload a file as part of an assignment submission",
-        request=AssignmentSubmissionFileUploadSerializer,
-        responses={201: AssignmentSubmissionFileSerializer},
-        tags=['Assignments']
-    )
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
-    def upload(self, request):
-        """Upload submission file"""
-        serializer = AssignmentSubmissionFileUploadSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        try:
-            # Get submission
-            submission = get_object_or_404(AssignmentSubmission, id=serializer.validated_data['submission'])
-            
-            # Upload file
-            submission_file = upload_submission_file(
-                file_obj=serializer.validated_data['file'],
-                submission=submission
-            )
-            
-            return Response(
-                AssignmentSubmissionFileSerializer(submission_file).data,
-                status=status.HTTP_201_CREATED
-            )
-            
-        except ValueError as e:
-            return Response(
-                {'status': 'error', 'detail': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except Exception as e:
-            return Response(
-                {'status': 'error', 'detail': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-
 # ==========================================
-# QUESTION BANK APIs
+# STUDENT - QUIZ APIs
 # ==========================================
 
 @extend_schema_view(
     list=extend_schema(
-        summary="List question categories",
-        description="Retrieve all question categories for a course",
-        tags=['Question Bank'],
+        summary="List available quizzes (students)",
+        description="Students can view published quizzes in their courses.",
         parameters=[
             OpenApiParameter(name='course', description='Filter by course ID', required=False, type=str)
-        ]
-    ),
-    create=extend_schema(
-        summary="Create question category",
-        description="Create a new question category (instructors only)",
-        tags=['Question Bank']
+        ],
+        tags=['Student - Quizzes']
     ),
     retrieve=extend_schema(
-        summary="Get category details",
-        description="Retrieve detailed information about a question category",
-        tags=['Question Bank']
+        summary="View quiz details (students)",
+        description="Get detailed information about a quiz.",
+        tags=['Student - Quizzes']
     ),
-    update=extend_schema(
-        summary="Update category",
-        description="Update a question category (instructors only)",
-        tags=['Question Bank']
-    ),
-    destroy=extend_schema(
-        summary="Delete category",
-        description="Delete a question category (instructors only)",
-        tags=['Question Bank']
-    )
 )
-class QuestionCategoryViewSet(viewsets.ModelViewSet):
-    """API endpoints for question category management"""
-    queryset = QuestionCategory.objects.all()
-    serializer_class = QuestionCategorySerializer
-    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
-    
-    def get_queryset(self):
-        queryset = QuestionCategory.objects.all()
-        
-        # Filter by course if provided
-        course_id = self.request.query_params.get('course')
-        if course_id:
-            queryset = queryset.filter(course_id=course_id)
-        
-        return queryset
-
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="List questions",
-        description="Retrieve questions from the question bank",
-        tags=['Question Bank'],
-        parameters=[
-            OpenApiParameter(name='category', description='Filter by category ID', required=False, type=str),
-            OpenApiParameter(name='qtype', description='Filter by question type', required=False, type=str)
-        ]
-    ),
-    create=extend_schema(
-        summary="Create question",
-        description="""Create a new question with nested answers (instructors only).
-        
-        **Required fields:**
-        - `category`: UUID of the question category
-        - `qtype`: Question type (multichoice, truefalse, shortanswer, essay)
-        - `name`: Short name for the question
-        - `question_text`: The actual question text
-        - `default_mark`: Default marks for this question (e.g., 1.0)
-        - `answers`: Array of answer objects
-        
-        **Answer object structure:**
-        - `answer_text`: The answer text
-        - `fraction`: Correctness (1.0 = correct, 0.0 = incorrect, 0.5 = partially correct)
-        - `feedback`: Feedback for this answer (optional)
-        - `order`: Display order (optional)
-        
-        **Example:**
-        ```json
-        {
-          "category": "uuid-here",
-          "qtype": "multichoice",
-          "name": "Python Basics",
-          "question_text": "What is 2 + 2?",
-          "general_feedback": "Basic arithmetic",
-          "default_mark": 1.0,
-          "penalty": 0.1,
-          "answers": [
-            {"answer_text": "3", "fraction": 0.0, "feedback": "Incorrect", "order": 1},
-            {"answer_text": "4", "fraction": 1.0, "feedback": "Correct!", "order": 2}
-          ]
-        }
-        ```
-        """,
-        tags=['Question Bank']
-    ),
-    retrieve=extend_schema(
-        summary="Get question details",
-        description="Retrieve detailed information about a question",
-        tags=['Question Bank']
-    ),
-    update=extend_schema(
-        summary="Update question",
-        description="Update a question and its answers (instructors only)",
-        tags=['Question Bank']
-    ),
-    destroy=extend_schema(
-        summary="Delete question",
-        description="Delete a question (instructors only)",
-        tags=['Question Bank']
-    )
-)
-class QuestionViewSet(viewsets.ModelViewSet):
-    """API endpoints for question management"""
-    queryset = Question.objects.all()
-    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
-    
-    def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
-            return QuestionCreateUpdateSerializer
-        elif self.request.user.is_staff:
-            return QuestionSerializer  # Full details for instructors
-        else:
-            return QuestionPublicSerializer  # Hide correct answers for students
-    
-    def get_queryset(self):
-        queryset = Question.objects.all()
-        
-        # Filter by category if provided
-        category_id = self.request.query_params.get('category')
-        if category_id:
-            queryset = queryset.filter(category_id=category_id)
-        
-        # Filter by question type if provided
-        qtype = self.request.query_params.get('qtype')
-        if qtype:
-            queryset = queryset.filter(qtype=qtype)
-        
-        return queryset.select_related('category').prefetch_related('answers')
-
-
-# ==========================================
-# QUIZ QUESTION SLOT APIs
-# ==========================================
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="List quiz question slots",
-        description="Retrieve all question slots (links between quizzes and questions)",
-        tags=['Quiz Questions'],
-        parameters=[
-            OpenApiParameter(name='quiz', description='Filter by quiz ID', required=False, type=str),
-            OpenApiParameter(name='question', description='Filter by question ID', required=False, type=str)
-        ]
-    ),
-    retrieve=extend_schema(
-        summary="Get quiz question slot details",
-        description="Retrieve a specific quiz question slot",
-        tags=['Quiz Questions']
-    ),
-    create=extend_schema(
-        summary="Add question to quiz",
-        description="Create a link between a quiz and question with order and max_mark (instructors only)",
-        tags=['Quiz Questions']
-    ),
-    update=extend_schema(
-        summary="Update quiz question slot",
-        description="Update the order or max_mark of a question in a quiz (instructors only)",
-        tags=['Quiz Questions']
-    ),
-    destroy=extend_schema(
-        summary="Remove question from quiz",
-        description="Delete the link between a quiz and question (instructors only)",
-        tags=['Quiz Questions']
-    )
-)
-class QuizQuestionViewSet(viewsets.ModelViewSet):
-    """API endpoints for managing quiz-question slots (adding/removing questions from quizzes)"""
-    queryset = QuizQuestion.objects.all()
-    serializer_class = QuizQuestionSlotSerializer
-    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
-    
-    def get_queryset(self):
-        queryset = QuizQuestion.objects.all()
-        
-        # Filter by quiz if provided
-        quiz_id = self.request.query_params.get('quiz')
-        if quiz_id:
-            queryset = queryset.filter(quiz_id=quiz_id)
-        
-        # Filter by question if provided
-        question_id = self.request.query_params.get('question')
-        if question_id:
-            queryset = queryset.filter(question_id=question_id)
-        
-        return queryset.select_related('quiz', 'question')
-
-
-# ==========================================
-# QUIZ APIs
-# ==========================================
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="List quizzes",
-        description="Retrieve a list of all quizzes",
-        tags=['Quizzes'],
-        parameters=[
-            OpenApiParameter(name='course', description='Filter by course ID', required=False, type=str)
-        ]
-    ),
-    retrieve=extend_schema(
-        summary="Get quiz details",
-        description="Retrieve detailed information about a specific quiz",
-        tags=['Quizzes']
-    ),
-    create=extend_schema(
-        summary="Create a new quiz",
-        description="Create a new quiz (instructors only)",
-        tags=['Quizzes']
-    ),
-    update=extend_schema(
-        summary="Update quiz",
-        description="Update a quiz (instructors only)",
-        tags=['Quizzes']
-    ),
-    destroy=extend_schema(
-        summary="Delete quiz",
-        description="Delete a quiz (instructors only)",
-        tags=['Quizzes']
-    )
-)
-class QuizViewSet(viewsets.ModelViewSet):
-    """API endpoints for Quiz management"""
+class StudentQuizViewSet(viewsets.ReadOnlyModelViewSet):
+    """Student read-only access to quizzes"""
     queryset = Quiz.objects.all()
-    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -654,7 +490,6 @@ class QuizViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Quiz.objects.all()
         
-        # Filter by course if provided
         course_id = self.request.query_params.get('course')
         if course_id:
             queryset = queryset.filter(course_id=course_id)
@@ -664,98 +499,55 @@ class QuizViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="Start a quiz attempt",
         description="Start a new attempt for a quiz. Creates QuestionAttempts for all questions.",
-        tags=['Quizzes'],
+        tags=['Student - Quizzes'],
         request=StartQuizSerializer,
         responses={201: QuizAttemptSerializer}
     )
     @action(detail=True, methods=['post'])
     def start(self, request, pk=None):
-        """Start a new quiz attempt using QuizService"""
+        """Start a new quiz attempt"""
         quiz = self.get_object()
         serializer = StartQuizSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        user_external_id = serializer.validated_data['user_external_id']
+        user_external_id = request.user.username
         
         try:
-            attempt = QuizService.start_attempt(
-                quiz=quiz,
-                user_external_id=user_external_id
-            )
+            attempt = QuizService.start_attempt(quiz=quiz, user_external_id=user_external_id)
             response_serializer = QuizAttemptSerializer(attempt)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     @extend_schema(
         summary="Submit a question response",
-        description="""Submit an answer for a single question in an active quiz attempt. Grading happens immediately.
-
-**Response format depends on question type:**
-
-**Multiple Choice / True-False:**
-```json
-{
-  "question_id": "uuid-of-question",
-  "response": {
-    "selected": ["uuid-of-selected-answer"]
-  }
-}
-```
-
-**Short Answer / Essay:**
-```json
-{
-  "question_id": "uuid-of-question",
-  "response": {
-    "answer_text": "Your text answer here"
-  }
-}
-```
-
-The endpoint returns immediate grading results with score and feedback.""",
-        tags=['Quizzes'],
+        description="Submit an answer for a single question in an active quiz attempt. Grading happens immediately.",
+        tags=['Student - Quizzes'],
         request=SubmitResponseSerializer,
         responses={200: dict},
-        examples=[
-            OpenApiExample(
-                'Multiple Choice Response',
-                value={
-                    "question_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "response": {
-                        "selected": ["7ea85f64-5717-4562-b3fc-2c963f66afa7"]
-                    }
-                },
-                request_only=True
-            ),
-            OpenApiExample(
-                'Short Answer Response',
-                value={
-                    "question_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "response": {
-                        "answer_text": "Python"
-                    }
-                },
-                request_only=True
-            )
-        ]
     )
     @action(detail=True, methods=['post'], url_path='attempts/(?P<attempt_id>[^/.]+)/submit')
     def submit_response(self, request, pk=None, attempt_id=None):
-        """Submit a response for a question using QuizService"""
+        """Submit a response for a question"""
         serializer = SubmitResponseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
             attempt = QuizAttempt.objects.get(id=attempt_id, quiz_id=pk)
+            
+            # Verify student owns this attempt
+            if attempt.user_external_id != request.user.username:
+                return Response(
+                    {'error': 'You can only submit to your own quiz attempts'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
         except QuizAttempt.DoesNotExist:
             return Response({'error': 'Quiz attempt not found'}, status=status.HTTP_404_NOT_FOUND)
         
         question_id = serializer.validated_data['question_id']
         response_data = serializer.validated_data['response']
         
-        # Get the question object
         try:
             question = Question.objects.get(id=question_id)
         except Question.DoesNotExist:
@@ -775,21 +567,28 @@ The endpoint returns immediate grading results with score and feedback.""",
                 'score': float(question_attempt.score),
                 'feedback': question_attempt.feedback
             })
-        
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     @extend_schema(
         summary="Finish quiz attempt",
         description="Mark the quiz attempt as finished and calculate the final grade.",
-        tags=['Quizzes'],
+        tags=['Student - Quizzes'],
         responses={200: QuizAttemptDetailSerializer}
     )
     @action(detail=True, methods=['post'], url_path='attempts/(?P<attempt_id>[^/.]+)/finish')
     def finish(self, request, pk=None, attempt_id=None):
-        """Finish a quiz attempt using QuizService"""
+        """Finish a quiz attempt"""
         try:
             attempt = QuizAttempt.objects.get(id=attempt_id, quiz_id=pk)
+            
+            # Verify student owns this attempt
+            if attempt.user_external_id != request.user.username:
+                return Response(
+                    {'error': 'You can only finish your own quiz attempts'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
         except QuizAttempt.DoesNotExist:
             return Response({'error': 'Quiz attempt not found'}, status=status.HTTP_404_NOT_FOUND)
         
@@ -797,14 +596,13 @@ The endpoint returns immediate grading results with score and feedback.""",
             QuizService.finish_attempt(attempt)
             serializer = QuizAttemptDetailSerializer(attempt)
             return Response(serializer.data)
-        
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     @extend_schema(
         summary="Get quiz with questions",
-        description="Retrieve quiz with all questions (for taking the quiz). Answers are hidden.",
-        tags=['Quizzes'],
+        description="Retrieve quiz with all questions for taking. Answers are hidden.",
+        tags=['Student - Quizzes'],
         responses={200: QuizWithQuestionsSerializer}
     )
     @action(detail=True, methods=['get'])
@@ -815,28 +613,24 @@ The endpoint returns immediate grading results with score and feedback.""",
         return Response(serializer.data)
 
 
-# ==========================================
-# QUIZ ATTEMPT APIs
-# ==========================================
-
 @extend_schema_view(
     list=extend_schema(
-        summary="List quiz attempts",
-        description="Retrieve quiz attempts for the current user (students) or all attempts (instructors)",
-        tags=['Quiz Attempts'],
+        summary="List my quiz attempts (students)",
+        description="Students can view their own quiz attempts.",
         parameters=[
             OpenApiParameter(name='quiz', description='Filter by quiz ID', required=False, type=str),
             OpenApiParameter(name='state', description='Filter by state (in_progress, finished, abandoned)', required=False, type=str)
-        ]
+        ],
+        tags=['Student - Quizzes']
     ),
     retrieve=extend_schema(
-        summary="Get quiz attempt details",
-        description="Retrieve detailed results for a specific quiz attempt with all question attempts",
-        tags=['Quiz Attempts']
+        summary="View my attempt details (students)",
+        description="Retrieve detailed results for a specific quiz attempt.",
+        tags=['Student - Quizzes']
     )
 )
-class QuizAttemptViewSet(viewsets.ReadOnlyModelViewSet):
-    """API endpoints for viewing quiz attempts and results"""
+class StudentQuizAttemptViewSet(viewsets.ReadOnlyModelViewSet):
+    """Student ViewSet for quiz attempts"""
     permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
@@ -845,22 +639,14 @@ class QuizAttemptViewSet(viewsets.ReadOnlyModelViewSet):
         return QuizAttemptSerializer
     
     def get_queryset(self):
-        queryset = QuizAttempt.objects.all()
+        """Students can only see their own attempts"""
+        user_external_id = self.request.user.username
+        queryset = QuizAttempt.objects.filter(user_external_id=user_external_id)
         
-        # Students can only see their own attempts
-        if not self.request.user.is_staff:
-            user_external_id = getattr(self.request.user, 'username', None) or self.request.META.get('HTTP_X_USER_EXTERNAL_ID')
-            if user_external_id:
-                queryset = queryset.filter(user_external_id=user_external_id)
-            else:
-                return QuizAttempt.objects.none()
-        
-        # Filter by quiz if provided
         quiz_id = self.request.query_params.get('quiz')
         if quiz_id:
             queryset = queryset.filter(quiz_id=quiz_id)
         
-        # Filter by state if provided
         state = self.request.query_params.get('state')
         if state:
             queryset = queryset.filter(state=state)
@@ -868,39 +654,123 @@ class QuizAttemptViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset.select_related('quiz').prefetch_related('question_attempts__question')
     
     @extend_schema(
-        summary="Get attempt summary",
-        description="Get statistics and summary for a quiz attempt",
-        tags=['Quiz Attempts'],
+        summary="Get my attempt summary",
+        description="Get statistics and summary for my quiz attempt",
+        tags=['Student - Quizzes'],
         responses={200: dict}
     )
     @action(detail=True, methods=['get'])
     def summary(self, request, pk=None):
         """Get attempt summary statistics"""
         attempt = self.get_object()
-        
-        # Check permissions
-        if not request.user.is_staff:
-            user_external_id = getattr(request.user, 'username', None) or request.META.get('HTTP_X_USER_EXTERNAL_ID')
-            if attempt.user_external_id != user_external_id:
-                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-        
         summary = QuizService.get_attempt_summary(attempt)
         return Response(summary)
+
+
+# ==========================================
+# STAFF - QUIZ APIs
+# ==========================================
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all quizzes (staff)",
+        description="Staff can view all quizzes including unpublished ones.",
+        parameters=[
+            OpenApiParameter(name='course', description='Filter by course ID', required=False, type=str)
+        ],
+        tags=['Staff - Quizzes']
+    ),
+    retrieve=extend_schema(
+        summary="View quiz details (staff)",
+        description="Get detailed information about any quiz.",
+        tags=['Staff - Quizzes']
+    ),
+    create=extend_schema(
+        summary="Create quiz (staff)",
+        description="Create a new quiz.",
+        tags=['Staff - Quizzes']
+    ),
+    update=extend_schema(
+        summary="Update quiz (staff)",
+        description="Update a quiz.",
+        tags=['Staff - Quizzes']
+    ),
+    destroy=extend_schema(
+        summary="Delete quiz (staff)",
+        description="Delete a quiz.",
+        tags=['Staff - Quizzes']
+    )
+)
+class StaffQuizViewSet(viewsets.ModelViewSet):
+    """Staff full CRUD access to quizzes"""
+    queryset = Quiz.objects.all()
+    serializer_class = QuizSerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    
+    def get_queryset(self):
+        queryset = Quiz.objects.all()
+        
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+        
+        return queryset.select_related('course').prefetch_related('quiz_questions__question')
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all quiz attempts (staff)",
+        description="Staff can view all quiz attempts across all students.",
+        parameters=[
+            OpenApiParameter(name='quiz', description='Filter by quiz ID', required=False, type=str),
+            OpenApiParameter(name='user_external_id', description='Filter by student', required=False, type=str),
+            OpenApiParameter(name='state', description='Filter by state (in_progress, finished, abandoned)', required=False, type=str)
+        ],
+        tags=['Staff - Quizzes']
+    ),
+    retrieve=extend_schema(
+        summary="View any attempt details (staff)",
+        description="Retrieve detailed results for any quiz attempt.",
+        tags=['Staff - Quizzes']
+    )
+)
+class StaffQuizAttemptViewSet(viewsets.ReadOnlyModelViewSet):
+    """Staff ViewSet for quiz attempts"""
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return QuizAttemptDetailSerializer
+        return QuizAttemptSerializer
+    
+    def get_queryset(self):
+        """Staff can see all attempts"""
+        queryset = QuizAttempt.objects.all()
+        
+        quiz_id = self.request.query_params.get('quiz')
+        if quiz_id:
+            queryset = queryset.filter(quiz_id=quiz_id)
+        
+        user_external_id = self.request.query_params.get('user_external_id')
+        if user_external_id:
+            queryset = queryset.filter(user_external_id=user_external_id)
+        
+        state = self.request.query_params.get('state')
+        if state:
+            queryset = queryset.filter(state=state)
+        
+        return queryset.select_related('quiz').prefetch_related('question_attempts__question')
     
     @extend_schema(
         summary="Manually grade a question",
         description="Manually grade a question attempt (for essay questions or override)",
-        tags=['Quiz Attempts'],
+        tags=['Staff - Quizzes'],
         request=ManualGradeSerializer,
         responses={200: dict}
     )
     @action(detail=True, methods=['post'], url_path='questions/(?P<question_attempt_id>[^/.]+)/grade')
     def manual_grade(self, request, pk=None, question_attempt_id=None):
         """Manually grade a question attempt"""
-        # Only instructors can manually grade
-        if not request.user.is_staff:
-            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-        
         serializer = ManualGradeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -921,6 +791,292 @@ class QuizAttemptViewSet(viewsets.ReadOnlyModelViewSet):
                 'score': float(question_attempt.score),
                 'feedback': question_attempt.feedback
             })
-        
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==========================================
+# STAFF - QUESTION BANK APIs
+# ==========================================
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List question categories (staff)",
+        description="Retrieve all question categories.",
+        parameters=[
+            OpenApiParameter(name='course', description='Filter by course ID', required=False, type=str)
+        ],
+        tags=['Staff - Question Bank']
+    ),
+    create=extend_schema(
+        summary="Create question category (staff)",
+        description="Create a new question category.",
+        tags=['Staff - Question Bank']
+    ),
+    retrieve=extend_schema(
+        summary="Get category details (staff)",
+        description="Retrieve detailed information about a question category.",
+        tags=['Staff - Question Bank']
+    ),
+    update=extend_schema(
+        summary="Update category (staff)",
+        description="Update a question category.",
+        tags=['Staff - Question Bank']
+    ),
+    destroy=extend_schema(
+        summary="Delete category (staff)",
+        description="Delete a question category.",
+        tags=['Staff - Question Bank']
+    )
+)
+class StaffQuestionCategoryViewSet(viewsets.ModelViewSet):
+    """Staff full CRUD access to question categories"""
+    queryset = QuestionCategory.objects.all()
+    serializer_class = QuestionCategorySerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    
+    def get_queryset(self):
+        queryset = QuestionCategory.objects.all()
+        
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+        
+        return queryset
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List question type availability settings (staff)",
+        description="View configurations for which question types are enabled for different educational levels.",
+        parameters=[
+            OpenApiParameter(name='level', description='Filter by educational level', required=False, type=str),
+            OpenApiParameter(name='question_type', description='Filter by question type', required=False, type=str),
+            OpenApiParameter(name='is_enabled', description='Filter by enabled status', required=False, type=bool)
+        ],
+        tags=['Staff - Question Bank']
+    ),
+    create=extend_schema(
+        summary="Create question type availability setting (staff)",
+        description="Configure which question types are available for a specific educational level.",
+        tags=['Staff - Question Bank']
+    ),
+    retrieve=extend_schema(
+        summary="Get question type availability setting (staff)",
+        description="Retrieve a specific question type availability configuration.",
+        tags=['Staff - Question Bank']
+    ),
+    update=extend_schema(
+        summary="Update question type availability (staff)",
+        description="Update question type availability settings.",
+        tags=['Staff - Question Bank']
+    ),
+    destroy=extend_schema(
+        summary="Delete question type availability setting (staff)",
+        description="Delete a question type availability configuration.",
+        tags=['Staff - Question Bank']
+    )
+)
+class StaffQuestionTypeAvailabilityViewSet(viewsets.ModelViewSet):
+    """Staff full CRUD access to question type availability settings"""
+    queryset = QuestionTypeAvailability.objects.all()
+    serializer_class = QuestionTypeAvailabilitySerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    
+    def get_queryset(self):
+        queryset = QuestionTypeAvailability.objects.all()
+        
+        level = self.request.query_params.get('level')
+        if level:
+            queryset = queryset.filter(level=level)
+        
+        question_type = self.request.query_params.get('question_type')
+        if question_type:
+            queryset = queryset.filter(question_type=question_type)
+        
+        is_enabled = self.request.query_params.get('is_enabled')
+        if is_enabled is not None:
+            queryset = queryset.filter(is_enabled=is_enabled.lower() == 'true')
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        """Automatically set created_by field"""
+        serializer.save(created_by=self.request.user)
+    
+    @extend_schema(
+        summary="Get available question types for a level",
+        description="Get list of enabled question types for a specific educational level.",
+        parameters=[
+            OpenApiParameter(name='level', description='Educational level to check', required=True, type=str)
+        ],
+        responses={200: dict},
+        tags=['Staff - Question Bank']
+    )
+    @action(detail=False, methods=['get'])
+    def available_types(self, request):
+        """Get available question types for a specific level"""
+        level = request.query_params.get('level')
+        if not level:
+            return Response(
+                {'error': 'level parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        available = QuestionTypeAvailability.get_available_question_types(level)
+        return Response({
+            'level': level,
+            'available_question_types': available
+        })
+    
+    @extend_schema(
+        summary="Check if question type is allowed",
+        description="Check if a specific question type is allowed for a given educational level.",
+        parameters=[
+            OpenApiParameter(name='level', description='Educational level', required=True, type=str),
+            OpenApiParameter(name='question_type', description='Question type to check', required=True, type=str)
+        ],
+        responses={200: dict},
+        tags=['Staff - Question Bank']
+    )
+    @action(detail=False, methods=['get'])
+    def check_allowed(self, request):
+        """Check if a question type is allowed for a level"""
+        level = request.query_params.get('level')
+        question_type = request.query_params.get('question_type')
+        
+        if not level or not question_type:
+            return Response(
+                {'error': 'Both level and question_type parameters are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        is_allowed = QuestionTypeAvailability.is_question_type_allowed(level, question_type)
+        return Response({
+            'level': level,
+            'question_type': question_type,
+            'is_allowed': is_allowed
+        })
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List questions (staff)",
+        description="Retrieve questions from the question bank.",
+        parameters=[
+            OpenApiParameter(name='category', description='Filter by category ID', required=False, type=str),
+            OpenApiParameter(name='qtype', description='Filter by question type', required=False, type=str)
+        ],
+        tags=['Staff - Question Bank']
+    ),
+    create=extend_schema(
+        summary="Create question (staff)",
+        description="Create a new question with nested answers.",
+        tags=['Staff - Question Bank']
+    ),
+    retrieve=extend_schema(
+        summary="Get question details (staff)",
+        description="Retrieve detailed information about a question.",
+        tags=['Staff - Question Bank']
+    ),
+    update=extend_schema(
+        summary="Update question (staff)",
+        description="Update a question and its answers.",
+        tags=['Staff - Question Bank']
+    ),
+    destroy=extend_schema(
+        summary="Delete question (staff)",
+        description="Delete a question.",
+        tags=['Staff - Question Bank']
+    )
+)
+class StaffQuestionViewSet(viewsets.ModelViewSet):
+    """Staff full CRUD access to questions"""
+    queryset = Question.objects.all()
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return QuestionCreateUpdateSerializer
+        return QuestionSerializer
+    
+    def get_queryset(self):
+        queryset = Question.objects.all()
+        
+        category_id = self.request.query_params.get('category')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        
+        qtype = self.request.query_params.get('qtype')
+        if qtype:
+            queryset = queryset.filter(qtype=qtype)
+        
+        return queryset.select_related('category').prefetch_related('answers')
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List quiz question slots (staff)",
+        description="Retrieve all question slots (links between quizzes and questions).",
+        parameters=[
+            OpenApiParameter(name='quiz', description='Filter by quiz ID', required=False, type=str),
+            OpenApiParameter(name='question', description='Filter by question ID', required=False, type=str)
+        ],
+        tags=['Staff - Quiz Questions']
+    ),
+    retrieve=extend_schema(
+        summary="Get quiz question slot (staff)",
+        description="Retrieve a specific quiz question slot.",
+        tags=['Staff - Quiz Questions']
+    ),
+    create=extend_schema(
+        summary="Add question to quiz (staff)",
+        description="Create a link between a quiz and question with order and max_mark.",
+        tags=['Staff - Quiz Questions']
+    ),
+    update=extend_schema(
+        summary="Update quiz question slot (staff)",
+        description="Update the order or max_mark of a question in a quiz.",
+        tags=['Staff - Quiz Questions']
+    ),
+    destroy=extend_schema(
+        summary="Remove question from quiz (staff)",
+        description="Delete the link between a quiz and question.",
+        tags=['Staff - Quiz Questions']
+    )
+)
+class StaffQuizQuestionViewSet(viewsets.ModelViewSet):
+    """Staff full CRUD access to quiz-question slots"""
+    queryset = QuizQuestion.objects.all()
+    serializer_class = QuizQuestionSlotSerializer
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+    
+    def get_queryset(self):
+        queryset = QuizQuestion.objects.all()
+        
+        quiz_id = self.request.query_params.get('quiz')
+        if quiz_id:
+            queryset = queryset.filter(quiz_id=quiz_id)
+        
+        question_id = self.request.query_params.get('question')
+        if question_id:
+            queryset = queryset.filter(question_id=question_id)
+        
+        return queryset.select_related('quiz', 'question')
+
+
+# ==========================================
+# BACKWARD COMPATIBILITY (DEPRECATED) - REMOVED
+# All deprecated ViewSets have been removed.
+# Use Student* or Staff* prefixed ViewSets instead.
+# ==========================================
+
+# REMOVED: AssignmentViewSet - Use StudentAssignmentViewSet or StaffAssignmentViewSet
+# REMOVED: AssignmentSubmissionViewSet - Use StudentAssignmentSubmissionViewSet or StaffAssignmentSubmissionViewSet
+# REMOVED: AssignmentContentViewSet - Use StaffAssignmentContentViewSet
+# REMOVED: AssignmentSubmissionFileViewSet - Use StudentAssignmentSubmissionFileViewSet
+# REMOVED: QuestionCategoryViewSet - Use StaffQuestionCategoryViewSet
+# REMOVED: QuestionViewSet - Use StaffQuestionViewSet
+# REMOVED: QuizQuestionViewSet - Use StaffQuizQuestionViewSet
+# REMOVED: QuizViewSet - Use StudentQuizViewSet or StaffQuizViewSet
+# REMOVED: QuizAttemptViewSet - Use StudentQuizAttemptViewSet or StaffQuizAttemptViewSet

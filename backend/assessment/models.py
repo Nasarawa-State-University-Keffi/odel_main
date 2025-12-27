@@ -48,6 +48,13 @@ class Assignment(models.Model):
 
     allow_late_submission = models.BooleanField(default=False)
     is_published = models.BooleanField(default=False)
+    
+    max_marks = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=10.00,
+        help_text="Maximum marks for this assignment"
+    )
 
     created_by = models.ForeignKey(
         User,
@@ -177,6 +184,10 @@ class AssignmentSubmission(models.Model):
 
     submitted_at = models.DateTimeField(null=True, blank=True)
     graded_at = models.DateTimeField(null=True, blank=True)
+    marks = models.DecimalField(
+        max_digits=6, decimal_places=2, blank=True, null=True,
+        help_text="Final score for this submission attempt"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -247,10 +258,25 @@ class QuestionCategory(models.Model):
     Organizes questions into categories for reuse across quizzes.
     Similar to Moodle's question bank categories.
     """
+    LEVEL_CHOICES = (
+        ('100', '100'),
+        ('200', '200'),
+        ('300', '300'),
+        ('400', '400'),
+        ('500', '500'),
+        ('all', 'All Levels'),
+    )
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     course = models.ForeignKey('courses.CourseCache', on_delete=models.CASCADE, related_name='question_categories')
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    level = models.CharField(
+        max_length=50,
+        choices=LEVEL_CHOICES,
+        default='all',
+        help_text="Educational level for questions in this category (100-500)"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -262,6 +288,116 @@ class QuestionCategory(models.Model):
 
     def __str__(self):
         return f"{self.course} - {self.name}"
+
+
+class QuestionTypeAvailability(models.Model):
+    """
+    Global database-configurable settings to control which question types
+    are available for different educational levels or contexts.
+    
+    This allows administrators to restrict certain question types
+    (e.g., only multiple choice for elementary, essays for university)
+    """
+    LEVEL_CHOICES = (
+        ('100', '100'),
+        ('200', '200'),
+        ('300', '300'),
+        ('400', '400'),
+        ('500', '500'),
+        ('all', 'All Levels'),
+    )
+    
+    QUESTION_TYPE_CHOICES = (
+        ('multichoice', 'Multiple Choice'),
+        ('truefalse', 'True/False'),
+        ('shortanswer', 'Short Answer'),
+        ('essay', 'Essay'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    level = models.CharField(
+        max_length=50,
+        choices=LEVEL_CHOICES,
+        db_index=True,
+        help_text="Educational level this setting applies to"
+    )
+    question_type = models.CharField(
+        max_length=32,
+        choices=QUESTION_TYPE_CHOICES,
+        db_index=True,
+        help_text="Type of question"
+    )
+    is_enabled = models.BooleanField(
+        default=True,
+        help_text="Whether this question type is enabled for this level"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional description or reason for this configuration"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='question_type_settings'
+    )
+    
+    class Meta:
+        ordering = ['level', 'question_type']
+        verbose_name = 'Question Type Availability'
+        verbose_name_plural = 'Question Type Availabilities'
+        unique_together = [['level', 'question_type']]
+        indexes = [
+            models.Index(fields=['level', 'is_enabled']),
+            models.Index(fields=['question_type', 'is_enabled']),
+        ]
+    
+    def __str__(self):
+        status = "Enabled" if self.is_enabled else "Disabled"
+        return f"{self.get_level_display()} - {self.get_question_type_display()}: {status}"
+    
+    @classmethod
+    def is_question_type_allowed(cls, level, question_type):
+        """
+        Check if a question type is allowed for a given level.
+        Returns True if no setting exists (default allow) or if explicitly enabled.
+        """
+        try:
+            setting = cls.objects.get(level=level, question_type=question_type)
+            return setting.is_enabled
+        except cls.DoesNotExist:
+            # If no setting exists, check for 'all' level fallback
+            try:
+                fallback = cls.objects.get(level='all', question_type=question_type)
+                return fallback.is_enabled
+            except cls.DoesNotExist:
+                # Default to True if no configuration exists
+                return True
+    
+    @classmethod
+    def get_available_question_types(cls, level):
+        """
+        Get list of enabled question types for a given level.
+        Returns all types if no restrictions are configured.
+        If any restrictions exist for a level, only enabled types are returned.
+        """
+        all_types = [choice[0] for choice in cls.QUESTION_TYPE_CHOICES]
+        
+        # Get settings for this level
+        settings = cls.objects.filter(level=level)
+        if not settings.exists():
+            # Check for 'all' level settings
+            settings = cls.objects.filter(level='all')
+            if not settings.exists():
+                # No restrictions configured, return all types
+                return all_types
+        
+        # If settings exist, only return enabled types
+        enabled_types = [s.question_type for s in settings if s.is_enabled]
+        return enabled_types
 
 
 class Question(models.Model):
@@ -317,6 +453,30 @@ class Question(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_qtype_display()})"
+    
+    def clean(self):
+        """
+        Validate that the question type is allowed for the category's level.
+        """
+        from django.core.exceptions import ValidationError
+        
+        if self.category and self.qtype:
+            # Check if this question type is allowed for the category's level
+            is_allowed = QuestionTypeAvailability.is_question_type_allowed(
+                level=self.category.level,
+                question_type=self.qtype
+            )
+            
+            if not is_allowed:
+                raise ValidationError({
+                    'qtype': f"Question type '{self.get_qtype_display()}' is not allowed for {self.category.get_level_display()} level. "
+                            f"Please check the Question Type Availability settings or choose a different question type."
+                })
+    
+    def save(self, *args, **kwargs):
+        """Override save to call full_clean for validation"""
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class QuestionAnswer(models.Model):
@@ -492,3 +652,156 @@ class QuestionAttempt(models.Model):
 
     def __str__(self):
         return f"Attempt {self.quiz_attempt.id} - {self.question.name}"
+
+
+# ==========================================
+# GRADEBOOK SYSTEM
+# ==========================================
+
+class Grade(models.Model):
+    """
+    Gradebook entry for a student in a course.
+    Each grade entry represents one scored item (assignment or quiz attempt).
+    Supports multiple attempts by linking to specific submissions.
+    """
+    
+    GRADE_TYPE_CHOICES = (
+        ('assignment', 'Assignment'),
+        ('quiz', 'Quiz'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    student_external_id = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text="External student identifier"
+    )
+    
+    course = models.ForeignKey(
+        CourseCache,
+        on_delete=models.CASCADE,
+        related_name='grades',
+        help_text="Course this grade belongs to"
+    )
+    
+    grade_type = models.CharField(
+        max_length=20,
+        choices=GRADE_TYPE_CHOICES,
+        db_index=True,
+        help_text="Type of graded item"
+    )
+    
+    # Link to specific graded items (one will be set, the other null)
+    assignment_submission = models.ForeignKey(
+        'AssignmentSubmission',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='grades',
+        help_text="Link to graded assignment submission"
+    )
+    
+    quiz_attempt = models.ForeignKey(
+        'QuizAttempt',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='grades',
+        help_text="Link to graded quiz attempt"
+    )
+    
+    # Score information
+    marks = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Score earned by student"
+    )
+    
+    total_possible = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Maximum possible score for this item"
+    )
+    
+    percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Percentage score (marks/total_possible × 100)"
+    )
+    
+    # Timestamps
+    graded_at = models.DateTimeField(
+        help_text="When the item was graded"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-graded_at']
+        indexes = [
+            models.Index(fields=['student_external_id', 'course']),
+            models.Index(fields=['course', 'grade_type']),
+            models.Index(fields=['student_external_id', 'course', 'grade_type']),
+        ]
+        constraints = [
+            # Ensure only one grade per assignment submission
+            models.UniqueConstraint(
+                fields=['assignment_submission'],
+                name='unique_assignment_submission_grade',
+                condition=models.Q(assignment_submission__isnull=False)
+            ),
+            # Ensure only one grade per quiz attempt
+            models.UniqueConstraint(
+                fields=['quiz_attempt'],
+                name='unique_quiz_attempt_grade',
+                condition=models.Q(quiz_attempt__isnull=False)
+            ),
+        ]
+        verbose_name = 'Grade'
+        verbose_name_plural = 'Grades'
+    
+    def save(self, *args, **kwargs):
+        """Calculate percentage before saving"""
+        if self.marks is not None and self.total_possible and self.total_possible > 0:
+            self.percentage = (self.marks / self.total_possible) * 100
+        super().save(*args, **kwargs)
+    
+    def clean(self):
+        """Validate that exactly one of assignment_submission or quiz_attempt is set"""
+        from django.core.exceptions import ValidationError
+        
+        if self.assignment_submission and self.quiz_attempt:
+            raise ValidationError("Grade cannot be linked to both assignment and quiz")
+        
+        if not self.assignment_submission and not self.quiz_attempt:
+            raise ValidationError("Grade must be linked to either assignment submission or quiz attempt")
+        
+        # Validate grade_type matches the linked item
+        if self.assignment_submission and self.grade_type != 'assignment':
+            raise ValidationError("grade_type must be 'assignment' when assignment_submission is set")
+        
+        if self.quiz_attempt and self.grade_type != 'quiz':
+            raise ValidationError("grade_type must be 'quiz' when quiz_attempt is set")
+    
+    def __str__(self):
+        if self.assignment_submission:
+            item_name = self.assignment_submission.assignment.title
+        elif self.quiz_attempt:
+            item_name = self.quiz_attempt.quiz.name
+        else:
+            item_name = "Unknown"
+        
+        return f"{self.student_external_id} - {item_name}: {self.marks}/{self.total_possible}"
+    
+    @property
+    def item_name(self):
+        """Get the name of the graded item"""
+        if self.assignment_submission:
+            return self.assignment_submission.assignment.title
+        elif self.quiz_attempt:
+            return self.quiz_attempt.quiz.name
+        return "Unknown"

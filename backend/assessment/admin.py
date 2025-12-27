@@ -4,10 +4,12 @@ Assessment app admin - Moodle-style Quiz System
 Django admin configurations for question bank, quizzes, and attempts.
 """
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import (
     Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
-    QuestionCategory, Question, QuestionAnswer,
-    Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
+    QuestionCategory, QuestionTypeAvailability, Question, QuestionAnswer,
+    Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
+    Grade
 )
 
 
@@ -75,6 +77,69 @@ class QuestionCategoryAdmin(admin.ModelAdmin):
     list_filter = ('course', 'created_at')
     search_fields = ('name', 'description')
     date_hierarchy = 'created_at'
+
+
+@admin.register(QuestionTypeAvailability)
+class QuestionTypeAvailabilityAdmin(admin.ModelAdmin):
+    """Admin for managing question type availability by educational level"""
+    list_display = ('level_display', 'question_type_display', 'is_enabled_icon', 'created_at', 'created_by')
+    list_filter = ('level', 'question_type', 'is_enabled', 'created_at')
+    search_fields = ('description',)
+    date_hierarchy = 'created_at'
+    readonly_fields = ('created_at', 'updated_at', 'created_by')
+    
+    fieldsets = (
+        ('Configuration', {
+            'fields': ('level', 'question_type', 'is_enabled')
+        }),
+        ('Details', {
+            'fields': ('description',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at', 'created_by'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def level_display(self, obj):
+        """Display level with nice formatting"""
+        return obj.get_level_display()
+    level_display.short_description = 'Educational Level'
+    level_display.admin_order_field = 'level'
+    
+    def question_type_display(self, obj):
+        """Display question type with nice formatting"""
+        return obj.get_question_type_display()
+    question_type_display.short_description = 'Question Type'
+    question_type_display.admin_order_field = 'question_type'
+    
+    def is_enabled_icon(self, obj):
+        """Display enabled status with icon"""
+        if obj.is_enabled:
+            return format_html('<span style="color: green;">✓ Enabled</span>')
+        return format_html('<span style="color: red;">✗ Disabled</span>')
+    is_enabled_icon.short_description = 'Status'
+    is_enabled_icon.admin_order_field = 'is_enabled'
+    
+    def save_model(self, request, obj, form, change):
+        """Automatically set created_by field"""
+        if not change:  # Only set on creation
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    actions = ['enable_selected', 'disable_selected']
+    
+    def enable_selected(self, request, queryset):
+        """Bulk enable selected question types"""
+        updated = queryset.update(is_enabled=True)
+        self.message_user(request, f'{updated} question type(s) enabled.')
+    enable_selected.short_description = 'Enable selected question types'
+    
+    def disable_selected(self, request, queryset):
+        """Bulk disable selected question types"""
+        updated = queryset.update(is_enabled=False)
+        self.message_user(request, f'{updated} question type(s) disabled.')
+    disable_selected.short_description = 'Disable selected question types'
 
 
 class QuestionAnswerInline(admin.TabularInline):
@@ -226,3 +291,112 @@ class QuestionAttemptAdmin(admin.ModelAdmin):
             'fields': ('fraction', 'score', 'manually_graded', 'graded_at', 'feedback')
         })
     )
+
+
+# ==========================================
+# GRADEBOOK ADMIN
+# ==========================================
+
+@admin.register(Grade)
+class GradeAdmin(admin.ModelAdmin):
+    """Admin interface for grades"""
+    
+    list_display = (
+        'id',
+        'student_external_id',
+        'course',
+        'grade_type',
+        'item_display',
+        'marks_display',
+        'percentage_display',
+        'letter_grade_display',
+        'graded_at'
+    )
+    
+    list_filter = (
+        'grade_type',
+        'course',
+        'graded_at',
+    )
+    
+    search_fields = (
+        'student_external_id',
+        'course__title',
+    )
+    
+    date_hierarchy = 'graded_at'
+    
+    readonly_fields = (
+        'id',
+        'percentage',
+        'item_name_display',
+        'letter_grade_display',
+        'created_at',
+        'updated_at'
+    )
+    
+    fieldsets = (
+        ('Student Information', {
+            'fields': ('student_external_id', 'course')
+        }),
+        ('Graded Item', {
+            'fields': ('grade_type', 'assignment_submission', 'quiz_attempt')
+        }),
+        ('Score', {
+            'fields': ('marks', 'total_possible', 'percentage', 'letter_grade_display')
+        }),
+        ('Metadata', {
+            'fields': ('graded_at', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def item_name_display(self, obj):
+        """Display the graded item name"""
+        return obj.item_name
+    item_name_display.short_description = 'Item Name'
+    
+    def letter_grade_display(self, obj):
+        """Display the letter grade"""
+        return obj.letter_grade
+    letter_grade_display.short_description = 'Letter Grade'
+    
+    def item_display(self, obj):
+        """Display the graded item name"""
+        return obj.item_name
+    item_display.short_description = 'Item'
+    
+    def marks_display(self, obj):
+        """Display marks as fraction"""
+        return f"{obj.marks}/{obj.total_possible}"
+    marks_display.short_description = 'Score'
+    
+    def percentage_display(self, obj):
+        """Display percentage with formatting"""
+        if obj.percentage is not None:
+            return format_html(
+                '<span style="font-weight: bold;">{:.2f}%</span>',
+                obj.percentage
+            )
+        return "-"
+    percentage_display.short_description = 'Percentage'
+    
+    def has_add_permission(self, request):
+        """Prevent manual creation of grades through admin"""
+        return False
+    
+    actions = ['recalculate_percentages']
+    
+    def recalculate_percentages(self, request, queryset):
+        """Recalculate percentage for selected grades"""
+        count = 0
+        for grade in queryset:
+            grade.save()  # This triggers percentage recalculation
+            count += 1
+        
+        self.message_user(
+            request,
+            f"Successfully recalculated percentages for {count} grades."
+        )
+    recalculate_percentages.short_description = "Recalculate percentages"
+

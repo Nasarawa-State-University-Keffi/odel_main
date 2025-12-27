@@ -6,8 +6,9 @@ DRF serializers for the quiz and question bank system.
 from rest_framework import serializers
 from .models import (
     Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
-    QuestionCategory, Question, QuestionAnswer,
-    Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
+    QuestionCategory, QuestionTypeAvailability, Question, QuestionAnswer,
+    Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
+    Grade
 )
 
 
@@ -99,18 +100,43 @@ class AssignmentSubmissionFileUploadSerializer(serializers.Serializer):
 # QUESTION BANK SERIALIZERS
 # ==========================================
 
+class QuestionTypeAvailabilitySerializer(serializers.ModelSerializer):
+    """Serializer for question type availability settings"""
+    level_display = serializers.CharField(source='get_level_display', read_only=True)
+    question_type_display = serializers.CharField(source='get_question_type_display', read_only=True)
+    
+    class Meta:
+        model = QuestionTypeAvailability
+        fields = [
+            'id', 'level', 'level_display', 'question_type', 'question_type_display',
+            'is_enabled', 'description', 'created_at', 'updated_at', 'created_by'
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'created_by']
+
+
 class QuestionCategorySerializer(serializers.ModelSerializer):
     """Serializer for question categories"""
     questions_count = serializers.SerializerMethodField()
     course_id = serializers.CharField(write_only=True, help_text="Course external_id or UUID")
+    level_display = serializers.CharField(source='get_level_display', read_only=True)
+    available_question_types = serializers.SerializerMethodField(
+        help_text="List of question types available for this category's level"
+    )
     
     class Meta:
         model = QuestionCategory
-        fields = ['id', 'course', 'course_id', 'name', 'description', 'questions_count', 'created_at', 'updated_at']
+        fields = [
+            'id', 'course', 'course_id', 'name', 'description', 'level', 'level_display',
+            'questions_count', 'available_question_types', 'created_at', 'updated_at'
+        ]
         read_only_fields = ['created_at', 'updated_at', 'course']
     
     def get_questions_count(self, obj):
         return obj.questions.count()
+    
+    def get_available_question_types(self, obj):
+        """Get list of available question types for this category's level"""
+        return QuestionTypeAvailability.get_available_question_types(obj.level)
     
     def validate(self, attrs):
         """Validate and convert course_id to CourseCache instance"""
@@ -206,6 +232,44 @@ class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
             'id', 'category', 'qtype', 'name', 'question_text',
             'general_feedback', 'default_mark', 'penalty', 'answers'
         ]
+    
+    def validate(self, attrs):
+        """Validate that the question type is allowed for the category's level"""
+        category = attrs.get('category')
+        qtype = attrs.get('qtype')
+        
+        # For updates, get existing values if not provided
+        if self.instance:
+            if not category:
+                category = self.instance.category
+            if not qtype:
+                qtype = self.instance.qtype
+        
+        # Validate question type availability
+        if category and qtype:
+            from assessment.models import QuestionTypeAvailability
+            
+            is_allowed = QuestionTypeAvailability.is_question_type_allowed(
+                level=category.level,
+                question_type=qtype
+            )
+            
+            if not is_allowed:
+                available_types = QuestionTypeAvailability.get_available_question_types(category.level)
+                level_display = dict(category.LEVEL_CHOICES).get(category.level, category.level)
+                qtype_display = dict(Question.QUESTION_TYPES).get(qtype, qtype)
+                
+                error_msg = (
+                    f"Question type '{qtype_display}' is not allowed for {level_display} level. "
+                    f"Available types: {', '.join([dict(Question.QUESTION_TYPES).get(t, t) for t in available_types]) if available_types else 'None'}. "
+                    f"Please configure question type availability in admin settings."
+                )
+                
+                raise serializers.ValidationError({
+                    'qtype': error_msg
+                })
+        
+        return super().validate(attrs)
     
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])
@@ -474,3 +538,74 @@ class ManualGradeSerializer(serializers.Serializer):
     from decimal import Decimal
     fraction = serializers.DecimalField(max_digits=3, decimal_places=2, min_value=Decimal('0'), max_value=Decimal('1'))
     feedback = serializers.CharField(required=False, allow_blank=True)
+
+
+# ==========================================
+# GRADEBOOK SERIALIZERS
+# ==========================================
+
+class GradeSerializer(serializers.ModelSerializer):
+    """Serializer for Grade model"""
+    from .models import Grade
+    
+    item_name = serializers.ReadOnlyField()
+    # letter_grade = serializers.ReadOnlyField()
+    course_name = serializers.CharField(source='course.title', read_only=True)
+    
+    class Meta:
+        from .models import Grade
+        model = Grade
+        fields = '__all__'
+        read_only_fields = (
+            'id',
+            'percentage',
+            'created_at',
+            'updated_at',
+            'item_name',
+            # 'letter_grade',
+            'course_name'
+        )
+
+
+class GradeAssignmentSerializer(serializers.Serializer):
+    """Serializer for grading an assignment submission"""
+    marks = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
+        help_text="Score to assign"
+    )
+
+
+class GradeQuizSerializer(serializers.Serializer):
+    """Serializer for grading a quiz attempt"""
+    total_score = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
+        help_text="Total score for the quiz"
+    )
+
+
+class StudentGradeSummarySerializer(serializers.Serializer):
+    """Serializer for student grade summary"""
+    student_external_id = serializers.CharField()
+    total_marks = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_possible = serializers.DecimalField(max_digits=10, decimal_places=2)
+    percentage = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    assignment_marks = serializers.DecimalField(max_digits=10, decimal_places=2)
+    assignment_possible = serializers.DecimalField(max_digits=10, decimal_places=2)
+    quiz_marks = serializers.DecimalField(max_digits=10, decimal_places=2)
+    quiz_possible = serializers.DecimalField(max_digits=10, decimal_places=2)
+    grade_count = serializers.IntegerField()
+
+
+class GradebookSummarySerializer(serializers.Serializer):
+    """Serializer for gradebook summary"""
+    student_external_id = serializers.CharField()
+    total_marks = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_possible = serializers.DecimalField(max_digits=10, decimal_places=2)
+    percentage = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    assignment_count = serializers.IntegerField()
+    quiz_count = serializers.IntegerField()
+

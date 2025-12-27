@@ -124,29 +124,28 @@ YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
 
 # Django REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    'DEFAULT_FILTER_BACKENDS': [
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "portal_auth.authentication.PortalJWTAuthentication",
     ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_FILTER_BACKENDS": [
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "user": "1000/hour",
     },
-    'EXCEPTION_HANDLER': 'resource.content.exceptions.custom_exception_handler',
+    "EXCEPTION_HANDLER": "resource.content.exceptions.custom_exception_handler",
 }
 
 # Simple JWT Settings
@@ -276,3 +275,10 @@ X_FRAME_OPTIONS = 'DENY'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# ====================================
+# Portal JWT Integration
+# ====================================
+PORTAL_API_BASE_URL = os.environ.get('PORTAL_API_BASE_URL', 'https://test.nsuk.edu.ng/api')
+PORTAL_JWT_PUBLIC_KEY = os.environ.get('PORTAL_JWT_PUBLIC_KEY', '')
+PORTAL_JWT_ISSUER = os.environ.get('PORTAL_JWT_ISSUER', 'portal.nsuk.edu.ng')
