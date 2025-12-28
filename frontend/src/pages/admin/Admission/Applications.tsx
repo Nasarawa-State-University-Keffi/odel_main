@@ -103,17 +103,21 @@ const Applications = () => {
             setActiveAdmission(activeData);
             setProgrammeTypes(programmeTypesData);
 
-            // AUTO-INITIALIZE FILTERS BASED ON ACTIVE ADMISSION OR DEFAULTS
+            // AUTO-INITIALIZE FILTERS - STRICTLY ODEL
             if (activeData) {
                 if (activeData.session?.id) setSelectedSession(activeData.session.id.toString());
                 if (activeData.semester?.id) setSelectedSemester(activeData.semester.id.toString());
-                const odelFaculty = facultiesData.find(f => f.name.toLowerCase().includes("directorate of open distance and elearning")) || facultiesData[0];
-                if (odelFaculty) setSelectedFaculty(odelFaculty.id.toString());
             } else {
                 const lastSession = sessionsData.length > 0 ? sessionsData[sessionsData.length - 1] : null;
-                const odelFaculty = facultiesData.find(f => f.name.toLowerCase().includes("directorate of open distance and elearning")) || facultiesData[0];
                 if (lastSession) setSelectedSession(lastSession.id.toString());
-                if (odelFaculty) setSelectedFaculty(odelFaculty.id.toString());
+            }
+
+            // FORCE SELECT ODEL FACULTY
+            const odelFaculty = facultiesData.find(f => f.name.toLowerCase().includes("open distance"));
+            if (odelFaculty) {
+                setSelectedFaculty(odelFaculty.id.toString());
+                // Filter faculties list to ONLY show ODEL if we want to restrict selection entirely
+                setFaculties([odelFaculty]);
             }
 
             // Set Default Programme Type to ODEL
@@ -123,6 +127,8 @@ const Applications = () => {
             );
             if (odelProgrammeType) {
                 setSelectedProgrammeType(odelProgrammeType.id.toString());
+                // Filter programme types list to ONLY show ODEL
+                setProgrammeTypes([odelProgrammeType]);
             }
 
         } catch (error) {
@@ -300,7 +306,7 @@ const Applications = () => {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-y-auto space-y-12 p-4 md:p-6 lg:p-8 pb-24 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20">
+        <div className="flex flex-col h-full overflow-y-auto space-y-10 p-6 md:p-8 lg:p-10 pb-32 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20">
             <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <ApplicationsHeader
                     onOpenCreateModal={() => setIsCreateModalOpen(true)}
@@ -308,32 +314,41 @@ const Applications = () => {
                     isEnableLoading={isEnableLoading}
                 />
 
-                <div className="bg-muted/50 p-1 rounded-lg flex items-center gap-1 border border-border/50 overflow-x-auto max-w-full">
+                <div className="bg-muted/40 backdrop-blur-md p-1.5 rounded-2xl flex items-center gap-1 border border-white/10 overflow-x-auto max-w-full shadow-inner">
                     <Button
                         variant={activeTab === "admissions" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setActiveTab("admissions")}
-                        className="h-7 text-xs font-bold gap-1.5 shrink-0"
+                        className={cn(
+                            "h-9 text-xs font-bold gap-2 shrink-0 rounded-xl transition-all uppercase tracking-wide",
+                            activeTab === "admissions" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
                     >
-                        <LayoutGrid className="h-3.5 w-3.5" />
-                        Admission Tracks
+                        <LayoutGrid className="h-4 w-4" />
+                        Tracks
                     </Button>
                     <Button
                         variant={activeTab === "types" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setActiveTab("types")}
-                        className="h-7 text-xs font-bold gap-1.5 shrink-0"
+                        className={cn(
+                            "h-9 text-xs font-bold gap-2 shrink-0 rounded-xl transition-all uppercase tracking-wide",
+                            activeTab === "types" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
                     >
-                        <ListChecks className="h-3.5 w-3.5" />
-                        Application Categories
+                        <ListChecks className="h-4 w-4" />
+                        Categories
                     </Button>
                     <Button
                         variant={activeTab === "bulk" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setActiveTab("bulk")}
-                        className="h-7 text-xs font-bold gap-1.5 shrink-0"
+                        className={cn(
+                            "h-9 text-xs font-bold gap-2 shrink-0 rounded-xl transition-all uppercase tracking-wide",
+                            activeTab === "bulk" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
                     >
-                        <Users className="h-3.5 w-3.5" />
+                        <Users className="h-4 w-4" />
                         Admission List
                     </Button>
                 </div>
@@ -378,14 +393,17 @@ const Applications = () => {
                 </>
             ) : activeTab === "types" ? (
                 <div className="space-y-6 shrink-0">
-                    <div className="flex items-center justify-between bg-muted/20 p-4 rounded-xl border border-border/40">
-                        <div className="flex items-center gap-2">
-                            <div className="h-8 w-1 bg-primary rounded-full" />
-                            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Filter Categories</h3>
+                    <div className="flex items-center justify-between bg-muted/20 p-4 rounded-[2rem] border border-border/40 backdrop-blur-sm">
+                        <div className="flex items-center gap-3 px-2">
+                            <div className="h-10 w-1 bg-primary rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                            <div>
+                                <h3 className="font-black text-sm text-foreground uppercase tracking-wider">Filter Settings</h3>
+                                <p className="text-[10px] font-medium text-muted-foreground">Manage application types by program</p>
+                            </div>
                         </div>
-                        <div className="w-[200px]">
+                        <div className="w-[240px]">
                             <Select value={selectedProgrammeType} onValueChange={setSelectedProgrammeType}>
-                                <SelectTrigger className="h-9 w-full bg-background border-border/50 text-xs font-bold uppercase tracking-wider">
+                                <SelectTrigger className="h-11 w-full bg-background border-border/50 text-xs font-bold uppercase tracking-wider rounded-xl shadow-sm focus:ring-primary/20">
                                     <SelectValue placeholder="All Programme Types" />
                                 </SelectTrigger>
                                 <SelectContent>

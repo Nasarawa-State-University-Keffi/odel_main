@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const ManualRegistration = () => {
     const { toast } = useToast();
-    const { hasRole } = useAuth();
+    const { hasRole, hasAnyRole } = useAuth();
 
     // State
     const [matricNumber, setMatricNumber] = useState("");

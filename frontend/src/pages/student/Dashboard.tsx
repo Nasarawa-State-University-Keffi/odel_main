@@ -3,7 +3,7 @@ import ApplicationLayout from "@/layouts/ApplicationLayout";
 import { Button } from "@/components/ui/button";
 import DetailRow from "@/features/dashboard/components/DetailRow";
 import TimelineItem from "@/features/dashboard/components/TimelineItem";
-import defaultProfile from "../../public/51760520.png";
+const defaultProfile = "/51760520.png";
 
 const Dashboard = () => {
   const [showPhoneForm, setShowPhoneForm] = useState(false);
@@ -24,7 +24,11 @@ const Dashboard = () => {
   const handleUploadImage = (e) => {
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader();
-      reader.onload = (ev) => setProfileImage(ev.target.result);
+      reader.onload = (ev) => {
+        if (typeof ev.target?.result === "string") {
+          setProfileImage(ev.target.result);
+        }
+      };
       reader.readAsDataURL(e.target.files[0]);
     }
   };

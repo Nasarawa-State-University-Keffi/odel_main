@@ -47,9 +47,8 @@ const GradeManagement = () => {
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-black text-[#0F3F2A] tracking-tight flex items-center gap-3">
-                        <GraduationCap className="h-8 w-8 text-[#8cc63f]" />
-                        Grade Management
+                    <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                        GRADE <span className="text-primary">MANAGEMENT</span>
                     </h1>
                     <p className="text-muted-foreground font-medium">Configure grading scales and credit values per programme type.</p>
                 </div>

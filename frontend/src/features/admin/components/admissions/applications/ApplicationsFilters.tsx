@@ -1,4 +1,4 @@
-import { Filter, Zap } from "lucide-react";
+import { Filter, Zap, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,10 +39,10 @@ const ApplicationsFilters = ({
     activeAdmission, onResetToActive, onResetFilters
 }: ApplicationsFiltersProps) => {
     return (
-        <Card className="shadow-xl border-0 bg-background/50 backdrop-blur-sm group">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <CardContent className="p-6 relative">
-                <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+        <Card className="shadow-lg border border-white/20 bg-background/40 backdrop-blur-md rounded-[2rem] overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            <CardContent className="p-8 relative">
+                <div className="flex flex-col lg:flex-row gap-8 items-start lg:items-center">
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
                         <FloatingSelect
                             label="Academic Session"
@@ -51,7 +51,7 @@ const ApplicationsFilters = ({
                             value={selectedSession}
                             onChange={(e) => onSessionChange(e.target.value)}
                             isLoading={isSessionsLoading}
-                            className="bg-background/80"
+                            className="bg-white/5 border-white/10 focus-within:bg-white/10 backdrop-blur-sm rounded-xl h-14"
                         />
                         <FloatingSelect
                             label="Semester"
@@ -60,7 +60,7 @@ const ApplicationsFilters = ({
                             value={selectedSemester}
                             onChange={(e) => onSemesterChange(e.target.value)}
                             isLoading={isSemestersLoading}
-                            className="bg-background/80"
+                            className="bg-white/5 border-white/10 focus-within:bg-white/10 backdrop-blur-sm rounded-xl h-14"
                         />
                         <FloatingSelect
                             label="Faculty/School"
@@ -69,11 +69,11 @@ const ApplicationsFilters = ({
                             value={selectedFaculty}
                             onChange={(e) => onFacultyChange(e.target.value)}
                             isLoading={isFacultiesLoading}
-                            className="bg-background/80"
+                            className="bg-white/5 border-white/10 focus-within:bg-white/10 backdrop-blur-sm rounded-xl h-14"
                         />
                     </div>
 
-                    <div className="flex items-center gap-3 w-full lg:w-auto pt-2 lg:pt-0">
+                    <div className="flex items-center gap-4 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-white/10 lg:pl-8 lg:border-l border-white/10">
                         <AnimatePresence>
                             {activeAdmission && (
                                 <motion.div
@@ -83,13 +83,14 @@ const ApplicationsFilters = ({
                                 >
                                     <Badge
                                         variant="outline"
-                                        className="px-4 py-2 gap-2 bg-primary/10 text-primary border-primary/20 cursor-pointer hover:bg-primary/20 transition-all rounded-xl border-2"
+                                        className="h-11 px-6 gap-2.5 bg-primary/10 text-primary border-primary/20 cursor-pointer hover:bg-primary/20 transition-all rounded-xl border-2 group/badge"
                                         onClick={onResetToActive}
                                     >
-                                        <Zap className="h-3.5 w-3.5 fill-current" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                                            Active: {activeAdmission.session?.name}
-                                        </span>
+                                        <Zap className="h-4 w-4 fill-current group-hover/badge:scale-110 transition-transform" />
+                                        <div className="flex flex-col items-start leading-none gap-1">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">Reset To Active</span>
+                                            <span className="text-xs font-bold">{activeAdmission.session?.name}</span>
+                                        </div>
                                     </Badge>
                                 </motion.div>
                             )}
@@ -99,9 +100,9 @@ const ApplicationsFilters = ({
                             size="icon"
                             onClick={onResetFilters}
                             title="Reset Filters"
-                            className="h-11 w-11 rounded-xl bg-background shadow-sm hover:bg-primary/5 hover:text-primary transition-all border-border/50"
+                            className="h-11 w-11 rounded-xl bg-white/5 border-white/10 hover:bg-white/10 hover:text-foreground transition-all shadow-sm"
                         >
-                            <Filter className="h-5 w-5 text-muted-foreground" />
+                            <RefreshCw className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </div>
                 </div>

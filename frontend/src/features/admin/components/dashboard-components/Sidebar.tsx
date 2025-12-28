@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, UserCog, LogOut, FileText, GraduationCap, BookOpen, Book, Building2, Award, University, Layers, ScrollText, Settings, Globe, Calendar } from "lucide-react";
+import { LayoutDashboard, LogOut, FileText, GraduationCap, School, BookOpenCheck, BookOpen, Book, Building2, Award, University, Layers, ScrollText, Settings, Globe, Calendar, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,19 +24,19 @@ interface SidebarProps {
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/api/admin/dashboard", roles: [] },
     { icon: FileText, label: "Admission", href: "/api/admin/dashboard/applications", roles: ['ADMISSION_OFFICER', 'SUPER_ADMIN'] },
-    { icon: BookOpen, label: "Course Reg", href: "/api/admin/dashboard/course-registration", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: BookOpenCheck, label: "Course Registration", href: "/api/admin/dashboard/course-registration", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Book, label: "Courses", href: "/api/admin/dashboard/courses", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Building2, label: "Departments", href: "/api/admin/dashboard/departments", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: University, label: "Faculty", href: "/api/admin/dashboard/faculties", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Award, label: "Grades", href: "/api/admin/dashboard/grades", roles: ['ADMIN', 'SUPER_ADMIN'] },
-    { icon: Layers, label: "Levels", href: "/api/admin/dashboard/levels", roles: [] },
-    { icon: ScrollText, label: "Mode of Entry", href: "/api/admin/dashboard/mode-of-entries", roles: [] },
-    { icon: Settings, label: "Prog Settings", href: "/api/admin/dashboard/programme-settings", roles: ['ADMIN', 'SUPER_ADMIN'] },
-    { icon: Globe, label: "Prog Types", href: "/api/admin/dashboard/programme-types", roles: [] },
-    { icon: BookOpen, label: "Programmes", href: "/api/admin/dashboard/programmes", roles: [] },
-    { icon: Building2, label: "Schools", href: "/api/admin/dashboard/schools", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: Layers, label: "Levels", href: "/api/admin/dashboard/levels", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: ScrollText, label: "Mode of Entry", href: "/api/admin/dashboard/mode-of-entries", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: Settings, label: "Program Settings", href: "/api/admin/dashboard/programme-settings", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: Globe, label: "Programme Types", href: "/api/admin/dashboard/programme-types", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: BookOpen, label: "Programmes", href: "/api/admin/dashboard/programmes", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: School, label: "Schools", href: "/api/admin/dashboard/schools", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Calendar, label: "Sessions", href: "/api/admin/dashboard/sessions", roles: ['ADMIN', 'SUPER_ADMIN'] },
-    { icon: UserCog, label: "Staffs", href: "/api/admin/dashboard/staffs", roles: ['ADMIN', 'SUPER_ADMIN'] },
+    { icon: UsersRound, label: "Staffs", href: "/api/admin/dashboard/staffs", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: GraduationCap, label: "Students", href: "/api/admin/dashboard/students", roles: ['ADMIN', 'SUPER_ADMIN'] },
 ];
 

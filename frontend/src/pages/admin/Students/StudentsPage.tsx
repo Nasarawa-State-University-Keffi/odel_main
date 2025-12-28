@@ -901,7 +901,9 @@ const StudentsPage = () => {
         <div className="flex flex-col h-full space-y-4 md:space-y-6 p-4 md:p-6 w-full max-w-[100vw] overflow-x-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black tracking-tighter text-[#01402c]">Student Management</h1>
+                    <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                        STUDENT <span className="text-primary">MANAGEMENT</span>
+                    </h1>
                     <p className="text-muted-foreground mt-1 font-medium">Manage student records, admissions, and academic status.</p>
                 </div>
 
