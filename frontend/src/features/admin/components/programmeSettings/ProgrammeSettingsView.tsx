@@ -187,8 +187,8 @@ const ProgrammeSettingsView = () => {
                     animate={{ opacity: 1, x: 0 }}
                     className="space-y-1"
                 >
-                    <h1 className="text-3xl font-black tracking-tighter text-[#01402c]">
-                        Programme Settings
+                    <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                        PROGRAMMES <span className="text-primary">SETTINGS</span>
                     </h1>
                     <p className="text-muted-foreground font-medium text-sm md:text-lg">
                         Configure course requirements and semester parameters.

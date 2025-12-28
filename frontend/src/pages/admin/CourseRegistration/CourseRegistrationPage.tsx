@@ -8,7 +8,9 @@ const CourseRegistrationPage = () => {
     return (
         <div className="p-8 space-y-8 max-w-[1400px] mx-auto animate-in fade-in duration-500">
             <div>
-                <h1 className="text-3xl font-black tracking-tighter text-[#01402c]">Course Registration</h1>
+                <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                    COURSE REGISTRATION <span className="text-primary">MANAGEMENT</span>
+                </h1>
                 <p className="text-muted-foreground font-medium text-lg">Manage student course registrations and approvals.</p>
             </div>
 

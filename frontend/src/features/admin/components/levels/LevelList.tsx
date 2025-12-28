@@ -72,7 +72,7 @@ const LevelList = () => {
                 title: "Error",
                 description: message,
             });
-            setIsDeleteAlertOpen(false); // Close alert even on error? Or keep open? Usually close on irrecoverable, keep on validation. keeping close for clean UI.
+            setIsDeleteAlertOpen(false);
         }
     });
 
@@ -127,8 +127,8 @@ const LevelList = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                 >
-                    <h1 className="text-3xl font-black tracking-tighter text-[#01402c]">
-                        Level Management
+                    <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                        LEVEL <span className="text-primary">MANAGEMENT</span>
                     </h1>
                     <p className="text-muted-foreground mt-1 font-medium">
                         Configure and view academic levels by programme type.

@@ -50,8 +50,8 @@ const SchoolManagement = () => {
         <div className="flex flex-col space-y-8 p-8 w-full bg-slate-50/50 min-h-screen">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black tracking-tighter text-[#01402c]">
-                        School Management
+                    <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                        SCHOOL <span className="text-primary">MANAGEMENT</span>
                     </h1>
                     <p className="text-muted-foreground font-medium text-lg">
                         Manage institutions and configurations.

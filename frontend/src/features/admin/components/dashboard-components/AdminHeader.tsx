@@ -73,7 +73,7 @@ const AdminHeader = ({ onMenuClick, onToggleCollapse, isCollapsed }: AdminHeader
                     <div className="flex flex-col select-none">
                         <div className="flex items-center gap-2">
                             <h2 className="text-lg md:text-xl font-black tracking-tight text-foreground">
-                                ODEL <span className="text-primary">PORTAL</span>
+                                oDEL <span className="text-primary">PORTAL</span>
                             </h2>
                             <div className="hidden md:block h-4 w-px bg-border/60" />
                             <span className="hidden md:block text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">
@@ -84,14 +84,7 @@ const AdminHeader = ({ onMenuClick, onToggleCollapse, isCollapsed }: AdminHeader
                 </div>
 
                 <div className="flex items-center gap-3 md:gap-5">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="relative hover:bg-primary/5 active:scale-95 transition-all duration-300 h-10 w-10 rounded-full"
-                    >
-                        <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-                        <span className="absolute top-2.5 right-2.5 h-2 w-2 bg-destructive rounded-full border-2 border-background animate-pulse ring-4 ring-destructive/10" />
-                    </Button>
+
 
                     <div className="h-8 w-[1px] bg-border/40 mx-2 hidden md:block" />
 

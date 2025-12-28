@@ -230,8 +230,7 @@ const DepartmentList = () => {
             });
         }
 
-        // Default filter for ODEL departments if no specific search/filter is active? 
-        // We skip this if showAccessibleOnly is active as we trust the backend response set.
+
         if (!showAccessibleOnly) {
             items = items.filter((item) => {
                 const dept = 'department' in item ? (item as DepartmentWithHod).department : (item as Department);
@@ -331,7 +330,9 @@ const DepartmentList = () => {
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-[#0F3F2A] tracking-tight">Department Management</h1>
+                    <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                        DEPARTMENT <span className="text-primary">MANAGEMENT</span>
+                    </h1>
                     <p className="text-muted-foreground mt-1">Manage ODEL departments, codes, and head of departments.</p>
                 </div>
                 <div className="flex items-center gap-2">

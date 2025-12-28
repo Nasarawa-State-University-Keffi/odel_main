@@ -1,4 +1,4 @@
-import { Search, UserCog, ListFilter, UserCheck, Loader2, GraduationCap, Building2 } from "lucide-react";
+import { Search, UserCog, ListFilter, UserCheck, Loader2, GraduationCap, Building2, Landmark } from "lucide-react";
 import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -204,49 +204,49 @@ const StaffRegistryHeader = ({
                                                 </p>
                                             </div>
                                         </div>
-                                        </div>
+
                                     )}
 
-                                {/* Senate Members Toggle */}
-                                <div className="flex items-center space-x-2 pt-2 border-t border-border/50">
-                                    <Checkbox
-                                        id="senate-members"
-                                        checked={showSenateMembers}
-                                        onCheckedChange={(checked) => onShowSenateMembersChange(checked as boolean)}
-                                    />
-                                    <div className="grid gap-1.5 leading-none">
-                                        <Label
-                                            htmlFor="senate-members"
-                                            className="text-xs font-bold uppercase tracking-wide cursor-pointer flex items-center gap-1.5"
-                                        >
-                                            <Landmark className="h-3.5 w-3.5 text-primary" />
-                                            Show Senate Members
-                                        </Label>
-                                        <p className="text-[10px] text-muted-foreground font-medium">
-                                            Filter list to show only Senate members.
-                                        </p>
+                                    {/* Senate Members Toggle */}
+                                    <div className="flex items-center space-x-2 pt-2 border-t border-border/50">
+                                        <Checkbox
+                                            id="senate-members"
+                                            checked={showSenateMembers}
+                                            onCheckedChange={(checked) => onShowSenateMembersChange(checked as boolean)}
+                                        />
+                                        <div className="grid gap-1.5 leading-none">
+                                            <Label
+                                                htmlFor="senate-members"
+                                                className="text-xs font-bold uppercase tracking-wide cursor-pointer flex items-center gap-1.5"
+                                            >
+                                                <Landmark className="h-3.5 w-3.5 text-primary" />
+                                                Show Senate Members
+                                            </Label>
+                                            <p className="text-[10px] text-muted-foreground font-medium">
+                                                Filter list to show only Senate members.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </PopoverContent>
-                </Popover>
+                        </PopoverContent>
+                    </Popover>
 
-                <div className="relative flex-1 sm:w-80 group">
-                    <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                        type="search"
-                        placeholder="Search by name, ID or email..."
-                        className="pl-11 h-11 bg-background/50 border-border/50 focus:ring-primary/20 rounded-xl transition-all"
-                        value={searchQuery}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                    />
-                    {(isLoading || searchQuery !== debouncedSearch) && searchQuery !== "" && (
-                        <Loader2 className="absolute right-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
-                    )}
+                    <div className="relative flex-1 sm:w-80 group">
+                        <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                            type="search"
+                            placeholder="Search by name, ID or email..."
+                            className="pl-11 h-11 bg-background/50 border-border/50 focus:ring-primary/20 rounded-xl transition-all"
+                            value={searchQuery}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                        />
+                        {(isLoading || searchQuery !== debouncedSearch) && searchQuery !== "" && (
+                            <Loader2 className="absolute right-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
         </CardHeader >
     );
 };

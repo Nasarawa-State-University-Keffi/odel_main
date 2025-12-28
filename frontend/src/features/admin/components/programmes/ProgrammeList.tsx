@@ -121,8 +121,8 @@ const ProgrammeList = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                 >
-                    <h1 className="text-3xl font-black tracking-tighter text-[#01402c]">
-                        Programmes
+                    <h1 className="text-3xl md:text-3xl font-black tracking-tight text-[#01402c]">
+                        PROGRAMMES <span className="text-primary">MANAGEMENT</span>
                     </h1>
                     <p className="text-muted-foreground mt-1 font-medium">
                         View and manage academic programmes.
