@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { staffService } from "@/features/admin/services/staffService";
+import { commonService } from "@/features/admin/services/commonService";
 
 interface SelectOption {
     value: string;
@@ -22,7 +22,7 @@ export const useLocation = () => {
     const fetchCountries = async () => {
         try {
             setIsLoading(true);
-            const data = await staffService.getCountries();
+            const data = await commonService.getCountries();
             setRawCountries(data);
             const formattedCountries = data.map((c) => ({
                 value: c.id.toString(),
@@ -54,7 +54,7 @@ export const useLocation = () => {
     const fetchLGAs = async (_countryId: string, stateId: string) => {
         try {
             setIsLoading(true);
-            const data = await staffService.getLgasByState(Number(stateId));
+            const data = await commonService.getLgasByState(Number(stateId));
             const formattedLgas = data.map((l) => ({
                 value: l.id.toString(),
                 label: l.name,

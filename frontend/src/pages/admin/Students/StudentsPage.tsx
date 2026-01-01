@@ -3,8 +3,9 @@ import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-quer
 import { useToast } from "@/hooks/use-toast";
 import { studentService } from "@/features/admin/services/studentService";
 import { admissionService } from "@/features/admin/services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
 import { Student, Deferment } from "@/features/admin/types/student";
-import { Session } from "@/features/admin/types/admission";
+import { Session } from "@/features/admin/types/session";
 import StudentTable from "@/features/admin/components/students/StudentTable";
 import StudentPagination from "@/features/admin/components/students/StudentPagination";
 import StudentStatsCards from "@/features/admin/components/students/StudentStatsCards";
@@ -40,7 +41,12 @@ import {
 import StudentDetailsModal from "@/features/admin/components/students/StudentDetailsModal";
 import { StudentReportModal } from "@/features/admin/components/students/StudentReportModal";
 import { SuspendStudentModal } from "@/features/admin/components/students/SuspendStudentModal";
-import { staffService, Programme, Level } from "@/features/admin/services/staffService";
+import { facultyService } from "@/features/admin/services/facultyService";
+import { programmeTypeService } from "@/features/admin/services/programmeTypeService";
+import { programmeService } from "@/features/admin/services/programmeService";
+import { levelService } from "@/features/admin/services/levelService";
+import { staffService } from "@/features/admin/services/staffService";
+import { Programme, Level } from "@/features/admin/types/staff";
 import { Label } from "@/components/ui/label";
 
 const StudentsPage = () => {
@@ -73,6 +79,7 @@ const StudentsPage = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchQuery);
+            setCurrentPage(1); // Reset page on new search
         }, 500);
         return () => clearTimeout(timer);
     }, [searchQuery]);
@@ -82,9 +89,9 @@ const StudentsPage = () => {
         const fetchMetadata = async () => {
             try {
                 const [progsData, facultiesData, progTypesData] = await Promise.all([
-                    staffService.getAllProgrammes(),
-                    staffService.getAllFaculties(),
-                    staffService.getAllProgrammeTypes()
+                    programmeService.getAllProgrammes(),
+                    facultyService.getAllFaculties(),
+                    programmeTypeService.getAllProgrammeTypes()
                 ]);
                 setProgrammes(progsData);
                 setFaculties(facultiesData);
@@ -120,6 +127,9 @@ const StudentsPage = () => {
 
     // Fetch Levels when Programme changes
     useEffect(() => {
+        // Reset page when filters change
+        setCurrentPage(1);
+
         const fetchLevels = async () => {
             if (!selectedProgramme) {
                 setLevels([]);
@@ -132,7 +142,7 @@ const StudentsPage = () => {
                 // Default to empty or some logic if not found, but should work.
                 // Assuming we want levels for that Programme Type (e.g. Undergraduate levels for B.Sc. CS)
                 if (prog && prog.programmeType) {
-                    const data = await staffService.getLevelsByProgrammeType(prog.programmeType.id);
+                    const data = await levelService.getAllLevels(prog.programmeType.id);
                     setLevels(data);
                 } else {
                     // Fallback or verify usage
@@ -149,10 +159,7 @@ const StudentsPage = () => {
     // Query for sessions
     const { data: sessions = [], isSuccess: sessionsLoaded } = useQuery({
         queryKey: ["sessions"],
-        queryFn: async () => {
-            return await admissionService.getAllSessions();
-        },
-        staleTime: Infinity
+        queryFn: sessionService.getAllSessions,
     });
 
     // Auto-select latest session
@@ -202,9 +209,15 @@ const StudentsPage = () => {
                     const sessionToUse = currentSession || (sessions.length > 0 ? sessions[sessions.length - 1].id : 0);
                     if (sessionToUse) {
                         const result = await studentService.getAllStudentsAt(sessionToUse, Number(selectedProgramme), Number(selectedLevel));
+
+                        const totalItems = Array.isArray(result) ? result.length : 0;
+                        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+                        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                        const paginatedResults = Array.isArray(result) ? result.slice(startIndex, startIndex + ITEMS_PER_PAGE) : [];
+
                         return {
-                            content: result,
-                            totalPages: 1
+                            content: paginatedResults,
+                            totalPages: totalPages
                         };
                     }
                 }
@@ -263,9 +276,15 @@ const StudentsPage = () => {
                     );
                 }
 
+                // Client-side Pagination
+                const totalItems = uniqueResults.length;
+                const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+                const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                const paginatedResults = uniqueResults.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
                 return {
-                    content: uniqueResults,
-                    totalPages: 1
+                    content: paginatedResults,
+                    totalPages: totalPages
                 };
             }
 
@@ -550,7 +569,7 @@ const StudentsPage = () => {
 
         const studentName = suspension.name || suspension.studentName || "Student";
 
-        if (window.confirm(`Are you sure you want to cancel the suspension for ${studentName}?`)) {
+        if (window.confirm(`Are you sure you want to cancel the suspension for ${studentName} ? `)) {
             try {
                 await studentService.cancelSuspension(suspension.id, currentSession);
                 toast({
@@ -1201,7 +1220,7 @@ const StudentsPage = () => {
                 open={isSuspendModalOpen}
                 onOpenChange={setIsSuspendModalOpen}
                 onConfirm={handleConfirmSuspend}
-                studentName={studentToSuspend ? `${studentToSuspend.firstName} ${studentToSuspend.lastName}` : ""}
+                studentName={studentToSuspend ? `${studentToSuspend.firstName} ${studentToSuspend.lastName} ` : ""}
             />
 
             {selectedStudent && (

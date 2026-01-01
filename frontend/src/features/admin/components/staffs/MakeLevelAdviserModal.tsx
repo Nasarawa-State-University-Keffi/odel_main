@@ -18,7 +18,13 @@ import {
 import { FloatingMultiSelect } from "@/components/ui/floating-multi-select";
 import { useToast } from "@/components/ui/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { staffService, Staff, Department, ProgrammeType, Level } from "../../services/staffService";
+import { staffService } from "../../services/staffService";
+import { staffRoleService } from "../../services/staffRoleService";
+import { departmentService } from "../../services/departmentService";
+import { programmeTypeService } from "../../services/programmeTypeService";
+import { levelService } from "../../services/levelService";
+import { Staff, Department, Level } from "../../types/staff";
+import { ProgrammeType } from "../../types/programmeType";
 import { Loader2 } from "lucide-react";
 
 interface MakeLevelAdviserModalProps {
@@ -48,14 +54,14 @@ const MakeLevelAdviserModal = ({ open, onOpenChange, staff }: MakeLevelAdviserMo
     // Fetch Departments
     const { data: departments = [], isLoading: isLoadingDepartments } = useQuery({
         queryKey: ["departments"],
-        queryFn: staffService.getAllDepartments,
+        queryFn: departmentService.getAllDepartments,
         enabled: open,
     });
 
     // Fetch Programme Types
-    const { data: programmeTypes = [], isLoading: isLoadingProgrammeTypes } = useQuery({
+    const { data: programmeTypes = [], isLoading: isLoadingProgrammeTypes } = useQuery<ProgrammeType[]>({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
         enabled: open,
     });
 
@@ -64,14 +70,14 @@ const MakeLevelAdviserModal = ({ open, onOpenChange, staff }: MakeLevelAdviserMo
         queryKey: ["levels", selectedProgrammeId],
         queryFn: async () => {
             if (!selectedProgrammeId) return [];
-            return await staffService.getLevelsByProgrammeType(Number(selectedProgrammeId));
+            return await levelService.getAllLevels(Number(selectedProgrammeId));
         },
         enabled: !!selectedProgrammeId,
     });
 
     // Mutation for making level adviser
     const mutation = useMutation({
-        mutationFn: staffService.makeLevelAdviser,
+        mutationFn: staffRoleService.makeLevelAdviser,
         onSuccess: () => {
             toast({
                 title: "Success",
@@ -121,8 +127,8 @@ const MakeLevelAdviserModal = ({ open, onOpenChange, staff }: MakeLevelAdviserMo
     if (!staff) return null;
 
     // Transform Levels for MultiSelect
-    const levelOptions = levels.map((lvl) => ({
-        label: lvl.title || lvl.value || `Level ${lvl.id}`, // Fallback label
+    const levelOptions = levels.map((lvl: any) => ({
+        label: lvl.title || `Level ${lvl.id}`, // Fallback label
         value: lvl.id.toString(),
     }));
 

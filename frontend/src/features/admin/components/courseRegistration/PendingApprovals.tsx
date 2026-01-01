@@ -23,18 +23,17 @@ const PendingApprovals = () => {
     const queryClient = useQueryClient();
 
     // Filters
-    const [semesterId, setSemesterId] = useState<string>("1"); // Default semester? Needs logic
-    const [approvalStage, setApprovalStage] = useState<string>("1"); // Default stage?
+    const [semesterId, setSemesterId] = useState<string>("1");
+    const [approvalStage, setApprovalStage] = useState<string>("1");
+    const [courseId, setCourseId] = useState<string>(""); // New Filter
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-    // Fetch Sessions (to get active session maybe? or just hardcode semester for now/select)
-    // The API requires semester and stage.
-
     const { data: pageData, isLoading, refetch } = useQuery({
-        queryKey: ["pending-approvals", semesterId, approvalStage],
+        queryKey: ["pending-approvals", semesterId, approvalStage, courseId],
         queryFn: () => courseRegistrationService.findAllForApproval({
             semester: Number(semesterId),
             stage: Number(approvalStage),
+            course: courseId ? Number(courseId) : undefined,
             page: 0,
             size: 50
         }),
@@ -53,6 +52,18 @@ const PendingApprovals = () => {
         }
     });
 
+    // New Mutation: Approve By Course
+    const approveByCourseMutation = useMutation({
+        mutationFn: courseRegistrationService.approveByCourse,
+        onSuccess: () => {
+            toast({ title: "Success", description: "All registrations for course approved." });
+            queryClient.invalidateQueries({ queryKey: ["pending-approvals"] });
+        },
+        onError: () => {
+            toast({ variant: "destructive", title: "Error", description: "Failed to approve by course." });
+        }
+    });
+
     const rejectMutation = useMutation({
         mutationFn: courseRegistrationService.rejectRegistrations,
         onSuccess: () => {
@@ -62,6 +73,18 @@ const PendingApprovals = () => {
         },
         onError: () => {
             toast({ variant: "destructive", title: "Error", description: "Failed to reject registrations." });
+        }
+    });
+
+    // New Mutation: Reject By Course
+    const rejectByCourseMutation = useMutation({
+        mutationFn: courseRegistrationService.rejectByCourse,
+        onSuccess: () => {
+            toast({ title: "Success", description: "All registrations for course rejected." });
+            queryClient.invalidateQueries({ queryKey: ["pending-approvals"] });
+        },
+        onError: () => {
+            toast({ variant: "destructive", title: "Error", description: "Failed to reject by course." });
         }
     });
 
@@ -103,7 +126,6 @@ const PendingApprovals = () => {
                     <Select value={semesterId} onValueChange={setSemesterId}>
                         <SelectTrigger><SelectValue placeholder="Select Semester" /></SelectTrigger>
                         <SelectContent>
-                            {/* Needs dynamic semesters, defaulting for UI */}
                             <SelectItem value="1">First Semester</SelectItem>
                             <SelectItem value="2">Second Semester</SelectItem>
                         </SelectContent>
@@ -117,11 +139,50 @@ const PendingApprovals = () => {
                             <SelectItem value="1">Department</SelectItem>
                             <SelectItem value="2">Faculty</SelectItem>
                             <SelectItem value="3">Senate</SelectItem>
-                            {/* Assuming stages from backend, might need fetching */}
                         </SelectContent>
                     </Select>
                 </div>
+
+                {/* Course ID Input for Filtering/Bulk Action */}
+                <div className="space-y-2 w-full md:w-48">
+                    <label className="text-xs font-bold uppercase text-slate-500">Course ID</label>
+                    {/* Using Input for simplicity as fetching courses requires more context */}
+                    <input
+                        type="number"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="Course ID"
+                        value={courseId}
+                        onChange={(e) => setCourseId(e.target.value)}
+                    />
+                </div>
+
                 <div className="flex-1"></div>
+
+                {/* Bulk Approve By Course (Mocking Programme ID = 1 for now or asking user) */}
+                {/* Note: In a real scenario, we'd need a Programme Selector too. Using 0 or 1 as fallback/placeholder if logic permits */}
+                {courseId && (
+                    <div className="flex gap-2 mr-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                const progId = prompt("Enter Programme ID for Bulk Action:", "1");
+                                if (progId && confirm(`Approve ALL for Course ${courseId} / Programme ${progId}?`)) {
+                                    approveByCourseMutation.mutate({
+                                        courseId: Number(courseId),
+                                        programmeId: Number(progId),
+                                        semesterId: Number(semesterId),
+                                        approvalStage: Number(approvalStage)
+                                    });
+                                }
+                            }}
+                            className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                            <CheckCircle2 className="w-4 h-4" />
+                            By Course
+                        </Button>
+                    </div>
+                )}
+
                 {selectedIds.length > 0 && (
                     <div className="flex gap-2 animate-in fade-in slide-in-from-right-4">
                         <Button

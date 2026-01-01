@@ -1,171 +1,152 @@
-import apiClient from "@/lib/api";
-import {
-    Session,
-    Semester,
-    ApplicationType,
-    CreateAdmissionRequest,
-    UpdateApplicationTypeRequest
-} from "../types/admission";
 
-// In-memory cache for metadata
-let sessionsCache: Session[] | null = null;
-let semestersCache: Semester[] | null = null;
-// Removed applicationTypesCache to ensure fresh data fetch
+import apiClient from "@/lib/api";
+import { Admission, AdmissionStats, ApplicationType, CreateAdmissionRequest, UpdateAdmissionRequest, CreateApplicationTypeRequest, BulkAdmissionParams } from "../types/admission";
+
+const BASE_URL = "/admission";
+
+
+
 
 export const admissionService = {
-    // Metadata Fetchers
-    getAllSessions: async (): Promise<Session[]> => {
-        if (sessionsCache) return sessionsCache;
-        const response = await apiClient.get<Session[]>('/session/all');
-        sessionsCache = response.data;
-        return response.data;
-    },
-
-    // HANDLES SEMESTERS TYPES
-    getSemestersBySession: async (sessionId: number): Promise<Semester[]> => {
-
-        // ALWAYS FETCHING THIS TO ENSURE DATA ACCURACY
-        const response = await apiClient.get<Semester[]>(`/semester/fetch/${sessionId}`);
-        return response.data;
-    },
-
-
-    // HANDLES APPLICATION TYPES
-    getApplicationTypes: async (): Promise<ApplicationType[]> => {
-        const response = await apiClient.get<ApplicationType[]>('/admission/get-application-types', {
-            params: { t: new Date().getTime() }
+    // HANDLES GET ADMISSION VIA PROGRAMME TYPE
+    getAdmissions: async (programmeTypeId: number): Promise<Admission[]> => {
+        const response = await apiClient.get<Admission[]>(`${BASE_URL}/get-admissions`, {
+            params: { prog_type: programmeTypeId }
         });
         return response.data;
     },
 
-    getApplicationTypesFor: async (programmeType: number): Promise<ApplicationType[]> => {
-        const response = await apiClient.get<ApplicationType[]>(`/admission/get-application-types-for`, {
-            params: { programme_type: programmeType, t: new Date().getTime() }
-        });
+
+    // HANDLES GET ACTIVE ADMISSIONS
+    getActiveAdmissions: async (): Promise<Admission[]> => {
+        const response = await apiClient.get<Admission[]>(`${BASE_URL}/get-active-admissions`);
+
+        console.log('ACTIVE ADMISSIONS', response.data);
         return response.data;
     },
 
-    // HANDLES CREATE ADMISSION
-    createAdmission: async (data: CreateAdmissionRequest): Promise<any> => {
-        const response = await apiClient.post('/admission/create', data);
-        return response.data;
-    },
-
-    // HANDLES ADMISSION STATS
-    getAdmissionStats: async (params: { faculty: number; session: number; semester?: number }): Promise<any> => {
-        const response = await apiClient.get('/admission/stats', { params });
-        return response.data;
-    },
-
-    // HANDLES FETCHING ADMISSIONS BY SESSION
-    getAdmissionsBySession: async (sessionId: number): Promise<any[]> => {
-        const response = await apiClient.get(`/admission/get-admissions-by-session`, {
+    //HANDLES GET ADMISSION BY SESSION
+    getAdmissionsBySession: async (sessionId: number): Promise<Admission[]> => {
+        const response = await apiClient.get<Admission[]>(`${BASE_URL}/get-admissions-by-session`, {
             params: { sessionId }
         });
-        const data = response.data;
-        if (data && typeof data === 'object' && 'data' in data) {
-            return Array.isArray(data.data) ? data.data : [];
-        }
-        return Array.isArray(data) ? data : [];
-    },
 
-    // HANDLES ACTIVE ADMISSION (Singular - Legacy)
-    getActiveAdmission: async (): Promise<any | null> => {
-        try {
-            const response = await apiClient.get('/admission/get-active-admissions');
-            const data = response.data;
-
-            if (Array.isArray(data)) {
-                return data.length > 0 ? data[0] : null;
-            }
-
-            if (data && typeof data === 'object' && 'data' in data) {
-                return Array.isArray(data.data) && data.data.length > 0 ? data.data[0] : null;
-            }
-
-            return data || null;
-        } catch (error) {
-            console.error("Failed to fetch active admission", error);
-            return null;
-        }
-    },
-
-    // HANDLES ACTIVE ADMISSIONS (Plural - For Lists/Filtering)
-    getActiveAdmissions: async (): Promise<any[]> => {
-        try {
-            const response = await apiClient.get('/admission/get-active-admissions');
-            const data = response.data;
-
-            if (Array.isArray(data)) {
-                return data;
-            }
-
-            if (data && typeof data === 'object' && 'data' in data) {
-                return Array.isArray(data.data) ? data.data : [];
-            }
-
-            return [];
-        } catch (error) {
-            console.error("Failed to fetch active admissions list", error);
-            return [];
-        }
-    },
-
-    // HANDLES ACTIVE PROGRAMMES
-    getActiveProgrammes: async (): Promise<any[]> => {
-        try {
-            const response = await apiClient.get('/admission/get-active-programmes');
-            const data = response.data;
-
-            console.log('active programmes', data)
-            if (Array.isArray(data)) {
-                return data;
-            }
-
-            if (data && typeof data === 'object' && 'data' in data) {
-                return Array.isArray(data.data) ? data.data : [];
-            }
-
-            return [];
-        } catch (error) {
-            console.error("Failed to fetch active programmes list", error);
-            return [];
-        }
-    },
-
-    // HANDLES UPDATE ADMISSION
-    updateAdmission: async (admissionId: number, data: UpdateApplicationTypeRequest): Promise<any> => {
-        const response = await apiClient.post(`/admission/application-types/update/${admissionId}`, data);
+        console.log('ADMISSIONS BY SESSION', response.data);
         return response.data;
     },
 
-    // HANDLES BULK ADMISSION FETCH
-    getAdmissionBulk: async (params: {
-        level?: number;
-        admission?: number;
-        faculty?: number;
-        department?: number;
-        programme?: number;
-        country?: number;
-        state?: number;
-        lga?: number;
-        gender?: number;
-    }): Promise<any> => {
-        const response = await apiClient.get('/admission/admission-bulk', { params });
+    // HANDLES ADMISSION ACTIVATIONS
+    enableAdmission: async (sessionId: number): Promise<{ condition: boolean }> => {
+        try {
+            const response = await apiClient.put<{ condition: boolean }>(`${BASE_URL}/enable/${sessionId}`);
+            return response.data;
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    // HANDLES ADMISSION CREATION
+    createAdmission: async (data: CreateAdmissionRequest): Promise<Admission> => {
+        try {
+            const response = await apiClient.post<Admission>(`${BASE_URL}/create`, data);
+            return response.data;
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+
+    //HANDLES UPDATING ADMISSIONS
+    updateAdmission: async (id: number, data: UpdateAdmissionRequest): Promise<Admission> => {
+        try {
+            const response = await apiClient.post<Admission>(`${BASE_URL}/update/${id}`, data);
+            return response.data;
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    //HANDLE APPLICATION TYPES
+    getApplicationTypes: async (): Promise<ApplicationType[]> => {
+        const response = await apiClient.get<ApplicationType[]>(`${BASE_URL}/get-application-types`);
         return response.data;
     },
 
-    // HANDLES SINGLE ADMISSION FETCH
-    getAdmissionSingle: async (applicantId: string): Promise<any> => {
-        const response = await apiClient.get('/admission/admission-single', {
-            params: { applicantId }
+    //HANDLE APPLICATION TYPE CREATION
+    createApplicationType: async (data: CreateApplicationTypeRequest): Promise<ApplicationType> => {
+        try {
+            const response = await apiClient.post<ApplicationType>(`${BASE_URL}/application-types/create`, data);
+            return response.data;
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    //HANDLE APPLICATION TYPE UPDATION  
+    updateApplicationType: async (id: number, data: CreateApplicationTypeRequest): Promise<ApplicationType> => {
+        try {
+            const response = await apiClient.post<ApplicationType>(`${BASE_URL}/application-types/update/${id}`, data);
+            return response.data;
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    //HANDLE APPLICATION TYPE BY PROGRAMME TYPE
+    getApplicationTypesForProgramme: async (programmeTypeId: number): Promise<ApplicationType[]> => {
+        const response = await apiClient.get<ApplicationType[]>(`${BASE_URL}/get-application-types-for`, {
+            params: { programme_type: programmeTypeId }
         });
         return response.data;
     },
 
-    // HANDLES ENABLE ADMISSION SESSION
-    enableAdmission: async (sessionId: number): Promise<any> => {
-        const response = await apiClient.put(`/admission/enable/${sessionId}`);
+    // HANDLES ADMISSION STATISTICS
+    getAdmissionStats: async (facultyId: number, sessionId: number, semesterId?: number): Promise<AdmissionStats> => {
+        const params: Record<string, any> = {
+            faculty: facultyId,
+            session: sessionId
+        };
+        if (semesterId) {
+            params.semester = semesterId;
+        }
+
+        const response = await apiClient.get<AdmissionStats>(`${BASE_URL}/stats`, { params });
         return response.data;
-    }
+    },
+
+    // HANDLE ADMISSION DOCUMENTS
+    getAdmissionLetter: async (applicantId: string): Promise<Blob> => {
+        const response = await apiClient.get(`${BASE_URL}/letter`, {
+            params: { q: applicantId },
+            responseType: "blob",
+        });
+        return response.data;
+    },
+
+    // HANDLE ADMISSION DOCUMENTS
+    getNotificationOfAdmission: async (applicantId: string): Promise<Blob> => {
+        const response = await apiClient.get(`${BASE_URL}/notification-of-admission`, {
+            params: { q: applicantId },
+            responseType: "blob",
+        });
+        return response.data;
+    },
+
+    // HANDLE ADMISSION DOCUMENTS
+    getSingleAdmissionDocument: async (applicantId: string): Promise<Blob> => {
+        const response = await apiClient.get(`${BASE_URL}/admission-single`, {
+            params: { applicantId },
+            responseType: "blob",
+        });
+        return response.data;
+    },
+
+    // HANDLE ADMISSION DOCUMENTS
+    getBulkAdmissionDocuments: async (params: BulkAdmissionParams): Promise<Blob> => {
+        const response = await apiClient.get(`${BASE_URL}/admission-bulk`, {
+            params,
+            responseType: "blob",
+        });
+        return response.data;
+    },
 };

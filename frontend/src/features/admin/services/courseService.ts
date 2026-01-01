@@ -1,6 +1,9 @@
 import apiClient from "@/lib/api";
 import { CourseRegistrationPayload, ProgrammeCourse, CreateCourseRequest, CourseLecturer, CourseQueryParams, CourseWithApproval } from "../types/course";
 
+// BASE URL
+const BASE_URL = '/course';
+
 
 export const courseService = {
     // HANDLES REGISTER COURSE FOR STUDENT
@@ -10,64 +13,64 @@ export const courseService = {
 
     //HANDLES GET ALL COURSES FOR A PROGRAMME
     getAllCoursesByProgramme: async (programmeId: number): Promise<ProgrammeCourse[]> => {
-        const response = await apiClient.get<ProgrammeCourse[]>(`/course/all/programme/${programmeId}`);
+        const response = await apiClient.get<ProgrammeCourse[]>(`${BASE_URL}/all/programme/${programmeId}`);
         return response.data;
     },
 
     // HANDLES COOURSE CREATION
     createCourse: async (data: CreateCourseRequest): Promise<any> => {
-        const response = await apiClient.post("/course/create", data);
+        const response = await apiClient.post("${BASE_URL}/create", data);
         return response.data;
     },
 
 
     // HANDLE UPDATE COURSE
     updateCourse: async (id: number, data: CreateCourseRequest): Promise<any> => {
-        const response = await apiClient.put(`/course/update/${id}`, data);
+        const response = await apiClient.put(`${BASE_URL}/update/${id}`, data);
         return response.data;
     },
 
 
     // HANDLE GET LECTURERS BY COURSE
     getLecturersByCourse: async (courseId: number): Promise<CourseLecturer[]> => {
-        const response = await apiClient.get<CourseLecturer[]>(`/course/get-lecturers/${courseId}`);
+        const response = await apiClient.get<CourseLecturer[]>(`${BASE_URL}/get-lecturers/${courseId}`);
         return response.data;
     },
 
     //HANDLE GET ALL COURSES
     getAllCourses: async (params: CourseQueryParams): Promise<ProgrammeCourse[]> => {
-        const response = await apiClient.get<ProgrammeCourse[]>('/course/all', { params });
+        const response = await apiClient.get<ProgrammeCourse[]>(`${BASE_URL}/all`, { params });
         return response.data;
     },
 
     // HANDLE GET COURSES FOR DEPARTMENT APPROVAL
     getCoursesForDepartmentApproval: async (sessionId: number, semester: number, departmentId: number): Promise<CourseWithApproval[]> => {
-        const response = await apiClient.get<CourseWithApproval[]>(`/course/all/department-for-approval/${sessionId}/${semester}/${departmentId}`);
+        const response = await apiClient.get<CourseWithApproval[]>(`${BASE_URL}/all/department-for-approval/${sessionId}/${semester}/${departmentId}`);
         return response.data;
     },
 
     // HANDLE GET COURSES FOR FACULTY APPROVAL
     getCoursesForFacultyApproval: async (sessionId: number, semester: number, departmentId: number): Promise<CourseWithApproval[]> => {
-        const response = await apiClient.get<CourseWithApproval[]>(`/course/all/department-for-approval-faculty/${sessionId}/${semester}/${departmentId}`);
+        const response = await apiClient.get<CourseWithApproval[]>(`${BASE_URL}/all/department-for-approval-faculty/${sessionId}/${semester}/${departmentId}`);
         return response.data;
     },
 
     // HANDLE GET COURSES FOR PROGRAMME APPROVAL
     getCoursesForProgrammeApproval: async (programmeTypeId: number, sessionId: number, semester: number, programmeId: number): Promise<CourseWithApproval[]> => {
-        const response = await apiClient.get<CourseWithApproval[]>(`/course/all/programme-for-approval/${programmeTypeId}/${sessionId}/${semester}/${programmeId}`);
+        const response = await apiClient.get<CourseWithApproval[]>(`${BASE_URL}/all/programme-for-approval/${programmeTypeId}/${sessionId}/${semester}/${programmeId}`);
         return response.data;
     },
 
 
     // HANDLE ASSIGN LECTURERS TO A COURSE
     assignLecturers: async (courseId: number, lecturers: number[]): Promise<any> => {
-        const response = await apiClient.post(`/course/assign-lecturers/${courseId}`, { lecturers });
+        const response = await apiClient.post(`${BASE_URL}/assign-lecturers/${courseId}`, { lecturers });
         return response.data;
     },
 
     //HANDLE LECTURER REMOVAL FROM A COURSE
     removeLecturer: async (courseId: number, staffId: string): Promise<any> => {
-        const response = await apiClient.put(`/course/un-assign-lecturer/${courseId}`, staffId, {
+        const response = await apiClient.put(`${BASE_URL}/un-assign-lecturer/${courseId}`, staffId, {
             headers: { "Content-Type": "text/plain" }
         });
         return response.data;
@@ -75,7 +78,7 @@ export const courseService = {
 
     // HANDLE GET REGISTERED STUDENTS
     getRegisteredStudents: async (courseId: number, sessionId: number, semester: number, page: number, size: number): Promise<any> => {
-        const response = await apiClient.get<any>(`/course/registered-students/${courseId}/${sessionId}/${semester}`, {
+        const response = await apiClient.get<any>(`${BASE_URL}/registered-students/${courseId}/${sessionId}/${semester}`, {
             params: { page, size }
         });
         return response.data;
@@ -83,8 +86,8 @@ export const courseService = {
 
     // HANDLE DOWNLOAD REGISTERED STUDENTS
     downloadRegisteredStudents: async (courseId: number, sessionId: number, semester: number): Promise<void> => {
-        const response = await apiClient.get(`/course/registered-students-download/${courseId}/${sessionId}/${semester}`, {
-            responseType: 'blob', // Important for file download
+        const response = await apiClient.get(`${BASE_URL}/registered-students-download/${courseId}/${sessionId}/${semester}`, {
+            responseType: 'blob',
         });
 
         // Trigger download
@@ -100,7 +103,7 @@ export const courseService = {
 
     // HANDLE GET COURSES FOR STUDENT
     getStudentRegisteredCourses: async (studentId: string, sessionId: number, semesterId: number): Promise<any> => {
-        const response = await apiClient.get('/course/get-for-student', {
+        const response = await apiClient.get(`${BASE_URL}/get-for-student`, {
             params: { student: studentId, session: sessionId, semester: semesterId }
         });
         return response.data;
@@ -108,7 +111,7 @@ export const courseService = {
 
     // HANDLE GET COURSES FOR STUDENT (ADMINISTRATIVE)
     getStudentRegisteredCoursesAdministrative: async (studentId: string, semesterId: number): Promise<any> => {
-        const response = await apiClient.get('/course/get-for-student-administrative', {
+        const response = await apiClient.get(`${BASE_URL}/get-for-student-administrative`, {
             params: { student: studentId, semester: semesterId }
         });
         return response.data;
@@ -116,38 +119,38 @@ export const courseService = {
 
     // HANDLE UNREGISTER COURSE FOR STUDENT (ADMINISTRATIVE)
     unregisterCourseAdministrative: async (studentId: string, registeredCourseId: number): Promise<void> => {
-        await apiClient.post('/course/unregister-administrative', null, {
+        await apiClient.post(`${BASE_URL}/unregister-administrative`, null, {
             params: { student: studentId, registered_course: registeredCourseId }
         });
     },
 
     // HANDLE GET COURSE PREREQUISITES
     getCoursePrerequisites: async (courseId: number): Promise<ProgrammeCourse[]> => {
-        const response = await apiClient.get<ProgrammeCourse[]>(`/course/prerequisites/all/${courseId}`);
+        const response = await apiClient.get<ProgrammeCourse[]>(`${BASE_URL}/prerequisites/all/${courseId}`);
         return response.data;
     },
 
     // HANDLE ADD COURSE PREREQUISITE
     addCoursePrerequisite: async (courseId: number, prerequisiteId: number): Promise<string> => {
-        const response = await apiClient.put(`/course/prerequisites/add/${courseId}`, { prerequisiteId });
+        const response = await apiClient.put(`${BASE_URL}/prerequisites/add/${courseId}`, { prerequisiteId });
         return response.data;
     },
 
     // HANDLE REMOVE COURSE PREREQUISITE
     removeCoursePrerequisite: async (courseId: number, prerequisiteId: number): Promise<string> => {
-        const response = await apiClient.put(`/course/prerequisites/remove/${courseId}`, { prerequisiteId });
+        const response = await apiClient.put(`${BASE_URL}/prerequisites/remove/${courseId}`, { prerequisiteId });
         return response.data;
     },
 
     // HANDLE SET MAIN LECTURER FOR A COURSE
     setMainLecturer: async (courseId: number, staffId: string): Promise<ProgrammeCourse> => {
-        const response = await apiClient.put<ProgrammeCourse>(`/course/set-main-lecturer/${courseId}`, { staffId });
+        const response = await apiClient.put<ProgrammeCourse>(`${BASE_URL}/set-main-lecturer/${courseId}`, { staffId });
         return response.data;
     },
 
     // HANDLE DELETE COURSE
     deleteCourse: async (courseId: number): Promise<void> => {
-        await apiClient.delete(`/course/delete/${courseId}`);
+        await apiClient.delete(`${BASE_URL}/delete/${courseId}`);
     },
 
     // HANDLE UPLOAD COURSES
@@ -157,7 +160,7 @@ export const courseService = {
         formData.append("programme_type", programmeType.toString());
         formData.append("level", level.toString());
 
-        const response = await apiClient.post("/course/upload", formData, {
+        const response = await apiClient.post(`${BASE_URL}/upload`, formData, {
             headers: {
                 "Content-Type": "multipart/form-data",
             },
@@ -167,7 +170,7 @@ export const courseService = {
 
     // HANDLE SEARCH COURSES
     searchCourses: async (programmeType: number, query: string): Promise<ProgrammeCourse[]> => {
-        const response = await apiClient.get<ProgrammeCourse[]>("/course/search", {
+        const response = await apiClient.get<ProgrammeCourse[]>(`${BASE_URL}/search`, {
             params: { programme_type: programmeType, query }
         });
         return response.data;
@@ -181,7 +184,7 @@ export const courseService = {
         removeResult: boolean,
         levelId?: number
     ): Promise<void> => {
-        await apiClient.delete("/course/deregister-all", {
+        await apiClient.delete(`${BASE_URL}/deregister-all`, {
             params: {
                 courseId,
                 semesterId,
@@ -205,7 +208,7 @@ export const courseService = {
         formData.append("semester", semesterId.toString());
         formData.append("includeUnpaid", includeUnpaid.toString());
 
-        const response = await apiClient.post("/course/bulk-registration", formData, {
+        const response = await apiClient.post(`${BASE_URL}/bulk-registration`, formData, {
             headers: {
                 "Content-Type": "multipart/form-data",
             },

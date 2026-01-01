@@ -19,8 +19,10 @@ import {
 import { BookOpen, Loader2, PlusCircle } from "lucide-react";
 import { admissionService } from "@/features/admin/services/admissionService";
 import { studentService } from "@/features/admin/services/studentService";
+import { sessionService } from "@/features/admin/services/sessionService";
 import RegisterCourseModal from "./RegisterCourseModal";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StudentRegisteredCoursesTabProps {
     student: any;
@@ -28,6 +30,7 @@ interface StudentRegisteredCoursesTabProps {
 }
 
 export const StudentRegisteredCoursesTab = ({ student: s, currentSessionId }: StudentRegisteredCoursesTabProps) => {
+    const { hasRole } = useAuth();
     const [activeSession, setActiveSession] = useState<string>("");
     const [activeSemester, setActiveSemester] = useState<string>("");
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -38,12 +41,12 @@ export const StudentRegisteredCoursesTab = ({ student: s, currentSessionId }: St
 
     const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
+        queryFn: sessionService.getAllSessions,
     });
 
     const { data: semesters = [] } = useQuery({
         queryKey: ["semesters", activeSession],
-        queryFn: () => admissionService.getSemestersBySession(Number(activeSession)),
+        queryFn: () => sessionService.getSemestersBySession(Number(activeSession)),
         enabled: !!activeSession,
     });
 

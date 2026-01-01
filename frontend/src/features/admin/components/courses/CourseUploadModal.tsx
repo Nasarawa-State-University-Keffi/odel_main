@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { courseService } from "@/features/admin/services/courseService";
+import { programmeTypeService } from "@/features/admin/services/programmeTypeService";
+import { levelService } from "@/features/admin/services/levelService";
 import { staffService } from "@/features/admin/services/staffService";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Upload, AlertCircle, FileSpreadsheet, CheckCircle2, XCircle } from "lucide-react";
@@ -27,14 +29,14 @@ export const CourseUploadModal = ({ open, onOpenChange }: CourseUploadModalProps
     // Fetch Programme Types and Levels
     const { data: programmeTypes = [] } = useQuery({
         queryKey: ["programme-types"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
         enabled: open
     });
 
     const { data: levels = [] } = useQuery({
-        queryKey: ["levels"],
-        queryFn: staffService.getAllLevels,
-        enabled: open
+        queryKey: ["levels", programmeTypeId],
+        queryFn: () => levelService.getAllLevels(Number(programmeTypeId)),
+        enabled: open && !!programmeTypeId
     });
 
     const uploadMutation = useMutation({

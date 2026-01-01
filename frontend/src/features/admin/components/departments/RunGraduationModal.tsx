@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { departmentService } from "@/features/admin/services/departmentService";
 import { admissionService } from "@/features/admin/services/admissionService";
+import { programmeService } from "@/features/admin/services/programmeService";
 import { staffService } from "@/features/admin/services/staffService";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,15 +23,16 @@ const RunGraduationModal = ({ isOpen, onClose, departmentId }: RunGraduationModa
     const [resultData, setResultData] = useState<any>(null);
 
     // Fetch Active Admission for Semester
-    const { data: activeAdmission } = useQuery({
+    const { data: activeAdmissions } = useQuery({
         queryKey: ["activeAdmission"],
-        queryFn: admissionService.getActiveAdmission,
+        queryFn: admissionService.getActiveAdmissions,
     });
+    const activeAdmission = activeAdmissions && activeAdmissions.length > 0 ? activeAdmissions[0] : null;
 
     // Fetch All Programmes to filter by Department
     const { data: programmes } = useQuery({
         queryKey: ["programmes"],
-        queryFn: staffService.getAllProgrammes,
+        queryFn: () => programmeService.getAllProgrammes(),
     });
 
     const relevantProgrammes = programmes?.filter(p => p.department?.id === departmentId) || [];

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
 import { modeOfEntryService } from "../../services/modeOfEntryService";
 import { programmeService } from "../../services/programmeService";
-import { admissionService } from "../../services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
 import {
     Dialog,
     DialogContent,
@@ -62,11 +62,11 @@ const RegisterCourseModal = ({
         enabled: open && !!activeProgrammeTypeId
     });
 
-    // Fetch Sessions for Effective Session
-    const { data: sessions, isPending: isLoadingSessions } = useQuery({
+    // Fetch Sessions
+    const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
-        enabled: open
+        queryFn: sessionService.getAllSessions,
+        enabled: open,
     });
 
     useEffect(() => {
@@ -80,7 +80,7 @@ const RegisterCourseModal = ({
     // Set default session and select all modes by default
     useEffect(() => {
         if (open && sessions && sessions.length > 0 && !effectiveSessionId) {
-            const activeSession = sessions.find(s => s.isActive) || sessions[0];
+            const activeSession = sessions.find(s => s.isOpen) || sessions[0];
             setEffectiveSessionId(activeSession.id.toString());
         }
         if (open && modes && modes.length > 0 && selectedModes.length === 0) {
@@ -225,7 +225,7 @@ const RegisterCourseModal = ({
                             className="w-full p-4 rounded-2xl border-2 border-white bg-white font-bold text-sm outline-none focus:border-primary/20 transition-all appearance-none"
                         >
                             {sessions?.map(s => (
-                                <option key={s.id} value={s.id.toString()}>{s.name} {s.isActive ? '(Current)' : ''}</option>
+                                <option key={s.id} value={s.id.toString()}>{s.name} {s.isOpen ? '(Current)' : ''}</option>
                             ))}
                         </select>
                     </div>

@@ -56,17 +56,27 @@ const AdminLogin = () => {
                 applicant: true,
             });
 
+            if (response.old && !response.jwt) {
+                toast({
+                    title: "Account Update Required",
+                    description: "Please reset your password to activate your account.",
+                });
+                navigate("/api/auth/forgot-password", { state: { email: data.username } });
+                setIsLoading(false);
+                return;
+            }
+
             if (response.userId && response.roles) {
-                const hasAdminRole = response.roles.some(role =>
-                    ['ADMIN', 'SUPER_ADMIN', 'ADMISSION_OFFICER'].includes(role)
+                const hasAllowedRole = response.roles.some(role =>
+                    ['ADMIN', 'SUPER_ADMIN', 'ADMISSION_OFFICER', 'STUDENT', 'APPLICANT'].includes(role)
                 );
 
-                if (!hasAdminRole) {
-                    setError("Access denied. Admin privileges required.");
+                if (!hasAllowedRole) {
+                    setError("Access denied. Authorized privileges required.");
                     toast({
                         variant: "destructive",
                         title: "Access Denied",
-                        description: "You don't have admin privileges.",
+                        description: "You don't have permission to access this portal.",
                     });
                     controls.start({
                         x: [0, -10, 10, -10, 10, 0],
@@ -110,10 +120,15 @@ const AdminLogin = () => {
 
                 toast({
                     title: "Login Successful",
-                    description: "Welcome back, Admin!",
+                    description: "Welcome back!",
                 });
 
-                navigate("/api/admin/dashboard");
+                // Redirect based on role
+                if (response.roles.includes('STUDENT') || response.roles.includes('APPLICANT')) {
+                    navigate("/dashboard");
+                } else {
+                    navigate("/api/admin/dashboard");
+                }
             } else {
                 throw new Error("Invalid response from server");
             }

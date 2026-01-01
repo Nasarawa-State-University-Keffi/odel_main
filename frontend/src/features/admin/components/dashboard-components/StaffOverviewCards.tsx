@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Users, Building2, BookOpen, GraduationCap } from "lucide-react";
+import { facultyService } from "../../services/facultyService";
+import { departmentService } from "../../services/departmentService";
 import { staffService } from "../../services/staffService";
 import { studentService } from "../../services/studentService";
 
@@ -10,7 +12,7 @@ const StaffOverviewCards = () => {
     // 1. Fetch Faculties Count (Moved up for dependency)
     const { data: facultiesData, isLoading: isLoadingFaculties } = useQuery({
         queryKey: ["faculties", "all"],
-        queryFn: staffService.getAllFaculties,
+        queryFn: facultyService.getAllFaculties,
         staleTime: 30 * 60 * 1000,
     });
 
@@ -48,7 +50,7 @@ const StaffOverviewCards = () => {
     // 3. Fetch Departments Count
     const { data: departmentsData, isLoading: isLoadingDepts } = useQuery({
         queryKey: ["departments", "all"],
-        queryFn: staffService.getAllDepartments,
+        queryFn: departmentService.getAllDepartments,
         staleTime: 30 * 60 * 1000,
     });
 

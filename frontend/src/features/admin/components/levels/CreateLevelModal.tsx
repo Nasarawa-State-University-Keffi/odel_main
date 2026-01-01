@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { levelService } from "../../services/levelService";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ const CreateLevelModal = ({ open, onOpenChange, onSuccess }: CreateLevelModalPro
     // Fetch Programme Types
     const { data: programmeTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     const createLevelMutation = useMutation({

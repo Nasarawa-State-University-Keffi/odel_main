@@ -1,11 +1,8 @@
-export interface Department {
-    id: number;
-    name: string;
-    faculty: {
-        id: number;
-        name: string;
-    };
-}
+import { Department } from "./department";
+import { Faculty } from "./faculty";
+import { ProgrammeType } from "./programmeType";
+
+export type { Department, Faculty, ProgrammeType };
 
 export interface LevelAdviser {
     id: number;
@@ -19,7 +16,7 @@ export interface LevelAdviser {
 export interface Staff {
     id: number;
     userId: string;
-    title?: any; // Can be string or object depending on endpoint
+    title?: any;
     firstName: string;
     middleName?: string;
     lastName: string;
@@ -66,14 +63,14 @@ export interface UpdateStaffFromAdminRequest {
     userId: string;
     firstName: string;
     lastName: string;
-    middleName?: string;
+    middleName: string;
     email: string;
     departmentId: number;
     academic: boolean;
     roles: string[];
     faculties: number[];
     departments: number[];
-    programmeTypeId?: number;
+    programmeTypeId: number;
 }
 
 export interface ApprovalInfo {
@@ -88,4 +85,72 @@ export interface AssignedCourseWithApproval {
     courseCode: string;
     title: string;
     currentApprovalInformation: ApprovalInfo;
+}
+
+// MOVED TYPES FROM staffService.ts
+
+export interface Title { id: number; title: string; value: string; }
+
+export interface Role { id: number; name: string; value: string; guard_name: string; }
+
+export interface Gender {
+    id: number;
+    title: string;
+    value: string;
+}
+
+export interface State {
+    id: number;
+    name: string;
+    code: string;
+    disabled: boolean;
+}
+
+export interface Country {
+    id: number;
+    name: string;
+    code: string;
+    states: State[];
+    disabled: boolean;
+}
+
+export interface LGA {
+    id: number;
+    name: string;
+    code: string;
+}
+
+export interface Level {
+    id: number;
+    title: string;
+    value: string;
+}
+
+export interface Programme {
+    id: number;
+    name: string;
+    code: string;
+    department: {
+        id: number;
+        name: string;
+    };
+    programmeType: {
+        id: number;
+        name: string;
+    };
+    programmeDuration: number;
+    availableOnline: boolean;
+}
+
+export interface PaginatedResponse<T> {
+    content: T[];
+    totalPages: number;
+    totalElements: number;
+    last: boolean;
+    size: number;
+    number: number;
+    sort: any;
+    numberOfElements: number;
+    first: boolean;
+    empty: boolean;
 }

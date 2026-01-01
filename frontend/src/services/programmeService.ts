@@ -14,7 +14,7 @@ export interface ProgrammeType {
 
 export interface Programme {
     id: number;
-    name: string; // Result of the "display the result"
+    name: string;
     code: string;
     modeOfStudy: string;
     department?: {
@@ -34,6 +34,8 @@ export interface Programme {
 }
 
 import fallbackData from "@/data/programmes.json";
+
+
 
 // In-memory cache
 let programmeTypesCache: ProgrammeType[] | null = null;

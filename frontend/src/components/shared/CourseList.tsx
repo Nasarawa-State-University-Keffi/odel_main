@@ -16,6 +16,8 @@ const CourseList = () => {
     const [programsList, setProgramsList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    console.log('program list', programsList)
+
     useEffect(() => {
         const fetchData = async () => {
             try {

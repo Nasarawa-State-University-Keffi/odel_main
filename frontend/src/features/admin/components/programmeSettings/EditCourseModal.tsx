@@ -13,6 +13,15 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
     Form,
     FormControl,
     FormField,
@@ -32,7 +41,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
-import { admissionService } from "../../services/admissionService";
+import { admissionService } from "@/features/admin/services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
 import { modeOfEntryService } from "../../services/modeOfEntryService";
 import { ProgrammeSettingsCourse, EditProgrammeCourseRequest } from "../../types/programmeSettings";
 
@@ -70,11 +80,11 @@ const EditCourseModal = ({ open, onOpenChange, course, programmeTypeId, availabl
         },
     });
 
-    // Fetch Sessions
-    const { data: sessions } = useQuery({
+    // Fetch Sessions (for effective session)
+    const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
-        enabled: open
+        queryFn: sessionService.getAllSessions,
+        enabled: open,
     });
 
     // Fetch Modes of Entry

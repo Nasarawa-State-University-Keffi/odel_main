@@ -17,7 +17,10 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { staffService, Staff } from "../../services/staffService";
+import { staffService } from "../../services/staffService";
+import { staffRoleService } from "../../services/staffRoleService";
+import { programmeTypeService } from "../../services/programmeTypeService";
+import { Staff } from "../../types/staff";
 import { Loader2 } from "lucide-react";
 
 interface MakeDepartmentExamOfficerModalProps {
@@ -42,13 +45,13 @@ const MakeDepartmentExamOfficerModal = ({ open, onOpenChange, staff }: MakeDepar
     // Fetch Programme Types
     const { data: programmeTypes = [], isLoading: isLoadingProgrammeTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
         enabled: open,
     });
 
     const mutation = useMutation({
         mutationFn: (data: { staffId: string; programmeTypeId?: number }) =>
-            staffService.makeDepartmentExamOfficer(data.staffId, { programmeTypeId: data.programmeTypeId }),
+            staffRoleService.makeDepartmentExamOfficer(data.staffId, { programmeTypeId: data.programmeTypeId }),
         onSuccess: () => {
             toast({
                 title: "Success",

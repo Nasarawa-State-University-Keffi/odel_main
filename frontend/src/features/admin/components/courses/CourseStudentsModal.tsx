@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { keepPreviousData, useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { courseService } from "@/features/admin/services/courseService";
-import { Loader2, AlertCircle, Users, GraduationCap, ChevronLeft, ChevronRight, Download, Trash2, Upload } from "lucide-react";
+import { Loader2, AlertCircle, Users, GraduationCap, ChevronLeft, ChevronRight, Download, Trash2, Upload, UserMinus } from "lucide-react";
 import { ProgrammeCourse } from "@/features/admin/types/course";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery as useMetadataQuery } from "@tanstack/react-query";
 import { admissionService } from "@/features/admin/services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
+import { studentService } from "@/features/admin/services/studentService";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CourseStudentsModalProps {
@@ -63,13 +65,14 @@ const CourseStudentsModal = ({ open, onOpenChange, course }: CourseStudentsModal
     // Fetch Sessions
     const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
+        queryFn: sessionService.getAllSessions,
+        enabled: open
     });
 
     // Auto-select active session
     useEffect(() => {
         if (sessions.length > 0 && !selectedSession) {
-            const activeSession = sessions.find(s => s.isActive);
+            const activeSession = sessions.find(s => s.isOpen);
             if (activeSession) {
                 setSelectedSession(activeSession.id.toString());
             } else {
@@ -82,7 +85,7 @@ const CourseStudentsModal = ({ open, onOpenChange, course }: CourseStudentsModal
     // Fetch Semesters for selected session
     const { data: semesters = [] } = useQuery({
         queryKey: ["semesters", selectedSession],
-        queryFn: () => admissionService.getSemestersBySession(Number(selectedSession)),
+        queryFn: () => sessionService.getSemestersBySession(Number(selectedSession)),
         enabled: !!selectedSession,
     });
 
@@ -154,7 +157,7 @@ const CourseStudentsModal = ({ open, onOpenChange, course }: CourseStudentsModal
                             <SelectContent>
                                 {sessions.map((session) => (
                                     <SelectItem key={session.id} value={session.id.toString()}>
-                                        {session.name} {session.isActive && "(Active)"}
+                                        {session.name} {session.isOpen && "(Active)"}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

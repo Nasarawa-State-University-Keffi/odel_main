@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { departmentService } from "@/features/admin/services/departmentService";
+import { facultyService } from "@/features/admin/services/facultyService";
 import { staffService } from "@/features/admin/services/staffService";
 import { Loader2 } from "lucide-react";
 import { CreateDepartmentModalProps } from "@/features/admin/types/department";
@@ -41,7 +42,7 @@ const CreateDepartmentModal = ({ open, onOpenChange, departmentToEdit }: CreateD
     // Fetch Faculties
     const { data: faculties = [] } = useQuery({
         queryKey: ["faculties"],
-        queryFn: staffService.getAllFaculties
+        queryFn: facultyService.getAllFaculties
     });
 
     // Auto-select ODEL faculty (Only if NOT in edit mode)

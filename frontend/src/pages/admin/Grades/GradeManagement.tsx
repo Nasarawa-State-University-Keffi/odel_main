@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { staffService } from "@/features/admin/services/staffService";
+import { programmeTypeService } from "@/features/admin/services/programmeTypeService";
 import { gradeService } from "@/features/admin/services/gradeService";
 import GradeList from "@/features/admin/components/grades/GradeList";
 import CreateGradeModal from "@/features/admin/components/grades/CreateGradeModal";
@@ -16,7 +16,7 @@ const GradeManagement = () => {
     // Fetch Programme Types
     const { data: programmeTypes, isLoading: isLoadingTypes } = useQuery({
         queryKey: ["programme-types"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     // Default select ODEL programme type on load

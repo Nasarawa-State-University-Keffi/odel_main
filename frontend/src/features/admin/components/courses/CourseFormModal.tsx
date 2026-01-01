@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { staffService } from "@/features/admin/services/staffService";
 import { departmentService } from "@/features/admin/services/departmentService";
+import { programmeTypeService } from "@/features/admin/services/programmeTypeService";
+import { programmeService } from "@/features/admin/services/programmeService";
 import { courseService } from "@/features/admin/services/courseService";
 import { CreateCourseRequest, ProgrammeCourse } from "@/features/admin/types/course";
 import { Loader2, Plus, Edit } from "lucide-react";
@@ -54,13 +56,13 @@ const CourseFormModal = ({ open, onOpenChange, courseToEdit }: CourseFormModalPr
 
     const { data: programmeTypes = [] } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes
+        queryFn: programmeTypeService.getAllProgrammeTypes
     });
 
     const { data: programmes = [] } = useQuery({
-        queryKey: ["programmes"],
-        queryFn: staffService.getAllProgrammes,
-        enabled: form.courseSpan === 1104
+        queryKey: ["programmes", form.programmeTypeId],
+        queryFn: () => programmeService.getAllProgrammes(form.programmeTypeId!),
+        enabled: form.courseSpan === 1104 && !!form.programmeTypeId
     });
 
     // Course Span Options

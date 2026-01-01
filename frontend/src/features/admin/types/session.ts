@@ -25,6 +25,7 @@ export interface Session {
     id: number;
     name: string;
     isOpen: boolean;
+    isActive: boolean;
     registrationBegins: string;
     registrationEnds: string;
     openForPayment: boolean;
