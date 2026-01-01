@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { studentService } from "@/features/admin/services/studentService";
-import { admissionService } from "@/features/admin/services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
 import { courseService } from "@/features/admin/services/courseService";
+import { courseRegistrationService } from "@/features/admin/services/courseRegistrationService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +16,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const ManualRegistration = () => {
     const { toast } = useToast();
-    const { hasRole, hasAnyRole } = useAuth();
+    const { user, hasRole, hasAnyRole } = useAuth();
+    const isStudent = hasRole("STUDENT");
 
     // State
     const [matricNumber, setMatricNumber] = useState("");
@@ -23,6 +25,14 @@ const ManualRegistration = () => {
     const [selectedSession, setSelectedSession] = useState<string>("");
     const [selectedSemester, setSelectedSemester] = useState<string>("");
     const [selectedCourse, setSelectedCourse] = useState<string>("");
+
+    // Auto-select student for STUDENT role
+    useEffect(() => {
+        if (isStudent && user?.userId) {
+            setSearchedMatric(user.userId);
+            setMatricNumber(user.userId);
+        }
+    }, [isStudent, user?.userId]);
 
     // 1. Fetch Student Details
     const {
@@ -48,7 +58,7 @@ const ManualRegistration = () => {
     // 2. Fetch Sessions
     const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
+        queryFn: sessionService.getAllSessions,
     });
 
     // 3. Fetch Courses (Dependent on Student)
@@ -60,7 +70,7 @@ const ManualRegistration = () => {
 
     // 4. Mutation to Register Course
     const registerMutation = useMutation({
-        mutationFn: courseService.registerCourse,
+        mutationFn: courseRegistrationService.registerCourse,
         onSuccess: () => {
             toast({ title: "Success", description: "Course registered successfully." });
             setSelectedCourse("");
@@ -70,7 +80,7 @@ const ManualRegistration = () => {
             const status = error.response?.status;
             const data = error.response?.data;
             if (status === 400) message = data?.message || "Invalid request. Check prerequisites or fees.";
-            else if (status === 403) message = "Access denied.";
+            else if (status === 403) message = "Access denied. You are not authorized to register this course.";
             else if (status === 422) message = data?.message || "Registration failed.";
 
             toast({ title: "Registration Failed", description: message, variant: "destructive" });
@@ -94,42 +104,44 @@ const ManualRegistration = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column: Student Search & Details */}
             <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-6 h-fit">
-                <Card className="border-none shadow-xl bg-white/80 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Search className="h-5 w-5 text-primary" />
-                            Find Student
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <form onSubmit={handleSearch} className="flex gap-2">
-                            <Input
-                                placeholder="Enter Matric Number"
-                                value={matricNumber}
-                                onChange={(e) => setMatricNumber(e.target.value)}
-                                className="h-11 bg-muted/30"
-                            />
-                            <Button type="submit" disabled={isStudentLoading} className="h-11 w-11 p-0 shrink-0">
-                                {isStudentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            </Button>
-                        </form>
+                {!isStudent && (
+                    <Card className="border-none shadow-xl bg-white/80 backdrop-blur-sm">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Search className="h-5 w-5 text-primary" />
+                                Find Student
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <form onSubmit={handleSearch} className="flex gap-2">
+                                <Input
+                                    placeholder="Enter Matric Number"
+                                    value={matricNumber}
+                                    onChange={(e) => setMatricNumber(e.target.value)}
+                                    className="h-11 bg-muted/30"
+                                />
+                                <Button type="submit" disabled={isStudentLoading} className="h-11 w-11 p-0 shrink-0">
+                                    {isStudentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                </Button>
+                            </form>
 
-                        {isStudentError && (
-                            <Alert variant="destructive" className="animate-in zoom-in-95 duration-200">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertTitle>Error</AlertTitle>
-                                <AlertDescription>Student not found or valid.</AlertDescription>
-                            </Alert>
-                        )}
-                    </CardContent>
-                </Card>
+                            {isStudentError && (
+                                <Alert variant="destructive" className="animate-in zoom-in-95 duration-200">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle>Error</AlertTitle>
+                                    <AlertDescription>Student not found or valid.</AlertDescription>
+                                </Alert>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
 
                 {student && (
                     <Card className="border-primary/20 shadow-xl bg-primary/5 animate-in slide-in-from-left-4 duration-500">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-primary">
                                 <UserCircle className="h-5 w-5" />
-                                Student Profile
+                                {isStudent ? "My Profile" : "Student Profile"}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -198,26 +210,31 @@ const ManualRegistration = () => {
                                 </Select>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Select Course</Label>
-                            <Select value={selectedCourse} onValueChange={setSelectedCourse} disabled={isCoursesLoading}>
-                                <SelectTrigger className="h-11"><SelectValue placeholder={isCoursesLoading ? "Loading..." : "Select Course"} /></SelectTrigger>
-                                <SelectContent>
-                                    {courses.map((course: any) => (
-                                        <SelectItem key={course.id} value={course.id.toString()}>
-                                            <span className="font-bold mr-2">{course.code}</span>
-                                            {course.title}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="pt-4 flex justify-end">
-                            <Button size="lg" className="font-bold px-8" onClick={handleRegister} disabled={registerMutation.isPending || !selectedCourse}>
-                                {registerMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
-                                Register Course
-                            </Button>
-                        </div>
+
+                        {isStudent && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Select Course</Label>
+                                    <Select value={selectedCourse} onValueChange={setSelectedCourse} disabled={isCoursesLoading}>
+                                        <SelectTrigger className="h-11"><SelectValue placeholder={isCoursesLoading ? "Loading..." : "Select Course"} /></SelectTrigger>
+                                        <SelectContent>
+                                            {courses.map((course: any) => (
+                                                <SelectItem key={course.id} value={course.id.toString()}>
+                                                    <span className="font-bold mr-2">{course.code}</span>
+                                                    {course.title}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="pt-4 flex justify-end">
+                                    <Button size="lg" className="font-bold px-8" onClick={handleRegister} disabled={registerMutation.isPending || !selectedCourse}>
+                                        {registerMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
+                                        Register Course
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -227,6 +244,7 @@ const ManualRegistration = () => {
                         sessionId={Number(selectedSession)}
                         semesterId={Number(selectedSemester)}
                         isResultAdmin={hasRole('RESULT_ADMIN')}
+                        isStudent={isStudent}
                     />
                 )}
             </div>
@@ -234,7 +252,7 @@ const ManualRegistration = () => {
     );
 };
 
-const RegisteredCoursesList = ({ studentMatric, sessionId, semesterId, isResultAdmin }: any) => {
+const RegisteredCoursesList = ({ studentMatric, sessionId, semesterId, isResultAdmin, isStudent }: any) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
@@ -249,7 +267,23 @@ const RegisteredCoursesList = ({ studentMatric, sessionId, semesterId, isResultA
     });
 
     const unregisterMutation = useMutation({
-        mutationFn: (id: number) => courseService.unregisterCourseAdministrative(studentMatric, id),
+        mutationFn: async (item: any) => {
+            const courseId = item.course?.id || item.courseId;
+            const registrationId = item.id;
+
+            if (isStudent) {
+                // Endpoint 2: Unregister as Student
+                await courseRegistrationService.unregisterCourse({
+                    course: courseId,
+                    studentMatric: studentMatric,
+                    sessionId: sessionId,
+                    semesterId: semesterId
+                });
+            } else if (isResultAdmin) {
+                // Endpoint 11: Deregister as Admin
+                await courseRegistrationService.deregisterCourse(registrationId);
+            }
+        },
         onSuccess: () => {
             toast({ title: "Success", description: "Unregistered successfully." });
             queryClient.invalidateQueries({ queryKey: ["student-courses"] });
@@ -265,6 +299,8 @@ const RegisteredCoursesList = ({ studentMatric, sessionId, semesterId, isResultA
 
     if (isLoading) return <Loader2 className="h-8 w-8 animate-spin mx-auto mt-12 text-primary" />;
     if (isError) return <div className="text-center mt-12 text-red-500">Failed to load courses.</div>;
+
+    const canDelete = isStudent || isResultAdmin;
 
     return (
         <Card className="border-none shadow-xl overflow-hidden">
@@ -291,8 +327,8 @@ const RegisteredCoursesList = ({ studentMatric, sessionId, semesterId, isResultA
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <span className="text-xs bg-secondary px-2 py-1 rounded">{course.unit || course.creditUnit || '-'} Units</span>
-                                        {isResultAdmin && <Button variant="ghost" size="sm" onClick={() => {
-                                            if (confirm("Unregister?")) unregisterMutation.mutate(item.id);
+                                        {canDelete && <Button variant="ghost" size="sm" onClick={() => {
+                                            if (confirm("Unregister?")) unregisterMutation.mutate(item);
                                         }} disabled={unregisterMutation.isPending}><Trash2 className="h-4 w-4 text-red-500" /></Button>}
                                     </div>
                                 </div>

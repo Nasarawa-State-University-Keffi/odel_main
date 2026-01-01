@@ -1,11 +1,14 @@
 import apiClient from "@/lib/api";
 import { Grade, CreateGradeRequest, UpdateGradeRequest } from "../types/grade";
 
+//BASE URL FOR THE GRADE
+const BASE_URL = '/grades';
+
 export const gradeService = {
     // DELETE GRADE
     deleteGrade: async (id: number): Promise<void> => {
         try {
-            await apiClient.delete(`/grades/${id}`);
+            await apiClient.delete(`${BASE_URL}/${id}`);
         } catch (error: any) {
             const status = error.response?.status;
             const message = error.response?.data?.message || error.response?.data || "Failed to disable grade";
@@ -24,7 +27,7 @@ export const gradeService = {
     // UPDATE GRADE
     updateGrade: async ({ id, data }: { id: number; data: UpdateGradeRequest }): Promise<Grade> => {
         try {
-            const response = await apiClient.put<Grade>(`/grades/update/${id}`, data);
+            const response = await apiClient.put<Grade>(`${BASE_URL}/update/${id}`, data);
             return response.data;
         } catch (error: any) {
             const status = error.response?.status;
@@ -52,7 +55,7 @@ export const gradeService = {
     // CREATE GRADE
     createGrade: async (data: CreateGradeRequest): Promise<Grade> => {
         try {
-            const response = await apiClient.post<Grade>('/grades/create', data);
+            const response = await apiClient.post<Grade>(`${BASE_URL}/create`, data);
             return response.data;
         } catch (error: any) {
             const status = error.response?.status;
@@ -78,7 +81,7 @@ export const gradeService = {
     // FETCH ALL GRADES BY PROGRAMME TYPE
     getAllGrades: async (programmeTypeId: number): Promise<Grade[]> => {
         try {
-            const response = await apiClient.get<Grade[]>(`/grades/all?programme_type=${programmeTypeId}`);
+            const response = await apiClient.get<Grade[]>(`${BASE_URL}/all?programme_type=${programmeTypeId}`);
             return response.data;
         } catch (error: any) {
             const status = error.response?.status;

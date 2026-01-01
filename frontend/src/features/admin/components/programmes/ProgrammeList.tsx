@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { programmeService } from "../../services/programmeService";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
 import { departmentService } from "../../services/departmentService";
 import { Programme } from "../../types/programme";
@@ -45,7 +46,7 @@ const ProgrammeList = () => {
     // Fetch Programme Types for Filter
     const { data: programmeTypes, isPending: isLoadingProgrammeTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     // ... (useEffect for default type remains same) ...

@@ -15,6 +15,9 @@ import StaffModals from "./StaffModals";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Staff } from "../../types/staff";
 import { staffService } from "../../services/staffService";
+import { staffRoleService } from "../../services/staffRoleService";
+import { facultyService } from "../../services/facultyService";
+import { departmentService } from "../../services/departmentService";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -64,8 +67,8 @@ const StaffList = () => {
         const fetchMetadata = async () => {
             try {
                 const [facultiesData, departmentsData] = await Promise.all([
-                    staffService.getAllFaculties(),
-                    staffService.getAllDepartments()
+                    facultyService.getAllFaculties(),
+                    departmentService.getAllDepartments()
                 ]);
                 setFaculties(facultiesData);
                 setDepartments(departmentsData);
@@ -114,7 +117,7 @@ const StaffList = () => {
         let currentFaculties = faculties;
         if (currentFaculties.length === 0) {
             try {
-                currentFaculties = await staffService.getAllFaculties();
+                currentFaculties = await facultyService.getAllFaculties();
                 setFaculties(currentFaculties); // Sync state
             } catch (e) {
                 console.error("Error fetching faculties for default ODEL check", e);
@@ -306,7 +309,7 @@ const StaffList = () => {
 
     const fetchLevelAdvisers = async (departmentId: number) => {
         try {
-            const staffList = await staffService.getLevelAdvisers(departmentId);
+            const staffList = await staffRoleService.getLevelAdvisers(departmentId);
             return {
                 content: staffList,
                 totalPages: 1,
@@ -527,7 +530,7 @@ const StaffList = () => {
                                 onMakeHod={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as HOD?`)) {
                                         try {
-                                            await staffService.makeHod(staff.userId);
+                                            await staffRoleService.makeHod(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as HOD.",
@@ -545,7 +548,7 @@ const StaffList = () => {
                                 onUnmakeHod={async (staff) => {
                                     if (window.confirm(`Are you sure you want to remove HOD role from ${staff.name}?`)) {
                                         try {
-                                            await staffService.unmakeHod(staff.userId);
+                                            await staffRoleService.unmakeHod(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully removed as HOD.",
@@ -563,7 +566,7 @@ const StaffList = () => {
                                 onMakeVC={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as Vice Chancellor?`)) {
                                         try {
-                                            await staffService.makeVC(staff.userId);
+                                            await staffRoleService.makeVC(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as Vice Chancellor.",
@@ -581,7 +584,7 @@ const StaffList = () => {
                                 onMakeDvcAcademic={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as DVC (Academics)?`)) {
                                         try {
-                                            await staffService.makeDvcAcademic(staff.userId);
+                                            await staffRoleService.makeDvcAcademic(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as DVC (Academics).",
@@ -599,7 +602,7 @@ const StaffList = () => {
                                 onMakeDvcAdministration={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as DVC (Administration)?`)) {
                                         try {
-                                            await staffService.makeDvcAdministration(staff.userId);
+                                            await staffRoleService.makeDvcAdministration(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as DVC (Administration).",
@@ -617,7 +620,7 @@ const StaffList = () => {
                                 onMakeBursar={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as Bursar?`)) {
                                         try {
-                                            await staffService.makeBursar(staff.userId);
+                                            await staffRoleService.makeBursar(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as Bursar.",
@@ -635,7 +638,7 @@ const StaffList = () => {
                                 onMakeAcademicSecretary={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as Academic Secretary?`)) {
                                         try {
-                                            await staffService.makeAcademicSecretary(staff.userId);
+                                            await staffRoleService.makeAcademicSecretary(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as Academic Secretary.",
@@ -653,7 +656,7 @@ const StaffList = () => {
                                 onMakeSenate={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as a Senate Member?`)) {
                                         try {
-                                            await staffService.makeSenate(staff.userId);
+                                            await staffRoleService.makeSenate(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as Senate Member.",
@@ -671,7 +674,7 @@ const StaffList = () => {
                                 onUnmakeSenate={async (staff) => {
                                     if (window.confirm(`Are you sure you want to remove Senate role from ${staff.name}?`)) {
                                         try {
-                                            await staffService.unmakeSenate(staff.userId);
+                                            await staffRoleService.unmakeSenate(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully removed from Senate.",
@@ -689,7 +692,7 @@ const StaffList = () => {
                                 onMakeRegistrar={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as Registrar?`)) {
                                         try {
-                                            await staffService.makeRegistrar(staff.userId);
+                                            await staffRoleService.makeRegistrar(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as Registrar.",
@@ -707,7 +710,7 @@ const StaffList = () => {
                                 onMakeFacultyExamOfficer={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as Faculty Exam Officer?`)) {
                                         try {
-                                            await staffService.makeFacultyExamOfficer(staff.userId);
+                                            await staffRoleService.makeFacultyExamOfficer(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as Faculty Exam Officer.",
@@ -725,7 +728,7 @@ const StaffList = () => {
                                 onMakeDean={async (staff) => {
                                     if (window.confirm(`Are you sure you want to appoint ${staff.name} as Faculty Dean?`)) {
                                         try {
-                                            await staffService.makeDean(staff.userId);
+                                            await staffRoleService.makeDean(staff.userId);
                                             toast({
                                                 title: "Success",
                                                 description: "Staff has been successfully appointed as Faculty Dean.",

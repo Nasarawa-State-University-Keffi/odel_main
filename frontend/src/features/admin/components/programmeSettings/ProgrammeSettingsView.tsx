@@ -1,10 +1,15 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { programmeService } from "../../services/programmeService";
-import { staffService } from "../../services/staffService";
-import { admissionService } from "../../services/admissionService";
+import { programmeTypeService } from "../../services/programmeTypeService";
+import { levelService } from "../../services/levelService";
+import { staffService } from "@/features/admin/services/staffService";
+import { admissionService } from "@/features/admin/services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
+import { courseService } from "@/features/admin/services/courseService";
 import { Loader2, Settings, Filter, AlertCircle, Book, TrendingDown, Layers, Target, Settings2, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -45,7 +50,7 @@ const ProgrammeSettingsView = () => {
     // Fetch Programme Types for ODEL filtering
     const { data: programmeTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     // Set default ODEL programme type when loaded
@@ -140,20 +145,20 @@ const ProgrammeSettingsView = () => {
     // Fetch Levels based on selected type
     const { data: levels } = useQuery({
         queryKey: ["levels-by-type", selectedProgrammeType],
-        queryFn: () => staffService.getLevelsByProgrammeType(Number(selectedProgrammeType)),
+        queryFn: () => levelService.getAllLevels(Number(selectedProgrammeType)),
         enabled: !!selectedProgrammeType
     });
 
     // Fetch Sessions (needed for semesters)
-    const { data: sessions } = useQuery({
+    const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions
+        queryFn: sessionService.getAllSessions,
     });
 
     // Fetch Semesters based on session
-    const { data: semesters } = useQuery({
+    const { data: semesters = [] } = useQuery({
         queryKey: ["semesters", selectedSession],
-        queryFn: () => admissionService.getSemestersBySession(Number(selectedSession)),
+        queryFn: () => sessionService.getSemestersBySession(Number(selectedSession)),
         enabled: !!selectedSession
     });
 

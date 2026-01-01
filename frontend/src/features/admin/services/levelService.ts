@@ -1,13 +1,16 @@
 import apiClient from "@/lib/api";
 import { Level } from "../types/level";
 
+//BASE URL FOR THE LEVEL
+const BASE_URL = '/levels';
+
 export const levelService = {
 
     //HANDLE ALL LEVEL FETCHING VIA PROGRAMME TYPE
-    getAllLevels: async (programmeTypeId: number): Promise<Level[]> => {
+    getAllLevels: async (programmeTypeId?: number): Promise<Level[]> => {
         try {
-            const response = await apiClient.get<Level[]>(`/levels/all`, {
-                params: { programme_type: programmeTypeId }
+            const response = await apiClient.get<Level[]>(`${BASE_URL}/all`, {
+                params: programmeTypeId ? { programme_type: programmeTypeId } : {}
             });
             return response.data;
         } catch (error) {
@@ -17,7 +20,7 @@ export const levelService = {
 
     createLevel: async (data: any): Promise<Level> => {
         try {
-            const response = await apiClient.post<Level>(`/levels/create`, data);
+            const response = await apiClient.post<Level>(`${BASE_URL}/create`, data);
             return response.data;
         } catch (error) {
             throw error;
@@ -26,7 +29,7 @@ export const levelService = {
 
     updateLevel: async (id: number, data: any): Promise<Level> => {
         try {
-            const response = await apiClient.put<Level>(`/levels/update/${id}`, data);
+            const response = await apiClient.put<Level>(`${BASE_URL}/update/${id}`, data);
             return response.data;
         } catch (error) {
             throw error;
@@ -35,7 +38,7 @@ export const levelService = {
 
     deleteLevel: async (id: number): Promise<void> => {
         try {
-            await apiClient.delete(`/levels/${id}`);
+            await apiClient.delete(`${BASE_URL}/${id}`);
         } catch (error) {
             throw error;
         }

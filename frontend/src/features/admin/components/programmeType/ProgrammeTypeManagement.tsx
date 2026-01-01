@@ -14,6 +14,7 @@ import { ProgrammeType } from "../../types/programmeType";
 
 const ProgrammeTypeManagement = () => {
     const { hasRole } = useAuth();
+    console.log('roles', hasRole)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedProgrammeType, setSelectedProgrammeType] = useState<ProgrammeType | null>(null);
@@ -56,7 +57,7 @@ const ProgrammeTypeManagement = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {hasRole("ADMIN") && (
+                    {hasRole("ADMISSION_OFFICER") && (
                         <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
                             <Plus className="h-4 w-4" />
                             Create Type
@@ -123,7 +124,7 @@ const ProgrammeTypeManagement = () => {
                                 </CardContent>
                                 <CardFooter className="bg-white border-t border-slate-100 p-4">
                                     <div className="w-full flex justify-end items-center">
-                                        {hasRole("ADMIN") && (
+                                        {hasRole("ADMISSION_OFFICER") && (
                                             <Button
                                                 variant="outline"
                                                 size="sm"

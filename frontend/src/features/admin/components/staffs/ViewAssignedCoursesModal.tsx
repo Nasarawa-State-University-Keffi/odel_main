@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, BookOpen, AlertCircle } from "lucide-react";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ const ViewAssignedCoursesModal = ({ open, onOpenChange, staff }: ViewAssignedCou
     // Fetch Programme Types
     const { data: programmeTypes = [], isLoading: isLoadingTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
         enabled: open,
     });
 

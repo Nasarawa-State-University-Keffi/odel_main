@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, LogOut, FileText, GraduationCap, School, BookOpenCheck, BookOpen, Book, Building2, Award, University, Layers, ScrollText, Settings, Globe, Calendar, UsersRound } from "lucide-react";
+import { LayoutDashboard, LogOut, FileText, GraduationCap, School, BookOpenCheck, BookOpen, Book, Building2, Award, University, Layers, ScrollText, Settings, Globe, Calendar, UsersRound, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ interface SidebarProps {
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/api/admin/dashboard", roles: [] },
-    { icon: FileText, label: "Admission", href: "/api/admin/dashboard/applications", roles: ['ADMISSION_OFFICER', 'SUPER_ADMIN'] },
+    { icon: FileText, label: "Admission", href: "/api/admin/dashboard/admissions", roles: ['ADMISSION_OFFICER', 'SUPER_ADMIN'] },
     { icon: BookOpenCheck, label: "Course Registration", href: "/api/admin/dashboard/course-registration", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Book, label: "Courses", href: "/api/admin/dashboard/courses", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: Building2, label: "Departments", href: "/api/admin/dashboard/departments", roles: ['ADMIN', 'SUPER_ADMIN'] },
@@ -38,6 +38,7 @@ const sidebarItems = [
     { icon: Calendar, label: "Sessions", href: "/api/admin/dashboard/sessions", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: UsersRound, label: "Staffs", href: "/api/admin/dashboard/staffs", roles: ['ADMIN', 'SUPER_ADMIN'] },
     { icon: GraduationCap, label: "Students", href: "/api/admin/dashboard/students", roles: ['ADMIN', 'SUPER_ADMIN'] },
+
 ];
 
 const Sidebar = ({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) => {

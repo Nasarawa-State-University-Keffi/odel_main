@@ -10,8 +10,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { staffService, Title, Department, Faculty, ProgrammeType, Role } from "../../services/staffService";
-import { CreateStaffRequest } from "../../types/staff";
+import { staffService } from "../../services/staffService";
+import { commonService } from "../../services/commonService";
+import { departmentService } from "../../services/departmentService";
+import { facultyService } from "../../services/facultyService";
+import { programmeTypeService } from "../../services/programmeTypeService";
+import { Title, Department, Faculty, ProgrammeType, Role, CreateStaffRequest } from "../../types/staff";
 import { useState, useEffect } from "react";
 
 const staffSchema = z.object({
@@ -66,38 +70,19 @@ const CreateStaffModal = ({ open, onOpenChange, onSuccess }: CreateStaffModalPro
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const results = await Promise.allSettled([
-                    staffService.getAllTitles(),
-                    staffService.getAllDepartments(),
-                    staffService.getAllFaculties(),
-
-                    staffService.getAllProgrammeTypes(),
-                    staffService.getAllRoles()
+                const [titles, departments, faculties, programmeTypes, roles] = await Promise.all([
+                    commonService.getAllTitles(),
+                    departmentService.getAllDepartments(),
+                    facultyService.getAllFaculties(),
+                    programmeTypeService.getAllProgrammeTypes(),
+                    commonService.getAllRoles()
                 ]);
 
-                const [titlesResult, deptsResult, facultiesResult, progsResult, rolesResult] = results;
-
-                if (titlesResult.status === 'fulfilled') {
-                    setTitles(titlesResult.value);
-                }
-
-                if (deptsResult.status === 'fulfilled') {
-                    setDepartments(deptsResult.value);
-                }
-
-                if (facultiesResult.status === 'fulfilled') {
-                    setFaculties(facultiesResult.value);
-                }
-
-                if (progsResult.status === 'fulfilled') {
-                    const progsData = progsResult.value;
-                    setProgrammeTypes(progsData);
-                }
-
-                if (rolesResult.status === 'fulfilled') {
-                    setRolesList(rolesResult.value);
-
-                }
+                setTitles(titles);
+                setDepartments(departments);
+                setFaculties(faculties);
+                setProgrammeTypes(programmeTypes);
+                setRolesList(roles);
             } catch (error) {
                 // Silent fail or minimal toast, as individual failures are handled above if needed
                 console.error("Unexpected error loading metadata", error);

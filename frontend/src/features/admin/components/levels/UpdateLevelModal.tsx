@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { levelService } from "../../services/levelService";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService"; // Reuse for programme types
 import { Level } from "../../types/level";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -55,7 +56,7 @@ const UpdateLevelModal = ({ open, onOpenChange, level, onSuccess }: UpdateLevelM
     // Fetch Programme Types for dropdown
     const { data: programmeTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     const updateLevelMutation = useMutation({

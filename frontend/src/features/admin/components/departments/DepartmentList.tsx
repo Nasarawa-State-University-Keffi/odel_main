@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { departmentService } from "@/features/admin/services/departmentService";
+import { facultyService } from "@/features/admin/services/facultyService";
 import { staffService } from "@/features/admin/services/staffService";
 import { Department, DepartmentWithHod, Hod } from "@/features/admin/types/department";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -167,7 +168,7 @@ const DepartmentList = () => {
 
     const { data: faculties } = useQuery({
         queryKey: ["faculties"],
-        queryFn: staffService.getAllFaculties,
+        queryFn: facultyService.getAllFaculties,
         staleTime: 10 * 60 * 1000,
     });
 

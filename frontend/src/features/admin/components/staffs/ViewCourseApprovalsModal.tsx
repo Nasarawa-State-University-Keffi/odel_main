@@ -4,11 +4,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, BookOpen, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { admissionService } from "@/features/admin/services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
-import { admissionService } from "../../services/admissionService";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { ProgrammeType } from "../../types/programmeType";
+import { Session, Semester } from "../../types/session";
 
 interface ViewCourseApprovalsModalProps {
     open: boolean;
@@ -22,23 +27,23 @@ const ViewCourseApprovalsModal = ({ open, onOpenChange, staff }: ViewCourseAppro
     const [selectedSemester, setSelectedSemester] = useState<string>("");
 
     // Fetch Programme Types
-    const { data: programmeTypes = [], isLoading: isLoadingTypes } = useQuery({
+    const { data: programmeTypes = [], isLoading: isLoadingTypes } = useQuery<ProgrammeType[]>({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
         enabled: open,
     });
 
     // Fetch Sessions
-    const { data: sessions = [], isLoading: isLoadingSessions } = useQuery({
+    const { data: sessions = [], isLoading: isLoadingSessions } = useQuery<Session[]>({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
+        queryFn: sessionService.getAllSessions,
         enabled: open,
     });
 
     // Fetch Semesters when Session is selected
-    const { data: semesters = [], isLoading: isLoadingSemesters } = useQuery({
+    const { data: semesters = [], isLoading: isLoadingSemesters } = useQuery<Semester[]>({
         queryKey: ["semesters", selectedSession],
-        queryFn: () => admissionService.getSemestersBySession(Number(selectedSession)),
+        queryFn: () => sessionService.getSemestersBySession(Number(selectedSession)),
         enabled: !!selectedSession,
     });
 

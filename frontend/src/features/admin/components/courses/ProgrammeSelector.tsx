@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Book, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { staffService } from "@/features/admin/services/staffService";
+import { programmeService } from "@/features/admin/services/programmeService";
 import { useMemo } from "react";
 
 interface ProgrammeSelectorProps {
@@ -18,7 +18,7 @@ const ProgrammeSelector = ({ selectedProgramme, onSelectProgramme }: ProgrammeSe
         isError: isProgrammesError,
     } = useQuery({
         queryKey: ["programmes"],
-        queryFn: staffService.getAllProgrammes,
+        queryFn: () => programmeService.getAllProgrammes(),
     });
 
     // Filter for ODEL Programmes

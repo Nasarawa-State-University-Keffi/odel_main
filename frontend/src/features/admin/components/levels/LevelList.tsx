@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { levelService } from "../../services/levelService";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
 import { Level } from "../../types/level";
 import { Loader2, Layers, Filter } from "lucide-react";
@@ -79,7 +80,7 @@ const LevelList = () => {
     // Fetch Programme Types for Filter
     const { data: programmeTypes, isPending: isLoadingProgrammeTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     // Set default programme type when loaded

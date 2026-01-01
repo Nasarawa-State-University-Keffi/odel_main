@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { modeOfEntryService } from "../../services/modeOfEntryService";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
 import { ModeOfEntry } from "../../types/modeOfEntry";
+import { ProgrammeType } from "../../types/programmeType";
 import { Loader2, Filter, FileText, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -97,9 +99,9 @@ const ModeOfEntryList = () => {
     };
 
     // Fetch Programme Types for Filter
-    const { data: programmeTypes, isPending: isLoadingProgrammeTypes } = useQuery({
+    const { data: programmeTypes, isPending: isLoadingProgrammeTypes } = useQuery<ProgrammeType[]>({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     // Set default ODEL programme type when loaded

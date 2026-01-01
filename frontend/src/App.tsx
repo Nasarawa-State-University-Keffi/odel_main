@@ -29,7 +29,6 @@ const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard/AdminDashboard"));
 const AdminStaffs = lazy(() => import("./pages/admin/Staffs/Staffs"));
 const AdminStudents = lazy(() => import("./pages/admin/Students/StudentsPage"));
-const AdminApplications = lazy(() => import("./pages/admin/Admission/Applications"));
 const AdminCourseRegistration = lazy(() => import("./pages/admin/CourseRegistration/CourseRegistrationPage"));
 const AdminCourses = lazy(() => import("./pages/admin/Courses/CoursesPage"));
 const AdminDepartments = lazy(() => import("./pages/admin/Departments/DepartmentManagement"));
@@ -42,6 +41,7 @@ const AdminProgrammeTypes = lazy(() => import("./features/admin/components/progr
 const AdminProgrammeSettings = lazy(() => import("./pages/admin/ProgrammeSettings/AdminProgrammeSettings"));
 const AdminSchools = lazy(() => import("./features/admin/components/school/SchoolManagement"));
 const AdminSessions = lazy(() => import("./features/admin/components/session/SessionManagement"));
+const AdminAdmissionManagement = lazy(() => import("./pages/admin/Admission/AdmissionManagement"));
 
 
 const queryClient = new QueryClient();
@@ -85,7 +85,7 @@ const App = () => (
                   <Route index element={<AdminDashboard />} />
                   <Route path="staffs" element={<AdminStaffs />} />
                   <Route path="students" element={<AdminStudents />} />
-                  <Route path="applications" element={<AdminApplications />} />
+
                   <Route
                     path="course-registration"
                     element={
@@ -182,6 +182,15 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+
+                  <Route
+                    path="admissions"
+                    element={
+                      <ProtectedRoute requiredRoles={['ADMISSION_OFFICER', 'ADMIN', 'SUPER_ADMIN']}>
+                        <AdminAdmissionManagement />
+                      </ProtectedRoute>
+                    }
+                  />
                 </Route>
 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -192,7 +201,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </OnlineStatusProvider>
-  </QueryClientProvider>
+  </QueryClientProvider >
 );
 
 export default App;

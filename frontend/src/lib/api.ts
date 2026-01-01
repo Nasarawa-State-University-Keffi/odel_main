@@ -58,15 +58,20 @@ const getFriendlyErrorMessage = (error: any): string | null => {
     }
 
     // GENERIC HANDLERS
-    if (status === 400) {
+    // Only return generic messages if no specific backend message is available
+    if (status === 400 && !rawMessage) {
         return "Invalid request. Please check your data and try again.";
     }
 
-    if (status === 404) {
+    if (status === 404 && !rawMessage) {
         return "The requested resource was not found.";
     }
 
-    if (status === 500) {
+    if (status === 429) {
+        return "Too many requests. Please wait a moment before trying again.";
+    }
+
+    if (status === 500 && !rawMessage) {
         return "An internal server error occurred. Please try again later.";
     }
 

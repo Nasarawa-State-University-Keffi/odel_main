@@ -9,9 +9,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { ApprovedRegisteredCourseDto } from "@/features/admin/types/courseRegistration";
 
 const ApprovedList = () => {
@@ -57,6 +58,14 @@ const ApprovedList = () => {
                         />
                     </div>
                 </div>
+                <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => courseRegistrationService.downloadRegistrationReport(Number(semesterId))}
+                >
+                    <Download className="h-4 w-4" />
+                    Download Report
+                </Button>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

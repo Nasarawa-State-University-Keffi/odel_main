@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, RotateCcw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
-import { admissionService } from "@/features/admin/services/admissionService";
+import { admissionService } from "../../services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
+import { departmentService } from "@/features/admin/services/departmentService";
+import { programmeTypeService } from "@/features/admin/services/programmeTypeService";
 import { staffService } from "@/features/admin/services/staffService";
+import { programmeService } from "@/features/admin/services/programmeService";
 
 interface CourseApprovalFiltersProps {
     onFilterChange: (filters: { sessionId: number; semesterId: number; departmentId?: number; programmeTypeId?: number; programmeId?: number; approvalLevel: string } | null) => void;
@@ -18,20 +23,20 @@ const CourseApprovalFilters = ({ onFilterChange }: CourseApprovalFiltersProps) =
     // Fetch Sessions
     const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
+        queryFn: sessionService.getAllSessions,
     });
 
     // Fetch Semesters (Dependent on Session)
     const { data: semesters = [] } = useQuery({
         queryKey: ["semesters", sessionId],
-        queryFn: () => admissionService.getSemestersBySession(Number(sessionId)),
+        queryFn: () => sessionService.getSemestersBySession(Number(sessionId)),
         enabled: !!sessionId,
     });
 
     // Fetch Departments
     const { data: departments = [] } = useQuery({
         queryKey: ["departments"],
-        queryFn: staffService.getAllDepartments,
+        queryFn: departmentService.getAllDepartments,
     });
 
     const [programmeTypeId, setProgrammeTypeId] = useState<string>("");
@@ -40,13 +45,13 @@ const CourseApprovalFilters = ({ onFilterChange }: CourseApprovalFiltersProps) =
     // Fetch Programme Types
     const { data: programmeTypes = [] } = useQuery({
         queryKey: ["programme-types"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     // Fetch Programmes (Dependent on Type)
     const { data: programmes = [] } = useQuery({
         queryKey: ["programmes", programmeTypeId],
-        queryFn: () => staffService.getProgrammesByType(Number(programmeTypeId)),
+        queryFn: () => programmeService.getAllProgrammes(Number(programmeTypeId)),
         enabled: !!programmeTypeId,
     });
 

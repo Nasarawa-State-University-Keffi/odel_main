@@ -7,6 +7,11 @@ import { Loader2, Download, FileSpreadsheet } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import { admissionService } from "@/features/admin/services/admissionService";
+import { sessionService } from "@/features/admin/services/sessionService";
+import { facultyService } from "@/features/admin/services/facultyService";
+import { departmentService } from "@/features/admin/services/departmentService";
+import { programmeTypeService } from "@/features/admin/services/programmeTypeService";
+import { levelService } from "@/features/admin/services/levelService";
 import { staffService } from "@/features/admin/services/staffService";
 import { studentService } from "@/features/admin/services/studentService";
 import { toast } from "@/components/ui/use-toast";
@@ -29,27 +34,27 @@ export const StudentReportModal = ({ open, onOpenChange }: StudentReportModalPro
     // Fetch Metadata
     const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
+        queryFn: sessionService.getAllSessions,
     });
 
     const { data: faculties = [] } = useQuery({
         queryKey: ["faculties"],
-        queryFn: staffService.getAllFaculties,
+        queryFn: facultyService.getAllFaculties,
     });
 
     const { data: programmes = [] } = useQuery({
         queryKey: ["programmes"],
-        queryFn: staffService.getAllProgrammeTypes,
+        queryFn: programmeTypeService.getAllProgrammeTypes,
     });
 
     const { data: departments = [] } = useQuery({
         queryKey: ["all-departments"],
-        queryFn: staffService.getAllDepartments,
+        queryFn: departmentService.getAllDepartments,
     });
 
     const { data: levels = [] } = useQuery({
         queryKey: ["levels", selectedProgramme],
-        queryFn: () => selectedProgramme ? staffService.getLevelsByProgrammeType(Number(selectedProgramme)) : Promise.resolve([]),
+        queryFn: () => selectedProgramme ? levelService.getAllLevels(Number(selectedProgramme)) : Promise.resolve([]),
         enabled: !!selectedProgramme,
     });
 

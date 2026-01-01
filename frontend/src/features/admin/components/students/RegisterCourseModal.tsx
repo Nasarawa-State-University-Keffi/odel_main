@@ -7,6 +7,8 @@ import { Loader2, BookOpen, Save } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { admissionService } from "@/features/admin/services/admissionService";
 import { studentService } from "@/features/admin/services/studentService";
+import { sessionService } from "@/features/admin/services/sessionService";
+import { courseRegistrationService } from "@/features/admin/services/courseRegistrationService";
 import { Student } from "@/features/admin/types/student";
 import { toast } from "@/components/ui/use-toast";
 
@@ -25,14 +27,14 @@ const RegisterCourseModal = ({ open, onOpenChange, student }: RegisterCourseModa
     // Fetch Sessions
     const { data: sessions = [] } = useQuery({
         queryKey: ["sessions"],
-        queryFn: admissionService.getAllSessions,
+        queryFn: sessionService.getAllSessions,
         enabled: open,
     });
 
     // Fetch Semesters when Session is selected
     const { data: semesters = [] } = useQuery({
         queryKey: ["semesters", selectedSession],
-        queryFn: () => admissionService.getSemestersBySession(Number(selectedSession)),
+        queryFn: () => sessionService.getSemestersBySession(Number(selectedSession)),
         enabled: !!selectedSession,
     });
 
@@ -54,7 +56,7 @@ const RegisterCourseModal = ({ open, onOpenChange, student }: RegisterCourseModa
 
     // Mutation for Register Course
     const registerCourseMutation = useMutation({
-        mutationFn: studentService.registerCourse,
+        mutationFn: courseRegistrationService.registerCourse,
         onSuccess: () => {
             toast({
                 title: "Success",

@@ -5,6 +5,7 @@ import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
+import { commonService } from "../../services/commonService";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -64,7 +65,7 @@ const CreateProgrammeTypeModal = ({ open, onOpenChange }: CreateProgrammeTypeMod
 
     const { data: roles } = useQuery({
         queryKey: ["roles"],
-        queryFn: staffService.getAllRoles,
+        queryFn: commonService.getAllRoles,
     });
 
     const createMutation = useMutation({
@@ -346,7 +347,7 @@ const CreateProgrammeTypeModal = ({ open, onOpenChange }: CreateProgrammeTypeMod
                                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold text-slate-500">
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={createMutation.isPending} className="font-bold bg-primary hover:bg-primary/90 text-white min-w-[150px]">
+                                <Button type="submit" disabled={createMutation.isPending} className="gap-2 font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
                                     {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     {createMutation.isPending ? "Creating..." : "Create Programme Type"}
                                 </Button>

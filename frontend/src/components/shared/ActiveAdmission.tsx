@@ -11,7 +11,6 @@ interface ActiveAdmissionProps {
 
 const ActiveAdmission: React.FC<ActiveAdmissionProps> = ({ selectedId, onSelect, className, programmeType }) => {
     const { admissions, loading, error } = useActiveAdmissions(programmeType);
-
     // Auto-select first if only one and none selected
     useEffect(() => {
         if (Array.isArray(admissions) && admissions.length === 1 && selectedId === null) {
@@ -54,8 +53,26 @@ const ActiveAdmission: React.FC<ActiveAdmissionProps> = ({ selectedId, onSelect,
                 <SelectContent>
                     {Array.isArray(admissions) && admissions.length > 0 ? (
                         admissions.map((adm: Admission) => (
-                            <SelectItem key={adm.id} value={adm.id.toString()}>
-                                {formatAdmissionName(adm.name)}
+                            <SelectItem
+                                key={adm.id}
+                                value={adm.id.toString()}
+                                className="flex items-center justify-between"
+                            >
+                                <span className="font-medium">
+                                    {formatAdmissionName(adm.name)}
+                                </span>
+
+                                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {adm.admissionMode}
+                                    <span
+                                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${adm.open
+                                                ? "bg-green-100 text-green-700"
+                                                : "bg-red-100 text-red-700"
+                                            }`}
+                                    >
+                                        {adm.open ? "Open" : "Closed"}
+                                    </span>
+                                </span>
                             </SelectItem>
                         ))
                     ) : (

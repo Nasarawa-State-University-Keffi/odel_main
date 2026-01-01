@@ -5,6 +5,7 @@ export interface Admission {
     id: number;
     name: string;
     open: boolean;
+    admissionMode?: string;
     programmeType?: string | {
         name: string;
         code: string;
@@ -31,13 +32,13 @@ export const useActiveAdmissions = (filterProgrammeType?: string) => {
                 // Filter logic
                 const filteredData = data.filter((admission: any) => {
                     if (!filterProgrammeType) return true;
+                    // ... (existing filter checks) ...
+                    // Check direct string match
                     const type = admission.programmeType;
                     const nestedType = admission.applicationType?.programmeType;
                     const filter = filterProgrammeType.toUpperCase();
 
-                    // Check direct string match
                     if (typeof type === 'string' && type.toUpperCase().includes(filter)) return true;
-
                     // Check object match (name or code)
                     if (typeof type === 'object') {
                         if (type.name?.toUpperCase().includes(filter)) return true;
@@ -54,7 +55,12 @@ export const useActiveAdmissions = (filterProgrammeType?: string) => {
                     }
 
                     return false;
-                });
+                }).map((admission: any) => ({
+                    ...admission,
+                    name: admission.name || `${admission.applicationType?.name || 'Admission'} for ${admission.session?.name || ''}`,
+                    open: admission.isOpen !== undefined ? admission.isOpen : admission.open,
+                }));
+
                 setAdmissions(filteredData);
 
             } catch (err: any) {

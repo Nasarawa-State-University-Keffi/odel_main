@@ -1,169 +1,177 @@
-export interface Session {
-    id: number;
-    name: string;
-    isActive: boolean;
-}
+import { ProgrammeType } from "./programmeType";
+import { ModeOfEntry } from "./modeOfEntry";
+import { Session } from "./session";
 
-export interface Semester {
-    id: number;
-    name: string;
-    title: string;
-}
-
-export interface ModeOfEntry {
-    title: string;
-    level: string;
-    semesters: number;
-    utmeRequired: boolean;
-    screeningDocumentsRequired: boolean;
-}
-
-export interface ApplicationRequirement {
-    label: string;
-    required: boolean | "NOT_REQUIRED";
-}
+// 0. Entity Relationships & Core Types
 
 export interface ApplicationType {
     id: number;
     name: string;
-    code: string;
-    modeOfStudy: string;
-    programmeType: {
-        name: string;
-        code: string;
-    };
-    school?: string;
-    admissionType: string;
-    admissionRole: string;
+    description?: string;
+    programmeType: ProgrammeType;
+    amount: number; // fees
+    active: boolean;
+    // Feature Flags
+    modeOfEntryEnabled: boolean;
+    utmeDetailsEnabled: boolean;
+    utmeRegEnabled: boolean;
+    ssceDetailsEnabled: boolean;
+    screeningDetailsEnabled: boolean;
+    contactDetailsEnabled: boolean;
+    nextOfKinDetailsEnabled: boolean;
+    qualificationDetailsEnabled: boolean;
+    qualificationDocumentEnabled: boolean;
+    scratchCardDetailsEnabled: boolean;
+    refereeDetailsEnabled: boolean;
+    nyscDetailsEnabled: boolean;
+    transcriptRequestEnabled: boolean;
+    autoLoadUtme: boolean;
+    autoClearApplicants: boolean;
+    processPostUtme: boolean;
+    ssceVerification: boolean;
+    // Configuration
+    numberOfSittings?: number;
+    numberOfQualifications?: number;
+    modeOfEntries: ModeOfEntry[]; // Array of allowed modes
 
-    // Requirements (Decision-Making Section)
-    requirements?: {
-        utmeRequired: boolean;
-        ssceRequired: boolean;
-        screeningRequired: boolean;
-        nyscRequired: boolean;
-        qualificationDetailsRequired: boolean;
-        qualificationDocumentsRequired: boolean;
-        nextOfKinRequired: boolean;
-        refereeRequired: boolean;
-    };
+    // Fees
+    applicationFee: number;
+    admissionFee: number;
+    screeningFee: number;
+    changeProgrammeFee: number;
+    verificationFee: number;
 
-    // Fees & Payments
-    fees?: {
-        application: number;
-        admission: number;
-        screening: number;
-        programmeChange: number;
-    };
-    paymentCodes?: {
-        acceptance: string;
-        screening: string;
-    };
-
-    // Root-level fees/codes specific to new structure
-    applicationFee?: number;
-    admissionFee?: number;
-    screeningFee?: number;
-    changeProgrammeFee?: number;
-    verificationFee?: number;
-
+    // Service Codes
     applicationFeeServiceCode?: string;
     screeningFeeServiceCode?: string;
     acceptanceFeeServiceCode?: string;
     changeOfProgrammeFeeServiceCode?: string;
     verificationFeeServiceCode?: string;
-    verificationPaymentPlatform?: {
-        name: string;
-    } | string;
+    verificationPaymentPlatform?: string;
 
-    screeningForm?: string | number;
-    requireVerificationPayment?: boolean;
-    manualScratchCard?: boolean;
-    collectNonAutomaticOrgs?: boolean;
-    numberOfQualifications?: number;
-    numberOfSittings?: number;
-    modesOfEntry?: ModeOfEntry[];
-
-    // Automation & System Behaviour
-    automation?: {
-        autoLoadUtme: boolean;
-        autoClearApplicants: boolean;
-        processPostUtme: boolean;
-        ssceVerification: boolean;
-    };
-
-    certificateRequireResults: boolean;
-    enableProgressStatus: boolean;
-    modeOfEntryEnabled: boolean;
-    modeOfStudyEnabled: boolean;
-    status?: string | "CLEARED" | "ADMISSION_ACCEPTED" | "PROGRAMME_CHANGE";
-    createdAt?: string;
-    updatedAt?: string;
-}
-
-export interface CreateAdmissionRequest {
-    startDate: string;
-    endDate: string;
-    sessionId: number;
-    semesterId: number;
-    applicationTypeId: number;
-    postResetPayment: boolean;
-    mode: string;
-}
-
-export interface Admission {
-    id: number;
-    name: string;
-    admissionMode: string;
-    semester: {
-        id?: number;
-        name?: string;
-        title: string;
-    };
-    startDate: string;
-    endDate: string;
-    open: boolean;
-}
-
-export interface UpdateApplicationTypeRequest {
-    name: string;
-    programmeType: number;
-    statuses: string[];
-    autoLoadUtme: boolean;
-    autoClearApplicants: boolean;
-    processPostUtme: boolean;
-    modeOfEntryEnabled: boolean;
-    ssceDetailsEnabled: boolean;
-    screeningDetailsEnabled: boolean;
-    utmeDetailsEnabled: boolean;
-    utmeRegEnabled: boolean;
-    nyscDetailsEnabled: boolean;
-    contactDetailsEnabled: boolean;
-    qualificationDetailsEnabled: boolean;
-    qualificationDocumentEnabled: boolean;
-    nextOfKinDetailsEnabled: boolean;
-    refereeDetailsEnabled: boolean;
-    ssceVerification: boolean;
+    // Other flags
+    freshApplicationEnabled: boolean;
     manualScratchCard: boolean;
     collectNonAutomaticOrgs: boolean;
-    scratchCardDetailsEnabled: boolean;
-    freshApplicationEnabled: boolean;
-    transcriptRequestEnabled: boolean;
-    numberOfQualifications: number;
-    numberOfSittings: number;
+    requireVerificationPayment: boolean;
+
+    screeningForm: number; // Enum value or ID
+    statuses: string[];
+    autoScratchCards?: number[]; // Added to match CREATE request
+}
+
+export interface CreateApplicationTypeRequest {
+    name: string;
+    programmeType: number; // ID
     applicationFee: number;
     admissionFee: number;
     screeningFee: number;
     changeProgrammeFee: number;
-    screeningForm: number;
+    verificationFee: number;
+
+    // Flags
+    autoLoadUtme: boolean;
+    autoClearApplicants: boolean;
+    modeOfEntryEnabled: boolean;
+    utmeDetailsEnabled: boolean;
+    utmeRegEnabled: boolean;
+    processPostUtme: boolean;
+    freshApplicationEnabled: boolean;
+    ssceDetailsEnabled: boolean;
+    screeningDetailsEnabled: boolean;
+    nyscDetailsEnabled: boolean;
+    contactDetailsEnabled: boolean;
+    nextOfKinDetailsEnabled: boolean;
+    qualificationDetailsEnabled: boolean;
+    qualificationDocumentEnabled: boolean;
+    scratchCardDetailsEnabled: boolean;
+    refereeDetailsEnabled: boolean;
+    transcriptRequestEnabled: boolean;
+    ssceVerification: boolean;
+    manualScratchCard: boolean;
+    collectNonAutomaticOrgs: boolean;
+    requireVerificationPayment: boolean;
+
+    // Config
+    numberOfSittings: number;
+    numberOfQualifications: number;
+
+    // Service Codes
     applicationFeeServiceCode: string;
     screeningFeeServiceCode: string;
     acceptanceFeeServiceCode: string;
     changeOfProgrammeFeeServiceCode: string;
     verificationFeeServiceCode: string;
-    requireVerificationPayment: boolean;
-    verificationFee: number;
     verificationPaymentPlatform: string;
+
+    screeningForm: number;
+
+    // Lists
     modeOfEntries: number[];
     autoScratchCards: number[];
+    statuses: string[];
 }
+
+export interface Admission {
+    id: number;
+    session: Session;
+    applicationType: ApplicationType;
+    startDate: string; // ISO Date string
+    endDate: string; // ISO Date string
+    admissionMode: string; // "SESSION" or "SEMESTER"
+    postResetPayment?: number;
+    isOpen: boolean; // Virtual property based on dates
+    semester?: any; // Semester object if applicable
+    level?: any; // Level object if applicable
+}
+
+// 1. Admission Statistics
+
+export interface ProgrammeStats {
+    registered: number;
+    unregistered: number;
+}
+
+export interface AdmissionStats {
+    [key: string]: ProgrammeStats;
+}
+
+// ...
+
+export interface CreateAdmissionRequest {
+    sessionId: number;
+    applicationTypeId: number;
+    startDate: string;
+    endDate: string;
+    mode: string; // "SESSION" or "SEMESTER"
+    postResetPayment: number;
+    semesterId?: number;
+    levelId?: number;
+}
+
+export interface UpdateAdmissionRequest {
+    sessionId: number;
+    applicationTypeId: number;
+    startDate: string;
+    endDate: string;
+    mode: string; // "SESSION" or "SEMESTER"
+    postResetPayment: number;
+    semesterId?: number;
+}
+
+// Bulk Download Params
+export interface BulkAdmissionParams {
+    admission: number;
+    level?: number;
+    faculty?: number;
+    department?: number;
+    programme?: number;
+    country?: number;
+    state?: number;
+    lga?: number;
+    gender?: number;
+}
+
+// Response Wrappers
+export interface ApplicationTypeResponse extends ApplicationType { }
+export interface AdmissionResponse extends Admission { }

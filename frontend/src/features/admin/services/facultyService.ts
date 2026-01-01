@@ -1,11 +1,15 @@
 import apiClient from "@/lib/api";
-import { Faculty, CreateFacultyRequest, UpdateFacultyRequest, FacultyWithDean } from "../types/faculty";
+import { Faculty, CreateFacultyRequest, UpdateFacultyRequest, FacultyWithDean, DeanOfficer } from "../types/faculty";
+
+
+//BASE URL FOR THE FACULTY
+const BASE_URL = '/faculty';
 
 export const facultyService = {
     // FETCH ALL FACULTIES
     getAllFaculties: async (): Promise<Faculty[]> => {
         try {
-            const response = await apiClient.get<Faculty[]>('/faculty/all');
+            const response = await apiClient.get<Faculty[]>(`${BASE_URL}/all`);
             return response.data;
         } catch (error) {
             console.error("Error fetching faculties:", error);
@@ -16,7 +20,7 @@ export const facultyService = {
     // FETCH ALL FACULTIES WITH DEANS
     getAllFacultiesWithDeans: async (): Promise<FacultyWithDean[]> => {
         try {
-            const response = await apiClient.get<FacultyWithDean[]>('/faculty/all-with-deans');
+            const response = await apiClient.get<FacultyWithDean[]>(`${BASE_URL}/all-with-deans`);
             return response.data;
         } catch (error) {
             console.error("Error fetching faculties with deans:", error);
@@ -27,14 +31,14 @@ export const facultyService = {
     // CREATE NEW FACULTY
     createFaculty: async (data: CreateFacultyRequest): Promise<Faculty> => {
         try {
-            const response = await apiClient.post<Faculty>('/faculty/create', data);
+            const response = await apiClient.post<Faculty>(`${BASE_URL}/create`, data);
             return response.data;
         } catch (error: any) {
             const status = error.response?.status;
             const message = error.response?.data?.message || error.response?.data || "Failed to create faculty";
 
             if (status === 422) {
-                throw new Error(message); // Already exists
+                throw new Error(message);
             }
             if (status === 400) {
                 throw new Error("Validation error: " + message);
@@ -50,14 +54,14 @@ export const facultyService = {
     // UPDATE FACULTY
     updateFaculty: async (data: UpdateFacultyRequest): Promise<Faculty> => {
         try {
-            const response = await apiClient.put<Faculty>('/faculty/update', data);
+            const response = await apiClient.put<Faculty>(`${BASE_URL}/update`, data);
             return response.data;
         } catch (error: any) {
             const status = error.response?.status;
             const message = error.response?.data?.message || error.response?.data || "Failed to update faculty";
 
             if (status === 422) {
-                throw new Error(message); // Name/Code exists
+                throw new Error(message);
             }
             if (status === 404) {
                 throw new Error("Target faculty not found");
@@ -76,7 +80,7 @@ export const facultyService = {
     // FETCH EXAM OFFICER FOR FACULTY
     getExamOfficer: async (facultyId: number): Promise<DeanOfficer | null> => {
         try {
-            const response = await apiClient.get<DeanOfficer | null>(`/faculty/exam-officer/${facultyId}`);
+            const response = await apiClient.get<DeanOfficer | null>(`${BASE_URL}/exam-officer/${facultyId}`);
             return response.data;
         } catch (error: any) {
             const status = error.response?.status;

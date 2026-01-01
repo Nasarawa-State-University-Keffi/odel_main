@@ -3,6 +3,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { facultyService } from "@/features/admin/services/facultyService";
+import { departmentService } from "@/features/admin/services/departmentService";
+import { programmeTypeService } from "@/features/admin/services/programmeTypeService";
 import { staffService } from "@/features/admin/services/staffService";
 import { CourseQueryParams } from "@/features/admin/types/course";
 import { X } from "lucide-react";
@@ -23,12 +26,12 @@ const CourseFilterBar = ({ onFilterChange }: CourseFilterBarProps) => {
     // Fetch Dependencies
     const { data: faculties = [] } = useQuery({
         queryKey: ["faculties"],
-        queryFn: staffService.getAllFaculties,
+        queryFn: facultyService.getAllFaculties,
     });
 
     const { data: departments = [] } = useQuery({
         queryKey: ["departments"],
-        queryFn: staffService.getAllDepartments,
+        queryFn: departmentService.getAllDepartments,
     });
 
     const { data: levels = [] } = useQuery({
@@ -44,7 +47,7 @@ const CourseFilterBar = ({ onFilterChange }: CourseFilterBarProps) => {
 
     const { data: programmeTypes = [] } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: staffService.getAllProgrammeTypes
+        queryFn: programmeTypeService.getAllProgrammeTypes
     });
 
     // Handle Filter Changes

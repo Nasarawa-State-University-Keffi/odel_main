@@ -5,6 +5,7 @@ import * as z from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
+import { commonService } from "../../services/commonService";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Settings, CreditCard, Save } from "lucide-react";
+import { Settings } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { ProgrammeType, UpdateProgrammeTypeRequest, PaymentSettingReqObject } from "../../types/programmeType";
 
@@ -81,15 +82,7 @@ const EditProgrammeTypeModal = ({ open, onOpenChange, programmeType }: EditProgr
 
     useEffect(() => {
         if (programmeType) {
-            // Map Mode of Study string to enum value (simplified logic assuming direct mapping or need helper)
-            // Assuming simplified: FULL_TIME -> 0, PART_TIME -> 1. Ideally user provided helper or consistent type.
-            // Docs say 0=FULL_TIME, 1=PART_TIME.
             const modeOfStudyVal = programmeType.modeOfStudy === 'PART_TIME' ? "1" : "0";
-
-            // Map Admission Type string to enum value. 
-            // Docs: ONE=1, TWO=2, ... ODEL=6. 
-            // I'll make a helper or simple mapping. For now, defaulting to basic mapping or string usage.
-            // Assuming frontend stores as string but API expects int 1-6.
             const admTypeMap: Record<string, string> = { "ONE": "1", "TWO": "2", "THREE": "3", "FOUR": "4", "FIVE": "5", "ODEL": "6" };
             const admTypeVal = admTypeMap[programmeType.admissionType] || "1";
 
@@ -125,7 +118,7 @@ const EditProgrammeTypeModal = ({ open, onOpenChange, programmeType }: EditProgr
 
     const { data: roles } = useQuery({
         queryKey: ["roles"],
-        queryFn: staffService.getAllRoles,
+        queryFn: commonService.getAllRoles,
     });
 
     const updateGeneralMutation = useMutation({

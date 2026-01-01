@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { programmeService } from "../../services/programmeService";
 import { departmentService } from "../../services/departmentService";
 import { levelService } from "../../services/levelService";
+import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ const CreateProgrammeModal = ({ open, onOpenChange, programmeTypeId }: CreatePro
     // Fetch Programme Types to check modeOfEntryEnabled
     const { data: programmeTypes } = useQuery({
         queryKey: ["programmeTypes"],
-        queryFn: () => staffService.getAllProgrammeTypes(),
+        queryFn: () => programmeTypeService.getAllProgrammeTypes(),
     });
 
     const selectedType = programmeTypes?.find(pt => pt.id.toString() === programmeTypeId);

@@ -18,7 +18,12 @@ import { FloatingMultiSelect } from "@/components/ui/floating-multi-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Staff, staffService, Title, Department, Faculty, ProgrammeType, Role } from "../../services/staffService";
+import { staffService } from "../../services/staffService";
+import { commonService } from "../../services/commonService";
+import { departmentService } from "../../services/departmentService";
+import { facultyService } from "../../services/facultyService";
+import { programmeTypeService } from "../../services/programmeTypeService";
+import { Staff, Title, Department, Faculty, ProgrammeType, Role } from "../../types/staff";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
@@ -86,11 +91,11 @@ const UpdateStaffModal = ({
             setIsLoadingMetadata(true);
             try {
                 const [titlesData, deptsData, facultiesData, progsData, rolesData] = await Promise.all([
-                    staffService.getAllTitles(),
-                    staffService.getAllDepartments(),
-                    staffService.getAllFaculties(),
-                    staffService.getAllProgrammeTypes(),
-                    staffService.getAllRoles(),
+                    commonService.getAllTitles(),
+                    departmentService.getAllDepartments(),
+                    facultyService.getAllFaculties(),
+                    programmeTypeService.getAllProgrammeTypes(),
+                    commonService.getAllRoles(),
                 ]);
 
                 setTitles(titlesData);
