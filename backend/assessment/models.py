@@ -1,13 +1,13 @@
 import uuid
 from django.db import models
 from django.contrib.postgres.fields import JSONField as PostgresJSONField
-from django.contrib.auth.models import User
 from django.conf import settings
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 
 from courses.models import CourseCache
+from portal_auth.models import PortalUser
 
 try:
     # Django 3.1+ has built-in JSONField
@@ -57,7 +57,7 @@ class Assignment(models.Model):
     )
 
     created_by = models.ForeignKey(
-        User,
+        PortalUser,
         on_delete=models.PROTECT,
         related_name='created_assignments'
     )
@@ -112,7 +112,7 @@ class AssignmentContent(models.Model):
     content_hash = models.CharField(max_length=64, blank=True, db_index=True)
 
     uploaded_by = models.ForeignKey(
-        User,
+        PortalUser,
         on_delete=models.SET_NULL,
         null=True
     )
@@ -338,7 +338,7 @@ class QuestionTypeAvailability(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        User,
+        PortalUser,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
