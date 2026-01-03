@@ -2,7 +2,7 @@ from .client import PortalClient
 from .models import PortalUser
 from .utils import fetch_from_portal
 
-from courses.models import CourseCache, StaffRegisteredCourse, StudentRegisteredCourse
+from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 from django.db import transaction
 
 STAFF_ROLES = {"ADMIN", "SUPER_ADMIN", "STAFF"}
@@ -135,7 +135,7 @@ def get_or_sync_staff_registered_courses(
     token: str,
     staff_external_id: str,
     programme_id: int,
-) -> list[StaffRegisteredCourse]:
+) -> list[StaffAssignedCourse]:
 
     client = PortalClient(token)
 
@@ -167,7 +167,7 @@ def get_or_sync_staff_registered_courses(
                 },
             )
 
-            enrollment, _ = StaffRegisteredCourse.objects.get_or_create(
+            enrollment, _ = StaffAssignedCourse.objects.get_or_create(
                 staff_external_id=staff_external_id,
                 course=course_obj,
             )

@@ -15,6 +15,9 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample, OpenApiResponse
 
+from courses.models import StudentRegisteredCourse, StaffAssignedCourse
+from portal_auth.permissions import IsPortalStudent
+
 from .models import (
     Assignment, AssignmentSubmission, AssignmentContent, AssignmentSubmissionFile,
     QuestionCategory, QuestionTypeAvailability, Question, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
@@ -50,9 +53,16 @@ from .permissions import IsInstructorOrReadOnly
 )
 class StudentAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
     """Student read-only access to assignments"""
-    queryset = Assignment.objects.filter(is_published=True)
+    # queryset = Assignment.objects.filter(is_published=True)
     serializer_class = AssignmentReadSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPortalStudent]
+
+    def get_queryset(self):
+        """queryset for students - only published assignments"""
+        user = self.request.user
+        registered_courses = StudentRegisteredCourse.objects.filter(student_external_id=user.external_id).values_list('course', flat=True)
+        print(registered_courses)
+        return Assignment.objects.filter(course__in=registered_courses, is_published=True).select_related('course')
 
 
 @extend_schema_view(
@@ -83,18 +93,21 @@ class StudentAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
         tags=['Student - Assignments']
     ),
 )
+
+# =========================================
+# STUDENT - ASSIGNMENT SUBMISSION APIs
 class StudentAssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     """Student ViewSet for assignment submissions"""
     serializer_class = AssignmentSubmissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPortalStudent]
 
     def get_queryset(self):
         """Students can only see their own submissions"""
-        student_id = self.request.user.username
-        
+        student_id = self.request.user.external_id
         queryset = AssignmentSubmission.objects.filter(
             student_external_id=student_id
         ).select_related('assignment')
+        print(queryset)
         
         # Apply filters
         assignment_id = self.request.query_params.get('assignment')
@@ -106,6 +119,7 @@ class StudentAssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(status=submission_status)
         
         return queryset
+    
 
     @extend_schema(
         summary="Start assignment submission",
@@ -127,7 +141,7 @@ class StudentAssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['post'])
     def start(self, request):
         assignment_id = request.data.get('assignment_id')
-        student_id = request.user.username
+        student_id = request.user.external_id
 
         assignment = get_object_or_404(Assignment, id=assignment_id)
 
@@ -167,7 +181,7 @@ class StudentAssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission = self.get_object()
         
         # Verify student owns this submission
-        if submission.student_external_id != request.user.username:
+        if submission.student_external_id != request.user.external_id:
             return Response(
                 {'status': 'error', 'detail': 'You can only submit your own assignments'},
                 status=status.HTTP_403_FORBIDDEN
@@ -188,6 +202,8 @@ class StudentAssignmentSubmissionViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
 
+# ==========================================
+# STUDENT - ASSIGNMENT SUBMISSION FILE APIs
 @extend_schema_view(
     list=extend_schema(exclude=True),
     retrieve=extend_schema(exclude=True),
@@ -204,12 +220,12 @@ class StudentAssignmentSubmissionFileViewSet(viewsets.ModelViewSet):
     """Student ViewSet for managing their own submission files"""
     queryset = AssignmentSubmissionFile.objects.all()
     serializer_class = AssignmentSubmissionFileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPortalStudent]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def get_queryset(self):
         """Students can only access their own submission files"""
-        student_id = self.request.user.username
+        student_id = self.request.user.external_id
         return AssignmentSubmissionFile.objects.filter(
             submission__student_external_id=student_id
         ).select_related('submission')
@@ -232,7 +248,7 @@ class StudentAssignmentSubmissionFileViewSet(viewsets.ModelViewSet):
             submission = get_object_or_404(AssignmentSubmission, id=serializer.validated_data['submission'])
             
             # Verify student owns this submission
-            if submission.student_external_id != request.user.username:
+            if submission.student_external_id != request.user.external_id:
                 return Response(
                     {'status': 'error', 'detail': 'You can only upload to your own submissions'},
                     status=status.HTTP_403_FORBIDDEN
@@ -287,13 +303,19 @@ class StudentAssignmentSubmissionFileViewSet(viewsets.ModelViewSet):
     ),
 )
 class StaffAssignmentViewSet(viewsets.ModelViewSet):
-    queryset = Assignment.objects.select_related("course")
+    # queryset = Assignment.objects.select_related("course")
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
             return AssignmentWriteSerializer
         return AssignmentReadSerializer
+    
+    def get_queryset(self):
+        staff = self.request.user.external_id
+        assigned_courses = StaffAssignedCourse.objects.filter(staff_external_id=staff).values_list('course', flat=True)
+        queryset = Assignment.objects.filter(course__in=assigned_courses)
+        return queryset.select_related("course")
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

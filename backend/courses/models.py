@@ -25,7 +25,7 @@ class CourseCache(models.Model):
 
     class Meta:
         ordering = ["course_title"]
-        
+
     def __str__(self):
         return f"{self.course_code} - {self.course_title}"
     
@@ -41,7 +41,7 @@ class StudentRegisteredCourse(models.Model):
         ordering = ['-course__course_title']
         
 
-class StaffRegisteredCourse(models.Model):
+class StaffAssignedCourse(models.Model):
     staff_external_id = models.CharField(max_length=255, db_index=True)
     course = models.ForeignKey(CourseCache, on_delete=models.CASCADE, related_name='staff_enrollments', db_index=True)
     role = models.CharField(max_length=32)

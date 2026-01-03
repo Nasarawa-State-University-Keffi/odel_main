@@ -6,7 +6,7 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 
-from courses.models import CourseCache, StaffRegisteredCourse, StudentRegisteredCourse
+from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 from assessment.models import Assignment, Quiz
 from portal_auth.services import get_or_sync_staff_registered_courses, get_or_sync_student_registered_courses
 from .serializers import CourseSummarySerializer, QuizSummarySerializer, AssignmentSummarySerializer
@@ -180,7 +180,7 @@ class InstructorDashboardView(APIView):
         )
         print(f"user data {request.data} {request.user.external_id} {request.auth}")
          
-        course_assigned = StaffRegisteredCourse.objects.filter(staff_external_id='SS0944') # Example usage of CourseCache
+        course_assigned = StaffAssignedCourse.objects.filter(staff_external_id='SS0944') # Example usage of CourseCache
         courses = [e.course for e in course_assigned]
         course_ids = [c.id for c in courses]
 

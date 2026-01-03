@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CourseCache, StaffRegisteredCourse, StudentRegisteredCourse
+from .models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 
 
 class CourseCacheSerializer(serializers.ModelSerializer):
@@ -12,7 +12,7 @@ class StaffRegisteredCourseSerializer(serializers.ModelSerializer):
     course = CourseCacheSerializer(read_only=True)
 
     class Meta:
-        model = StaffRegisteredCourse
+        model = StaffAssignedCourse
         fields = ['staff_external_id', 'course', 'role', 'created_at']
 
 class StudentRegisteredCourseSerializer(serializers.ModelSerializer):

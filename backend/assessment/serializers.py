@@ -5,7 +5,7 @@ DRF serializers for the quiz and question bank system.
 """
 from rest_framework import serializers
 
-from courses.models import CourseCache, StaffRegisteredCourse
+from courses.models import CourseCache, StaffAssignedCourse
 from courses.serializers import CourseCacheSerializer
 from .models import (
     Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
@@ -59,7 +59,7 @@ class AssignmentWriteSerializer(serializers.ModelSerializer):
         request = self.context["request"]
         staff_external_id = request.user.external_id
 
-        if not StaffRegisteredCourse.objects.filter(
+        if not StaffAssignedCourse.objects.filter(
             staff_external_id=staff_external_id,
             course=course
         ).exists():

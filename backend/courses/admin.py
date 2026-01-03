@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CourseCache, StaffRegisteredCourse, StudentRegisteredCourse
+from .models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 
 
 @admin.register(CourseCache)
@@ -9,7 +9,7 @@ class CourseCacheAdmin(admin.ModelAdmin):
     list_filter = ('updated_at',)
 
 
-@admin.register(StaffRegisteredCourse)
+@admin.register(StaffAssignedCourse)
 class StaffRegisteredCourseAdmin(admin.ModelAdmin):
     list_display = ('staff_external_id', 'course', 'role', 'created_at')
     search_fields = ('staff_external_id', 'course__course_title')
