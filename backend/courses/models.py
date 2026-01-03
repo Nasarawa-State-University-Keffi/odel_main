@@ -1,39 +1,55 @@
 from django.db import models
-from django.contrib.postgres.fields import JSONField as PostgresJSONField
-
-try:
-    # Django 3.1+ has built-in JSONField
-    from django.db.models import JSONField
-except Exception:
-    JSONField = PostgresJSONField
 
 
 class CourseCache(models.Model):
-    external_id = models.CharField(max_length=255, unique=True)
-    title = models.CharField(max_length=512)
-    code = models.CharField(max_length=128, blank=True, null=True)
-    data = JSONField(default=dict)
+    id = models.BigAutoField(primary_key=True)
+
+    course_external_id = models.PositiveIntegerField(unique=True, db_index=True)
+    course_title = models.CharField(max_length=512)
+    course_code = models.CharField(max_length=128)
+
+    credit_unit = models.FloatField(null=True, blank=True)
+    level = models.CharField(max_length=50, db_index=True, null=True, blank=True)
+
+    department_id = models.IntegerField(db_index=True, null=True, blank=True)
+    department_code = models.CharField(max_length=20, db_index=True, null=True, blank=True)
+    department_name = models.CharField(max_length=255, null=True, blank=True)
+
+    programme_id = models.IntegerField(null=True, blank=True)
+    semester_id = models.IntegerField(null=True, blank=True)
+    session_id = models.IntegerField(null=True, blank=True)
+
+    last_synced_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['title']
-
+        ordering = ["course_title"]
+        
     def __str__(self):
-        return f"{self.code or self.title}"
+        return f"{self.course_code} - {self.course_title}"
+    
+class StudentRegisteredCourse(models.Model):
+    student_external_id = models.CharField(max_length=255, db_index=True)
+    course = models.ForeignKey(CourseCache, on_delete=models.CASCADE,
+                                related_name='student_enrollments', db_index=True)
+    session_id = models.PositiveIntegerField(db_index=True)
+    semester_id = models.PositiveIntegerField(db_index=True)
 
+    class Meta:
+        unique_together = ('student_external_id', 'course', 'session_id', 'semester_id')
+        ordering = ['-course__course_title']
+        
 
-class EnrollmentCache(models.Model):
-    ROLE_CHOICES = (('student', 'Student'), ('instructor', 'Instructor'))
-
-    user_external_id = models.CharField(max_length=255)
-    course = models.ForeignKey(CourseCache, on_delete=models.CASCADE, related_name='enrollments')
-    role = models.CharField(max_length=32, choices=ROLE_CHOICES)
-    data = JSONField(default=dict)
+class StaffRegisteredCourse(models.Model):
+    staff_external_id = models.CharField(max_length=255, db_index=True)
+    course = models.ForeignKey(CourseCache, on_delete=models.CASCADE, related_name='staff_enrollments', db_index=True)
+    role = models.CharField(max_length=32)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = (('user_external_id', 'course'),)
-        indexes = [models.Index(fields=['user_external_id']), models.Index(fields=['course'])]
+        unique_together = (('staff_external_id', 'course'),)
+        indexes = [models.Index(fields=['staff_external_id']), models.Index(fields=['course'])]
 
     def __str__(self):
-        return f"{self.user_external_id} -> {self.course} ({self.role})"
+        return f"{self.staff_external_id} -> {self.course} ({self.role})"

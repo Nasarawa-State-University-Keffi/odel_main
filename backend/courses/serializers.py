@@ -1,16 +1,23 @@
 from rest_framework import serializers
-from .models import CourseCache, EnrollmentCache
+from .models import CourseCache, StaffRegisteredCourse, StudentRegisteredCourse
 
 
 class CourseCacheSerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseCache
-        fields = ['external_id', 'title', 'code', 'data', 'updated_at']
+        fields = ['course_external_id', 'course_title', 'course_code', 'department_name', 'updated_at']
 
 
-class EnrollmentCacheSerializer(serializers.ModelSerializer):
+class StaffRegisteredCourseSerializer(serializers.ModelSerializer):
     course = CourseCacheSerializer(read_only=True)
 
     class Meta:
-        model = EnrollmentCache
-        fields = ['user_external_id', 'course', 'role', 'data', 'created_at']
+        model = StaffRegisteredCourse
+        fields = ['staff_external_id', 'course', 'role', 'created_at']
+
+class StudentRegisteredCourseSerializer(serializers.ModelSerializer):
+    course = CourseCacheSerializer(read_only=True)
+
+    class Meta:
+        model = StudentRegisteredCourse
+        fields = ['student_external_id', 'course', 'session_id', 'semester_id']

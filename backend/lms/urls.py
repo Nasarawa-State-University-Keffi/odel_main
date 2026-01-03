@@ -38,6 +38,9 @@ urlpatterns = [
     
     # Learning Content APIs
     path('api/content/', include('resource.content.urls')),
+
+    # Dashboard endpoint urls
+    path('api/dashboard/', include('dashboard.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

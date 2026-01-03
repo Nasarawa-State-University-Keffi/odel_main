@@ -4,6 +4,9 @@ Assessment Serializers - Moodle-style Quiz System
 DRF serializers for the quiz and question bank system.
 """
 from rest_framework import serializers
+
+from courses.models import CourseCache, StaffRegisteredCourse
+from courses.serializers import CourseCacheSerializer
 from .models import (
     Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
     QuestionCategory, QuestionTypeAvailability, Question, QuestionAnswer,
@@ -29,27 +32,71 @@ class SubmitAssignmentSerializer(serializers.Serializer):
 # =========================================
 # ASSIGNMENT SERIALIZERS
 # ==========================================
-# main serializers for assignments and submissions
-class AssignmentSerializer(serializers.ModelSerializer):
-    content_files = serializers.SerializerMethodField()
-    
+# used for creating and updating assignments
+class AssignmentWriteSerializer(serializers.ModelSerializer):
+    # fetch course by its external_id
+    course = serializers.SlugRelatedField(
+        queryset=CourseCache.objects.all(),
+        slug_field="course_external_id"
+    )
+
     class Meta:
         model = Assignment
-        fields = '__all__'
-        read_only_fields = ('created_by', 'created_at')
+        fields = [
+            "title",
+            "description",
+            "open_at",
+            "due_at",
+            "close_at",
+            "max_attempts",
+            "allow_late_submission",
+            "is_published",
+            "max_marks",
+            "course",
+        ]
+    # validate that the staff is assigned to the course
+    def validate_course(self, course):
+        request = self.context["request"]
+        staff_external_id = request.user.external_id
+
+        if not StaffRegisteredCourse.objects.filter(
+            staff_external_id=staff_external_id,
+            course=course
+        ).exists():
+            raise serializers.ValidationError(
+                "You are not assigned to this course."
+            )
+
+        return course
     
-    def get_content_files(self, obj):
-        """Get all content files attached to this assignment"""
-        contents = obj.contents.filter(is_published=True)
-        return AssignmentContentSerializer(contents, many=True).data
-
-
+# serializer for listing content files of an assignment
 class AssignmentContentSerializer(serializers.ModelSerializer):
     url = serializers.ReadOnlyField()
 
     class Meta:
         model = AssignmentContent
-        fields = '__all__'
+        fields = [
+            "id",
+            "title",
+            "content_type",
+            "url",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+# serializers for reading assignments and their contents
+class AssignmentReadSerializer(serializers.ModelSerializer):
+    course = CourseCacheSerializer(read_only=True)
+    content_files = AssignmentContentSerializer(
+        many=True,
+        read_only=True,
+        source="contents"
+    )
+
+    class Meta:
+        model = Assignment
+        fields = "__all__"
 
 
 class AssignmentSubmissionFileSerializer(serializers.ModelSerializer):

@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'courses',
     'assessment',
     'resource.content',
+    'portal_auth.apps.PortalAuthConfig',
 ]
 
 MIDDLEWARE = [
@@ -229,12 +230,12 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'class': 'logging.StreamHandler',
             'formatter': 'simple'
         },
         'file': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'django.log',
             'maxBytes': 1024 * 1024 * 15,  # 15MB
@@ -244,12 +245,12 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console', 'file'],
-        'level': 'INFO',
+        'level': 'WARNING',
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'WARNING'),
             'propagate': False,
         },
         'courses': {

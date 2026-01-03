@@ -12,8 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.utils import timezone
-from django.db import transaction
+
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from .models import (
@@ -21,7 +20,7 @@ from .models import (
     QuestionCategory, QuestionTypeAvailability, Question, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
 )
 from .serializers import (
-    AssignmentSerializer, AssignmentContentSerializer, AssignmentSubmissionSerializer, AssignmentSubmissionFileSerializer,
+    AssignmentReadSerializer, AssignmentWriteSerializer, AssignmentContentSerializer, AssignmentSubmissionSerializer, AssignmentSubmissionFileSerializer,
     AssignmentContentUploadSerializer, AssignmentSubmissionFileUploadSerializer,
     QuestionCategorySerializer, QuestionTypeAvailabilitySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
     QuizSerializer, QuizDetailSerializer, QuizWithQuestionsSerializer, QuizQuestionSlotSerializer,
@@ -52,7 +51,7 @@ from .permissions import IsInstructorOrReadOnly
 class StudentAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
     """Student read-only access to assignments"""
     queryset = Assignment.objects.filter(is_published=True)
-    serializer_class = AssignmentSerializer
+    serializer_class = AssignmentReadSerializer
     permission_classes = [IsAuthenticated]
 
 
@@ -288,13 +287,17 @@ class StudentAssignmentSubmissionFileViewSet(viewsets.ModelViewSet):
     ),
 )
 class StaffAssignmentViewSet(viewsets.ModelViewSet):
-    """Staff full CRUD access to assignments"""
-    queryset = Assignment.objects.all()
-    serializer_class = AssignmentSerializer
+    queryset = Assignment.objects.select_related("course")
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return AssignmentWriteSerializer
+        return AssignmentReadSerializer
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
 
 
 @extend_schema_view(

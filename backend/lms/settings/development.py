@@ -59,8 +59,8 @@ CACHES = {
 # ]
 
 # Simplified logging for development
-LOGGING['handlers']['console']['level'] = 'DEBUG'
-LOGGING['loggers']['django']['level'] = 'DEBUG'
+# LOGGING['handlers']['console']['level'] = 'DEBUG'
+# LOGGING['loggers']['django']['level'] = 'DEBUG'
 
 # Disable password validation in development for easier testing
 AUTH_PASSWORD_VALIDATORS = []
