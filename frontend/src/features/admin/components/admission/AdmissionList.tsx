@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Pencil, CalendarDays, CheckCircle2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     Table,
     TableBody,
@@ -11,27 +11,27 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+} from "@/features/admin/components/admission/components/ui/table";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
+} from "@/features/admin/components/admission/components/ui/card";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 // Removed AlertDialog imports
 
 import { admissionService } from "../../services/admissionService";
 import { Admission } from "../../types/admission";
 import AdmissionForm from "../admission/AdmissionForm";
 import { useAuth } from "@/contexts/AuthContext";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
 import { sessionService } from "../../services/sessionService";
 import { programmeTypeService } from "../../services/programmeTypeService";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/features/admin/components/admission/components/ui/tabs";
 
 const AdmissionList = () => {
     const { toast } = useToast();

@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/features/admin/components/admission/components/ui/card";
 import { LucideIcon } from "lucide-react";
 
 interface ParameterCardProps {

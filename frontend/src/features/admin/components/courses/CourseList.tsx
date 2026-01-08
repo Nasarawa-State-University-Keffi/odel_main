@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { courseService } from "@/features/admin/services/courseService";
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/features/admin/components/admission/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Loader2, Search, AlertCircle, RefreshCcw, ChevronLeft, ChevronRight, Book, Edit, Users, GraduationCap, ClipboardList, MoreHorizontal, Trash2 } from "lucide-react";
 import { ProgrammeCourse, CourseQueryParams } from "@/features/admin/types/course";
 import CourseStudentsModal from "./CourseStudentsModal";
@@ -16,7 +16,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 
 import { LoadingSpinner } from "@/components/ui/loading-spinner"; // Assuming this exists or using Loader2
 import { useAuth } from "@/contexts/AuthContext";

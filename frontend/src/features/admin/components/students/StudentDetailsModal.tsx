@@ -4,10 +4,10 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from "@/features/admin/components/admission/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/admin/components/admission/components/ui/tabs";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { ScrollArea } from "@/features/admin/components/admission/components/ui/scroll-area";
 import {
     User,
     Hash,

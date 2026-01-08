@@ -3,12 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { facultyService } from "@/features/admin/services/facultyService";
 import { Faculty, FacultyWithDean } from "@/features/admin/types/faculty";
 import { cn } from "@/lib/utils";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
+import { Card } from "@/features/admin/components/admission/components/ui/card";
 import { Search, Building2, User, MoreHorizontal, GraduationCap, Users, Plus, Edit } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import CreateFacultyModal from "./CreateFacultyModal";
 import UpdateFacultyModal from "./UpdateFacultyModal";
 import {
@@ -18,7 +18,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 
 const FacultyList = () => {
     const [searchQuery, setSearchQuery] = useState("");

@@ -1,12 +1,12 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/features/admin/components/admission/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { courseService } from "@/features/admin/services/courseService";
 import { staffService } from "@/features/admin/services/staffService";
 import { Loader2, AlertCircle, UserX, CheckCircle2, Trash2, Star } from "lucide-react";
 import { ProgrammeCourse } from "@/features/admin/types/course";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 

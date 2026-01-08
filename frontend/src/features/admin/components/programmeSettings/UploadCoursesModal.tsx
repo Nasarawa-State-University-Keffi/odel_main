@@ -2,14 +2,14 @@ import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { UploadCoursesResponse } from "@/features/admin/types/programmeSettings";
 import { programmeSettingsService } from "@/features/admin/services/programmeSettingsService";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
+import { ScrollArea } from "@/features/admin/components/admission/components/ui/scroll-area";
 
 interface UploadCoursesModalProps {
     open: boolean;

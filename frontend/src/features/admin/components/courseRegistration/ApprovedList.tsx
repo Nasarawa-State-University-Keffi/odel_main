@@ -8,11 +8,11 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
+} from "@/features/admin/components/admission/components/ui/table";
 import { Loader2, Search, Download } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { ApprovedRegisteredCourseDto } from "@/features/admin/types/courseRegistration";
 
 const ApprovedList = () => {
@@ -61,7 +61,7 @@ const ApprovedList = () => {
                 <Button
                     variant="outline"
                     className="gap-2"
-                    onClick={() => courseRegistrationService.downloadRegistrationReport(Number(semesterId))}
+                    onClick={() => courseRegistrationService.downloadRegistrationReport({ semester: Number(semesterId) })}
                 >
                     <Download className="h-4 w-4" />
                     Download Report

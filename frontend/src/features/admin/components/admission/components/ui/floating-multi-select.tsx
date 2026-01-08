@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     Command,
     CommandEmpty,
@@ -9,13 +9,13 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
-} from "@/components/ui/command";
+} from "@/features/admin/components/admission/components/ui/command";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
-} from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
+} from "@/features/admin/components/admission/components/ui/popover";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
 
 export interface Option {
     label: string;

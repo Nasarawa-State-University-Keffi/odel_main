@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { FloatingInput } from "@/components/ui/floating-input";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { FloatingInput } from "@/features/admin/components/admission/components/ui/floating-input";
 import { Mail, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, useAnimation } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/features/admin/components/admission/components/ui/card";
 
 
 const ForgotPassword = () => {

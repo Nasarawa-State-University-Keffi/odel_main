@@ -1,5 +1,5 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/admin/components/admission/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/features/admin/components/admission/components/ui/card";
 import AdmissionList from "@/features/admin/components/admission/AdmissionList";
 import AdmissionStatistics from "@/features/admin/components/admission/AdmissionStatistics";
 import ApplicationTypeList from "@/features/admin/components/admission/ApplicationTypeList";

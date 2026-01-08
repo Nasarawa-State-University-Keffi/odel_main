@@ -11,7 +11,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/features/admin/components/admission/components/ui/dialog";
 import {
     Form,
     FormControl,
@@ -20,10 +20,10 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+} from "@/features/admin/components/admission/components/ui/form";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
 import { SemesterSettings, UpdateSemesterSettingsRequest } from "../../types/programmeSettings";

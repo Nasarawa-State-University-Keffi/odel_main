@@ -1,5 +1,5 @@
 import { WifiOff } from "lucide-react";
-import { useOnline } from "../contexts/OnlineStatusContext";
+import { useOnline } from "../../../../../contexts/OnlineStatusContext";
 
 export default function OfflineBanner() {
     const { isOnline } = useOnline();

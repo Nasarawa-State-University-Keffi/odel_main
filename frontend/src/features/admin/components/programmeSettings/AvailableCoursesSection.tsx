@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/admin/components/admission/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
 import { Loader2, AlertCircle, CheckSquare, Square, PlusCircle, Upload } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
 import RegisterCourseModal from "./RegisterCourseModal";
 import UploadCoursesModal from "./UploadCoursesModal";
 

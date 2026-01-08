@@ -2,11 +2,11 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import React, { useEffect } from "react";
-import { FloatingInput } from "@/components/ui/floating-input";
-import { FloatingSelect } from "@/components/ui/floating-select";
+import { FloatingInput } from "@/features/admin/components/admission/components/ui/floating-input";
+import { FloatingSelect } from "@/features/admin/components/admission/components/ui/floating-select";
 import { User, MapPin, Calendar, Heart, Phone, Globe, Map } from "lucide-react";
 import { useLocation } from "@/hooks/useLocation";
-import { Loader } from "@/components/ui/loader";
+import { Loader } from "@/features/admin/components/admission/components/ui/loader";
 
 const personalDetailsSchema = z.object({
   surname: z.string().min(2, "Surname is required"),

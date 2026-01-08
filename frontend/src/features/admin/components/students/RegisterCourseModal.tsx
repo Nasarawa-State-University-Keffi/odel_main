@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/features/admin/components/admission/components/ui/dialog";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Loader2, BookOpen, Save } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { admissionService } from "@/features/admin/services/admissionService";
@@ -10,7 +10,7 @@ import { studentService } from "@/features/admin/services/studentService";
 import { sessionService } from "@/features/admin/services/sessionService";
 import { courseRegistrationService } from "@/features/admin/services/courseRegistrationService";
 import { Student } from "@/features/admin/types/student";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/features/admin/components/admission/components/ui/use-toast";
 
 interface RegisterCourseModalProps {
     open: boolean;

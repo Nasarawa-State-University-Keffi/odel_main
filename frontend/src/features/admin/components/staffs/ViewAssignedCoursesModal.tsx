@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/features/admin/components/admission/components/ui/dialog";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Loader2, BookOpen, AlertCircle } from "lucide-react";
 import { programmeTypeService } from "../../services/programmeTypeService";
 import { staffService } from "../../services/staffService";
 import { useQuery } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
 
 interface ViewAssignedCoursesModalProps {
     open: boolean;

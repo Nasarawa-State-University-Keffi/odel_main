@@ -1,12 +1,12 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/features/admin/components/admission/components/ui/toaster";
+import { Toaster as Sonner } from "@/features/admin/components/admission/components/ui/sonner";
+import { TooltipProvider } from "@/features/admin/components/admission/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
-import { Loader } from "./components/ui/loader";
+import { Loader } from "./features/admin/components/admission/components/ui/loader";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { ProtectedRoute } from "./features/admin/components/admission/components/auth/ProtectedRoute";
 
 
 // GENERAL
@@ -46,7 +46,7 @@ const AdminAdmissionManagement = lazy(() => import("./pages/admin/Admission/Admi
 
 const queryClient = new QueryClient();
 
-import OfflineBanner from "./components/OfflineBanner";
+import OfflineBanner from "./features/admin/components/admission/components/OfflineBanner";
 
 import { OnlineStatusProvider } from "./contexts/OnlineStatusContext";
 

@@ -5,14 +5,14 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
+} from "@/features/admin/components/admission/components/ui/table";
 import { User } from "lucide-react";
 import { Student } from "@/features/admin/types/student";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 import {
     Card,
     CardContent,
-} from "@/components/ui/card";
+} from "@/features/admin/components/admission/components/ui/card";
 import StudentRegistryHeader from "./StudentRegistryHeader";
 import StudentTableRow from "./StudentTableRow";
 

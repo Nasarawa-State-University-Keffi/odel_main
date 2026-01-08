@@ -1,4 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/admin/components/admission/components/ui/tabs";
 import { BookOpen, CheckCircle2, History, ClipboardList, PenTool } from "lucide-react";
 import PendingApprovals from "@/features/admin/components/courseRegistration/PendingApprovals";
 import ApprovedList from "@/features/admin/components/courseRegistration/ApprovedList";

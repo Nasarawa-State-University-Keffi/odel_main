@@ -1,8 +1,8 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 import { User, ShieldCheck, GraduationCap, X, Layers } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
 import { LevelAdviser } from "../../types/staff";
 
 interface LevelAdviserTableProps {

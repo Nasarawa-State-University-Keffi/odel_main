@@ -10,11 +10,11 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from "@/features/admin/components/admission/components/ui/alert-dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { gradeService } from "../../services/gradeService";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 
 interface DeleteGradeButtonProps {
     gradeId: number;

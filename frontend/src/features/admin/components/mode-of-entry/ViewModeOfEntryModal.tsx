@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { modeOfEntryService } from "../../services/modeOfEntryService";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/features/admin/components/admission/components/ui/dialog";
 import { Loader2, CheckCircle2, XCircle, BookOpen, Clock, FileText, GraduationCap } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Separator } from "@/features/admin/components/admission/components/ui/separator";
 
 interface ViewModeOfEntryModalProps {
     open: boolean;

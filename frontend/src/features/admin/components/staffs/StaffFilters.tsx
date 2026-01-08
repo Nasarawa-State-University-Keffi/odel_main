@@ -1,11 +1,11 @@
 import { Search, ListFilter, UserCheck, Loader2, GraduationCap, Building2, Landmark } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/features/admin/components/admission/components/ui/popover";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
 import { Faculty, Department } from "../../services/staffService";
 import { useQuery } from "@tanstack/react-query";
 import { facultyService } from "../../services/facultyService";

@@ -6,7 +6,7 @@ import {
     PaginationLink,
     PaginationNext,
     PaginationPrevious,
-} from "@/components/ui/pagination";
+} from "@/features/admin/components/admission/components/ui/pagination";
 
 interface StudentPaginationProps {
     currentPage: number;

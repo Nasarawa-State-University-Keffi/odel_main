@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import ApplicationLayout from "@/layouts/ApplicationLayout";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import DetailRow from "@/features/dashboard/components/DetailRow";
 import TimelineItem from "@/features/dashboard/components/TimelineItem";
 const defaultProfile = "/51760520.png";

@@ -1,6 +1,6 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
 import { Grade } from "@/features/admin/types/grade";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 import { GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UpdateGradeModal from "./UpdateGradeModal";

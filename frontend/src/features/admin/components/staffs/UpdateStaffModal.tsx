@@ -8,16 +8,16 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     FloatingInput,
-} from "@/components/ui/floating-input";
-import { FloatingSelect } from "@/components/ui/floating-select";
-import { FloatingMultiSelect } from "@/components/ui/floating-multi-select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+} from "@/features/admin/components/admission/components/ui/floating-input";
+import { FloatingSelect } from "@/features/admin/components/admission/components/ui/floating-select";
+import { FloatingMultiSelect } from "@/features/admin/components/admission/components/ui/floating-multi-select";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 import { staffService } from "../../services/staffService";
 import { commonService } from "../../services/commonService";
 import { departmentService } from "../../services/departmentService";

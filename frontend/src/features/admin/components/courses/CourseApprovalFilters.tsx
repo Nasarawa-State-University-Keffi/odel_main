@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
 import { Search, RotateCcw } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
 import { admissionService } from "../../services/admissionService";
 import { sessionService } from "@/features/admin/services/sessionService";

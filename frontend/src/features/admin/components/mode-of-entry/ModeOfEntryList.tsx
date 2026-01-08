@@ -6,13 +6,13 @@ import { staffService } from "../../services/staffService";
 import { ModeOfEntry } from "../../types/modeOfEntry";
 import { ProgrammeType } from "../../types/programmeType";
 import { Loader2, Filter, FileText, CheckCircle2, XCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/features/admin/components/admission/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
 import { motion } from "framer-motion";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Plus, Pencil, Trash2, MoreHorizontal, Eye } from "lucide-react";
 import CreateModeOfEntryModal from "./CreateModeOfEntryModal";
 import UpdateModeOfEntryModal from "./UpdateModeOfEntryModal";
@@ -26,7 +26,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -36,7 +36,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/features/admin/components/admission/components/ui/alert-dialog";
 
 const ModeOfEntryList = () => {
     const [selectedProgrammeType, setSelectedProgrammeType] = useState<string>("");

@@ -1,6 +1,6 @@
-import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardHeader, CardTitle, CardDescription } from "@/features/admin/components/admission/components/ui/card";
 import { Building2, Search, Loader2, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
 import { DepartmentRegistryHeaderProps } from "@/features/admin/types/department";
 
 

@@ -1,13 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, LogOut, FileText, GraduationCap, School, BookOpenCheck, BookOpen, Book, Building2, Award, University, Layers, ScrollText, Settings, Globe, Calendar, UsersRound, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/features/admin/components/admission/components/ui/tooltip";
 
 import odelLogo from '@/assets/nsuk-logo.jpg'
 import { useAuth } from "@/contexts/AuthContext";

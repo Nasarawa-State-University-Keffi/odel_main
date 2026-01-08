@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
 import { Loader2, Download, FileSpreadsheet } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/features/admin/components/admission/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import { admissionService } from "@/features/admin/services/admissionService";
 import { sessionService } from "@/features/admin/services/sessionService";
@@ -14,7 +14,7 @@ import { programmeTypeService } from "@/features/admin/services/programmeTypeSer
 import { levelService } from "@/features/admin/services/levelService";
 import { staffService } from "@/features/admin/services/staffService";
 import { studentService } from "@/features/admin/services/studentService";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/features/admin/components/admission/components/ui/use-toast";
 
 interface StudentReportModalProps {
     open: boolean;

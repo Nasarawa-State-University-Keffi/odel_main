@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { facultyService } from "@/features/admin/services/facultyService";
 import { departmentService } from "@/features/admin/services/departmentService";
