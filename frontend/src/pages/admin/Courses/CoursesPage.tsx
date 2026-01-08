@@ -6,7 +6,7 @@ import CourseLecturersModal from "@/features/admin/components/courses/CourseLect
 import CourseFilterBar from "@/features/admin/components/courses/CourseFilterBar";
 import CourseApprovalFilters from "@/features/admin/components/courses/CourseApprovalFilters";
 import CourseApprovalList from "@/features/admin/components/courses/CourseApprovalList";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Plus, ListFilter, Library, FileCheck2 } from "lucide-react";
 import { ProgrammeCourse, CourseQueryParams } from "@/features/admin/types/course";
 import { useAuth } from "@/contexts/AuthContext";

@@ -11,7 +11,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/features/admin/components/admission/components/ui/dialog";
 import {
     Command,
     CommandEmpty,
@@ -19,8 +19,8 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+} from "@/features/admin/components/admission/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/features/admin/components/admission/components/ui/popover";
 import {
     Form,
     FormControl,
@@ -28,17 +28,17 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+} from "@/features/admin/components/admission/components/ui/form";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+} from "@/features/admin/components/admission/components/ui/select";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
 import { admissionService } from "@/features/admin/services/admissionService";

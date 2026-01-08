@@ -6,7 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/features/admin/components/admission/components/ui/select";
 
 import { Loader2 } from "lucide-react";
 

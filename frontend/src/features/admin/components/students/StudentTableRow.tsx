@@ -1,13 +1,13 @@
-import { TableRow, TableCell } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { TableRow, TableCell } from "@/features/admin/components/admission/components/ui/table";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 import {
     MoreHorizontal,
     FileText,

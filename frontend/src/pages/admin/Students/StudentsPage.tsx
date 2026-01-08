@@ -9,9 +9,9 @@ import { Session } from "@/features/admin/types/session";
 import StudentTable from "@/features/admin/components/students/StudentTable";
 import StudentPagination from "@/features/admin/components/students/StudentPagination";
 import StudentStatsCards from "@/features/admin/components/students/StudentStatsCards";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Calendar } from "lucide-react";
 import {
     Select,
@@ -19,12 +19,12 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@/features/admin/components/admission/components/ui/select";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/features/admin/components/admission/components/ui/popover";
 import { Filter, PauseCircle, ChevronDown, Download, Plus, BarChart3, AlertTriangle } from "lucide-react";
 import DefermentTable from "@/features/admin/components/students/DefermentTable";
 import SuspensionTable from "@/features/admin/components/students/SuspensionTable";
@@ -35,7 +35,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 
 // Placeholder for Detail Modal - to be implemented next
 import StudentDetailsModal from "@/features/admin/components/students/StudentDetailsModal";
@@ -46,8 +46,9 @@ import { programmeTypeService } from "@/features/admin/services/programmeTypeSer
 import { programmeService } from "@/features/admin/services/programmeService";
 import { levelService } from "@/features/admin/services/levelService";
 import { staffService } from "@/features/admin/services/staffService";
-import { Programme, Level } from "@/features/admin/types/staff";
-import { Label } from "@/components/ui/label";
+import { Programme } from "@/features/admin/types/programme";
+import { Level } from "@/features/admin/types/level";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
 
 const StudentsPage = () => {
     const { toast } = useToast();

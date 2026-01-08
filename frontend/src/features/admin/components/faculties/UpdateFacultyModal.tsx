@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { facultyService } from "../../services/facultyService";
 import { Faculty, UpdateFacultyRequest } from "../../types/faculty";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Edit3, AlertCircle } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/features/admin/components/admission/components/ui/switch";
 
 interface UpdateFacultyModalProps {
     isOpen: boolean;

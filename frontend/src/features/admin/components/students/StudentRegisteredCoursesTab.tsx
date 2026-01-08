@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/admin/components/admission/components/ui/card";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@/features/admin/components/admission/components/ui/select";
 import {
     Table,
     TableBody,
@@ -15,13 +15,13 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
+} from "@/features/admin/components/admission/components/ui/table";
 import { BookOpen, Loader2, PlusCircle } from "lucide-react";
 import { admissionService } from "@/features/admin/services/admissionService";
 import { studentService } from "@/features/admin/services/studentService";
 import { sessionService } from "@/features/admin/services/sessionService";
 import RegisterCourseModal from "./RegisterCourseModal";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface StudentRegisteredCoursesTabProps {

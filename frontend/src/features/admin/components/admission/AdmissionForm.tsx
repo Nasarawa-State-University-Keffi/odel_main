@@ -5,7 +5,7 @@ import * as z from "zod";
 import { format } from "date-fns";
 import { CalendarIcon, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -13,7 +13,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/features/admin/components/admission/components/ui/dialog";
 import {
     Form,
     FormControl,
@@ -21,18 +21,18 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
+} from "@/features/admin/components/admission/components/ui/form";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { useToast } from "@/components/ui/use-toast";
+} from "@/features/admin/components/admission/components/ui/select";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/features/admin/components/admission/components/ui/popover";
+import { Calendar } from "@/features/admin/components/admission/components/ui/calendar";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 
 import { admissionService } from "../../services/admissionService";
 import { programmeTypeService } from "../../services/programmeTypeService";

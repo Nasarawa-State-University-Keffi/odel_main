@@ -5,9 +5,9 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from "@/features/admin/components/admission/components/ui/table";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { Loader2, Calendar, AlertCircle } from "lucide-react";
 import {
     Card,
@@ -15,8 +15,8 @@ import {
     CardHeader,
     CardTitle,
     CardDescription,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/features/admin/components/admission/components/ui/card";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 
 interface SuspensionTableProps {
     data: any[];

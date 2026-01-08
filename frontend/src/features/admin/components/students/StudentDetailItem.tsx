@@ -1,4 +1,4 @@
-import { Label } from "@/components/ui/label";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
 
 interface DetailItemProps {
     label: string;

@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { courseService } from "@/features/admin/services/courseService";
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/features/admin/components/admission/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
 import { Loader2, AlertCircle, RefreshCcw, CheckCircle2, Circle, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 
 interface CourseApprovalListProps {
     filters: {

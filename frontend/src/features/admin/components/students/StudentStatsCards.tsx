@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/features/admin/components/admission/components/ui/card";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 import { Users, CreditCard, Ban, GraduationCap, TrendingUp, Wallet, CheckCircle2, XCircle } from "lucide-react";
 import { StudentStats } from "@/features/admin/types/student";
 import {

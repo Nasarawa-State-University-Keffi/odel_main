@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { FloatingInput } from "@/components/ui/floating-input";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { FloatingInput } from "@/features/admin/components/admission/components/ui/floating-input";
 import { Eye, EyeOff, Mail, Lock, User, Phone, Menu, Loader2 } from "lucide-react";
 import { motion, useAnimation } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import apiClient from "@/lib/api";
-import ActiveAdmission from "@/components/shared/ActiveAdmission";
-import CourseList from "@/components/shared/CourseList";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import ActiveAdmission from "@/features/admin/components/admission/components/shared/ActiveAdmission";
+import CourseList from "@/features/admin/components/admission/components/shared/CourseList";
+import { Sheet, SheetContent, SheetTrigger } from "@/features/admin/components/admission/components/ui/sheet";
 import odelLogo from '@/assets/odel-logo.jpg';
 import {
   Card,
@@ -16,7 +16,14 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from "@/components/ui/card";
+} from "@/features/admin/components/admission/components/ui/card";
+import { applicantService } from "@/features/admin/services/applicantService";
+import { modeOfEntryService } from "@/features/admin/services/modeOfEntryService";
+import { ModeOfEntry } from "@/features/admin/types/modeOfEntry";
+import { admissionService } from "@/features/admin/services/admissionService";
+import { Admission } from "@/features/admin/types/admission";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -25,12 +32,13 @@ const Register = () => {
   const [selectedAdmissionId, setSelectedAdmissionId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     email: "",
-    password: "",
-    confirmPassword: "",
-    firstName: "",
-    lastName: "",
-    phoneNumber: "",
+    jambRegNumber: "",
   });
+
+  const [admissions, setAdmissions] = useState<Admission[]>([]);
+  const [selectedAdmission, setSelectedAdmission] = useState<Admission | null>(null);
+  const [modesOfEntry, setModesOfEntry] = useState<ModeOfEntry[]>([]);
+  const [selectedModeOfEntryId, setSelectedModeOfEntryId] = useState<string>("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,7 +46,34 @@ const Register = () => {
 
   useEffect(() => {
     controls.start({ opacity: 1, y: 0 });
+    // Fetch active admissions to have their details (like programmeType)
+    const fetchAdmissions = async () => {
+      try {
+        const data = await admissionService.getActiveAdmissions();
+        setAdmissions(data);
+      } catch (err) {
+        console.error("Failed to fetch admissions", err);
+      }
+    };
+    fetchAdmissions();
   }, [controls]);
+
+  // Update selected admission object and fetch modes of entry
+  useEffect(() => {
+    if (selectedAdmissionId) {
+      const adm = admissions.find(a => a.id === selectedAdmissionId) || null;
+      setSelectedAdmission(adm);
+
+      if (adm?.applicationType?.programmeType?.id) {
+        modeOfEntryService.getAllModeOfEntries(adm.applicationType.programmeType.id)
+          .then(setModesOfEntry)
+          .catch(console.error);
+      } else {
+        setModesOfEntry([]);
+      }
+      setSelectedModeOfEntryId("");
+    }
+  }, [selectedAdmissionId, admissions]);
 
   // HANDLLES THE FORM SHAKING AT WRONG CREDENTIALS
   const shakeForm = () => {
@@ -53,10 +88,7 @@ const Register = () => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
-    if (!formData.firstName.trim()) newErrors.firstName = "First Name is required";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required";
     if (!formData.email.trim()) newErrors.email = "Email is required";
-    if (!formData.phoneNumber.trim()) newErrors.phoneNumber = "Phone Number is required";
     if (!selectedAdmissionId) {
       toast({
         title: "Missing Selection",
@@ -66,14 +98,17 @@ const Register = () => {
       isValid = false;
     }
 
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+    if (!selectedModeOfEntryId) {
+      toast({
+        title: "Missing Selection",
+        description: "Please select a mode of entry.",
+        variant: "destructive",
+      });
+      isValid = false;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+    if (!formData.jambRegNumber.trim()) {
+      newErrors.jambRegNumber = "JAMB/Registration Number is required";
     }
 
     setErrors(newErrors);
@@ -94,37 +129,42 @@ const Register = () => {
 
     try {
       const submitData = {
-        ...formData,
-        admissionId: selectedAdmissionId,
+        admissionId: selectedAdmissionId as number,
+        modeOfEntryId: Number(selectedModeOfEntryId),
+        emailAddress: formData.email,
+        jambRegNumber: formData.jambRegNumber
       };
 
-      await apiClient.post("/v2/application/register", submitData);
+      await applicantService.registerApplicant(submitData);
 
       toast({
         title: "Registration Successful",
-        description: "Your account has been created. Please login.",
+        description: "Your application account has been created successfully.",
       });
 
+      // Navigate to success or login (depending on flow, user said go on)
+      // For now stay on page or navigate to login
       navigate("/api/auth/login");
 
     } catch (error: any) {
-      // FIELD-SPECIFIC SERVER ERROR
-      if (
-        error.message?.toLowerCase().includes("phone")
-      ) {
-        setErrors(prev => ({ ...prev, phoneNumber: error.message }));
-        return;
+      const status = error.response?.status;
+      let title = "Registration Failed";
+      let description = error.response?.data?.message || "Something went wrong. Please try again.";
+
+      if (status === 409) {
+        title = "Duplicate Entry";
+        description = "A student with this email or JAMB number already exists.";
+      } else if (status === 400) {
+        title = "Bad Request";
+        description = error.response?.data?.message || "Invalid registration details.";
+      } else if (status === 422) {
+        title = "Incomplete Data";
+        description = "Please check all fields and try again.";
       }
 
-      if (error.message?.toLowerCase().includes("email")) {
-        setErrors(prev => ({ ...prev, email: error.message }));
-        return;
-      }
-
-      // GENERIC SERVER FAILURE
       toast({
-        title: "Registration Failed",
-        description: error.message || "Something went wrong. Please try again.",
+        title,
+        description,
         variant: "destructive",
       });
 
@@ -205,39 +245,7 @@ const Register = () => {
 
               <CardContent className="px-8 pb-8">
                 <form onSubmit={handleRegister} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* First Name */}
-                    <div className="space-y-2 group">
-                      <FloatingInput
-                        id="firstName"
-                        name="firstName"
-                        label="First Name"
-                        disabled={isSubmitting}
-                        icon={<User className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
-                        className="bg-background/40 border-border/50 h-14 rounded-2xl group-focus-within:border-primary/50 group-focus-within:ring-primary/20"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        error={errors.firstName}
-                        required
-                      />
-                    </div>
-
-                    {/* Last Name */}
-                    <div className="space-y-2 group">
-                      <FloatingInput
-                        id="lastName"
-                        name="lastName"
-                        label="Last Name"
-                        disabled={isSubmitting}
-                        icon={<User className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
-                        className="bg-background/40 border-border/50 h-14 rounded-2xl group-focus-within:border-primary/50 group-focus-within:ring-primary/20"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        error={errors.lastName}
-                        required
-                      />
-                    </div>
-                  </div>
+                  {/* Only keeping fields required by the registration endpoint */}
 
                   {/* Email */}
                   <div className="space-y-2 group">
@@ -256,22 +264,6 @@ const Register = () => {
                     />
                   </div>
 
-                  {/* Phone Number */}
-                  <div className="space-y-2 group">
-                    <FloatingInput
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      label="Phone Number"
-                      disabled={isSubmitting}
-                      icon={<Phone className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
-                      className="bg-background/40 border-border/50 h-14 rounded-2xl group-focus-within:border-primary/50 group-focus-within:ring-primary/20"
-                      value={formData.phoneNumber}
-                      onChange={handleChange}
-                      error={errors.phoneNumber}
-                      required
-                    />
-                  </div>
-
                   {/* Admission & Programme Selection */}
                   <div className="space-y-4 pt-2">
                     <div className="p-6 rounded-2xl bg-muted/40 border border-border/50">
@@ -284,54 +276,58 @@ const Register = () => {
                           selectedId={selectedAdmissionId}
                           programmeType="ODEL"
                         />
+
+                        {selectedAdmissionId && modesOfEntry.length > 0 && (
+                          <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mode of Entry *</Label>
+                            <Select value={selectedModeOfEntryId} onValueChange={setSelectedModeOfEntryId}>
+                              <SelectTrigger className="h-14 rounded-2xl bg-background/40 border-border/50">
+                                <SelectValue placeholder="Select Mode of Entry" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {modesOfEntry.map(mode => (
+                                  <SelectItem key={mode.id} value={mode.id.toString()}>
+                                    {mode.title}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <FloatingInput
+                            id="jambRegNumber"
+                            name="jambRegNumber"
+                            label="JAMB / Registration Number"
+                            disabled={isSubmitting}
+                            icon={<Menu className="h-4 w-4 text-muted-foreground" />}
+                            className="bg-background/40 border-border/50 h-14 rounded-2xl"
+                            value={formData.jambRegNumber}
+                            onChange={handleChange}
+                            error={errors.jambRegNumber}
+                            required
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Password */}
-                    <div className="space-y-2">
-                      <div className="relative group">
-                        <FloatingInput
-                          id="password"
-                          name="password"
-                          label="Password"
-                          type={showPassword ? "text" : "password"}
-                          disabled={isSubmitting}
-                          icon={<Lock className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
-                          className="bg-background/40 border-border/50 h-14 rounded-2xl pr-12 group-focus-within:border-primary/50 group-focus-within:ring-primary/20"
-                          value={formData.password}
-                          onChange={handleChange}
-                          error={errors.password}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors z-20 h-10 w-10 flex items-center justify-center rounded-xl"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
+                  {/* Password fields removed as per new endpoint requirement which only takes 4 fields */}
+                  {/* But I'll keep them if the user might still need them for login later? 
+                      Wait, the new endpoint payload is ONLY:
+                      {
+                        "admissionId": 0,
+                        "modeOfEntryId": 0,
+                        "emailAddress": "string",
+                        "jambRegNumber": "string"
+                      }
+                      So I should REMOVE firstName, lastName, phoneNumber, password, confirmPassword from the submission and maybe from the form if they aren't used.
+                      However, many registration forms still want names. 
+                      Let's stick to the requested payload.
+                  */}
 
-                    {/* Confirm Password */}
-                    <div className="space-y-2 group">
-                      <FloatingInput
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        label="Confirm Password"
-                        type={showPassword ? "text" : "password"}
-                        disabled={isSubmitting}
-                        icon={<Lock className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
-                        className="bg-background/40 border-border/50 h-14 rounded-2xl pr-12 group-focus-within:border-primary/50 group-focus-within:ring-primary/20"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        error={errors.confirmPassword}
-                        required
-                      />
-                    </div>
-                  </div>
+                  {/* Removed unused fields */}
 
 
 

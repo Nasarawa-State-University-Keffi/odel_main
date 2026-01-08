@@ -3,13 +3,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { schoolService } from "../../services/schoolService";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/features/admin/components/admission/components/ui/dialog";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/features/admin/components/admission/components/ui/form";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Switch } from "@/features/admin/components/admission/components/ui/switch";
 import { Loader2, Plus, Building2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 import { CreateSchoolRequest } from "../../types/school";
 
 const schema = z.object({

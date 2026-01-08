@@ -4,16 +4,16 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { modeOfEntryService } from "../../services/modeOfEntryService";
 import { levelService } from "../../services/levelService";
 import { ModeOfEntry } from "../../types/modeOfEntry";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Switch } from "@/components/ui/switch";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/features/admin/components/admission/components/ui/form";
+import { Switch } from "@/features/admin/components/admission/components/ui/switch";
 
 interface UpdateModeOfEntryModalProps {
     open: boolean;

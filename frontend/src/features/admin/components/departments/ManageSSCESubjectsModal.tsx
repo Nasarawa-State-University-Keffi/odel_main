@@ -1,21 +1,21 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { departmentService } from "@/features/admin/services/departmentService";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Separator } from "@/features/admin/components/admission/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, BookOpen, PlusCircle, Trash2, AlertCircle, Check, GraduationCap } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/features/admin/components/admission/components/ui/switch";
 import { Subject, Grade } from "@/features/admin/types/department";
-import { FloatingMultiSelect, Option } from "@/components/ui/floating-multi-select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { FloatingMultiSelect, Option } from "@/features/admin/components/admission/components/ui/floating-multi-select";
+import { ScrollArea } from "@/features/admin/components/admission/components/ui/scroll-area";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/features/admin/components/admission/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/features/admin/components/admission/components/ui/command";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/admin/components/admission/components/ui/tabs";
 
 interface ManageSSCESubjectsModalProps {
     isOpen: boolean;

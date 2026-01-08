@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { FloatingInput } from "@/components/ui/floating-input";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { FloatingInput } from "@/features/admin/components/admission/components/ui/floating-input";
 import { Eye, EyeOff, Mail, Lock, ShieldCheck, ArrowLeft, Loader2 } from "lucide-react";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import { authAPI } from "@/lib/api";
@@ -17,7 +17,7 @@ import {
     CardHeader,
     CardTitle,
     CardFooter,
-} from "@/components/ui/card";
+} from "@/features/admin/components/admission/components/ui/card";
 import odelLogo from '@/assets/odel-logo.jpg'
 import { useAuth } from "@/contexts/AuthContext";
 

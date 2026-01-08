@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Plus, CalendarDays, Pencil } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     Table,
     TableBody,
@@ -10,16 +10,16 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
+} from "@/features/admin/components/admission/components/ui/table";
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
+} from "@/features/admin/components/admission/components/ui/card";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 
 import { admissionService } from "../../services/admissionService";
 import { useAuth } from "@/contexts/AuthContext";

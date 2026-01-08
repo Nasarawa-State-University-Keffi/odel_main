@@ -7,8 +7,8 @@ import ContactDetailsStep from "@/features/application/components/ContactDetails
 import NextOfKinStep from "@/features/application/components/NextOfKinStep";
 import ProgrammeStep from "@/features/application/components/ProgrammeStep";
 import PaymentStep from "@/features/application/components/PaymentStep";
-import { Button } from "@/components/ui/button";
-import { Loader } from "@/components/ui/loader";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Loader } from "@/features/admin/components/admission/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 
 const Application = () => {

@@ -1,8 +1,8 @@
 import ApplicationLayout from "@/layouts/ApplicationLayout";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Textarea } from "@/features/admin/components/admission/components/ui/textarea";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/admin/components/admission/components/ui/tabs";
 
 const DataCorrection = () => {
   return (

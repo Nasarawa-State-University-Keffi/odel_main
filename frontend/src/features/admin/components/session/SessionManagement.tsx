@@ -3,10 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { sessionService } from "../../services/sessionService";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, Plus, Calendar, Settings, Power, PowerOff, XCircle, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/features/admin/components/admission/components/ui/card";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import CreateSessionModal from "./CreateSessionModal";
 import EditSessionModal from "./EditSessionModal";

@@ -3,9 +3,9 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import React from "react";
-import { FloatingSelect } from "@/components/ui/floating-select";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { FloatingSelect } from "@/features/admin/components/admission/components/ui/floating-select";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
 import { Upload, GraduationCap } from "lucide-react";
 
 const programmeSchema = z.object({

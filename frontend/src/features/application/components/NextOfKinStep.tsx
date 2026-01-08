@@ -1,8 +1,8 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { FloatingInput } from "@/components/ui/floating-input";
-import { FloatingSelect } from "@/components/ui/floating-select";
+import { FloatingInput } from "@/features/admin/components/admission/components/ui/floating-input";
+import { FloatingSelect } from "@/features/admin/components/admission/components/ui/floating-select";
 import { User, Phone, MapPin, Mail } from "lucide-react";
 import React from "react";
 

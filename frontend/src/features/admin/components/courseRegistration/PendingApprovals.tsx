@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { courseRegistrationService } from "@/features/admin/services/courseRegistrationService";
 import { admissionService } from "@/features/admin/services/admissionService";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 import {
     Table,
     TableBody,
@@ -10,12 +10,12 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+} from "@/features/admin/components/admission/components/ui/table";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
 import { Loader2, CheckCircle2, XCircle, Filter } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
 import { RegistrationDetails } from "@/features/admin/types/courseRegistration";
 
 const PendingApprovals = () => {

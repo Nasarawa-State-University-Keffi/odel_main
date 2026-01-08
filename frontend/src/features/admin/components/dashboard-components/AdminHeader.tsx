@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Bell, Menu, LogOut, PanelLeftClose, PanelLeft, UserCircle } from "lucide-react";
 import UserProfileModal from "./UserProfileModal";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -9,10 +9,10 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuth } from "@/contexts/AuthContext";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 
 interface AdminHeaderProps {
     onMenuClick: () => void;

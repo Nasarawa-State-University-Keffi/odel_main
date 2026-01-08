@@ -12,8 +12,8 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     Form,
     FormControl,
@@ -22,25 +22,25 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+} from "@/features/admin/components/admission/components/ui/form";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
 import {
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger,
-} from "@/components/ui/tabs";
+} from "@/features/admin/components/admission/components/ui/tabs";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
+} from "@/features/admin/components/admission/components/ui/select";
+import { Switch } from "@/features/admin/components/admission/components/ui/switch";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
+import { ScrollArea } from "@/features/admin/components/admission/components/ui/scroll-area";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
 
 import { admissionService } from "../../services/admissionService";
 import { programmeTypeService } from "../../services/programmeTypeService";
