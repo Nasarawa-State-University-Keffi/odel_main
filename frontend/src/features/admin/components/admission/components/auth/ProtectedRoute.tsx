@@ -26,7 +26,7 @@ export const ProtectedRoute = ({
     // Check if user is authenticated
     if (!checkAuth()) {
         // Not authenticated, redirect to the admin login
-        return <Navigate to="/api/auth/admin/login" replace />;
+        return <Navigate to="/api/auth/login" replace />;
     }
 
     // If super admin is required

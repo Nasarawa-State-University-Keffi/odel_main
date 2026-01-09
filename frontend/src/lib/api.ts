@@ -97,7 +97,7 @@ apiClient.interceptors.response.use(
         }
 
         const isAuthPage =
-            window.location.pathname.includes("/api/v2/application/register") ||
+            window.location.pathname.includes("/api/auth/register") ||
             window.location.pathname.includes("/api/auth/login") ||
             window.location.pathname.includes("/api/auth/forgot-password");
 
@@ -111,7 +111,7 @@ apiClient.interceptors.response.use(
             Cookies.remove("admin_user");
             Cookies.remove("pending_mfa_user");
 
-            window.location.href = "/api/auth/admin/login";
+            window.location.href = "/api/auth/login";
         }
 
         return Promise.reject(error);
