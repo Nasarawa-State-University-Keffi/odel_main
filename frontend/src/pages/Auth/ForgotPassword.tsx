@@ -182,7 +182,7 @@ const ForgotPassword = () => {
 
                         <CardFooter className="flex justify-center pb-8 border-t border-border/10 pt-6">
                             <Link
-                                to="/api/auth/admin/login"
+                                to="/api/auth/login"
                                 className="flex items-center text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors gap-2"
                             >
                                 <ArrowLeft className="h-3 w-3" />
