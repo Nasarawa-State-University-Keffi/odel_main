@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { departmentService } from "@/features/admin/services/departmentService";
 import { admissionService } from "@/features/admin/services/admissionService";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, Calendar, UploadCloud } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent } from "@/features/admin/components/admission/components/ui/card";
+import { Switch } from "@/features/admin/components/admission/components/ui/switch";
 import { ViewSemesterSettingsModalProps } from "@/features/admin/types/department";
 
 

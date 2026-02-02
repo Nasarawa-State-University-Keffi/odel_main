@@ -5,16 +5,16 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+} from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@/features/admin/components/admission/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { staffService } from "../../services/staffService";

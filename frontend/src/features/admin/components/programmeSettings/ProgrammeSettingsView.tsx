@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { programmeSettingsService } from "../../services/programmeSettingsService";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/admin/components/admission/components/ui/tabs";
+import { Card, CardContent } from "@/features/admin/components/admission/components/ui/card";
 import { programmeService } from "../../services/programmeService";
 import { programmeTypeService } from "../../services/programmeTypeService";
 import { levelService } from "../../services/levelService";
@@ -11,8 +11,8 @@ import { admissionService } from "@/features/admin/services/admissionService";
 import { sessionService } from "@/features/admin/services/sessionService";
 import { courseService } from "@/features/admin/services/courseService";
 import { Loader2, Settings, Filter, AlertCircle, Book, TrendingDown, Layers, Target, Settings2, RefreshCw, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
 import {
     Dialog,
     DialogContent,
@@ -20,10 +20,10 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/features/admin/components/admission/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 
 // Refactored Components
 import ConfigurationFilters from "./ConfigurationFilters";

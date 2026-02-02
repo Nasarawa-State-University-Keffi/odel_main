@@ -1,6 +1,6 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { FileQuestion, Home, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 

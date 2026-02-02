@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/features/admin/components/admission/components/ui/select';
 import { useActiveAdmissions, type Admission } from '@/hooks/useActiveAdmission';
 
 interface ActiveAdmissionProps {
@@ -66,8 +66,8 @@ const ActiveAdmission: React.FC<ActiveAdmissionProps> = ({ selectedId, onSelect,
                                     {adm.admissionMode}
                                     <span
                                         className={`px-2 py-0.5 rounded-full text-xs font-semibold ${adm.open
-                                                ? "bg-green-100 text-green-700"
-                                                : "bg-red-100 text-red-700"
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-red-100 text-red-700"
                                             }`}
                                     >
                                         {adm.open ? "Open" : "Closed"}

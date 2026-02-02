@@ -5,18 +5,18 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+} from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
-import { FloatingMultiSelect } from "@/components/ui/floating-multi-select";
-import { useToast } from "@/components/ui/use-toast";
+} from "@/features/admin/components/admission/components/ui/select";
+import { FloatingMultiSelect } from "@/features/admin/components/admission/components/ui/floating-multi-select";
+import { useToast } from "@/features/admin/components/admission/components/ui/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { staffService } from "../../services/staffService";
 import { staffRoleService } from "../../services/staffRoleService";

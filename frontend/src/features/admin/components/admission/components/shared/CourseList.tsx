@@ -6,7 +6,7 @@ import {
     AccordionContent,
     AccordionItem,
     AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@/features/admin/components/admission/components/ui/accordion";
 import { motion } from "framer-motion";
 import odelLogo from '@/assets/odel-logo.jpg';
 

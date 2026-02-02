@@ -1,6 +1,6 @@
 import { ShieldCheck, User } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 import StaffTableRow from "./StaffTableRow";
 import { Staff } from "../../types/staff";
 

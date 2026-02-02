@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { ArrowLeft, ShieldCheck, Loader2 } from "lucide-react";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import { authAPI } from "@/lib/api";
@@ -10,14 +10,14 @@ import {
     InputOTP,
     InputOTPGroup,
     InputOTPSlot,
-} from "@/components/ui/input-otp";
+} from "@/features/admin/components/admission/components/ui/input-otp";
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
     CardFooter,
-} from "@/components/ui/card";
+} from "@/features/admin/components/admission/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import odelLogo from '@/assets/odel-logo.jpg';
 

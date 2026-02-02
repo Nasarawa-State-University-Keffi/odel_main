@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/admin/components/admission/components/ui/card";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -12,13 +12,13 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/features/admin/components/admission/components/ui/alert-dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { programmeSettingsService } from "@/features/admin/services/programmeSettingsService";

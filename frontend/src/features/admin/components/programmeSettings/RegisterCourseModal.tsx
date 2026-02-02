@@ -11,11 +11,11 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Checkbox } from "@/features/admin/components/admission/components/ui/checkbox";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/features/admin/components/admission/components/ui/radio-group";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AddCoursesToProgrammeRequest } from "../../types/programmeSettings";

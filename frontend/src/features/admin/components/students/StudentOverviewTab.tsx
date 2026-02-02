@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/features/admin/components/admission/components/ui/card";
 import { User, MapPin, Mail, ShieldCheck, Calendar } from "lucide-react";
 import { DetailItem } from "./StudentDetailItem";
 

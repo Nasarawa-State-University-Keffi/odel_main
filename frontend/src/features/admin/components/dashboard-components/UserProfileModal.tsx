@@ -3,10 +3,10 @@ import {
     DialogContent,
     DialogFooter,
     DialogTitle
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/features/admin/components/admission/components/ui/avatar";
 import { User, ShieldCheck, Mail, Phone as PhoneIcon, Fingerprint } from "lucide-react";
 import { CurrentUser } from "@/lib/api";
 

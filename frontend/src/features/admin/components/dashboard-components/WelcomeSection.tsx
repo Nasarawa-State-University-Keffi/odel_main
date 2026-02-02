@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 
 
 interface WelcomeSectionProps {

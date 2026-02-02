@@ -1,12 +1,12 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { FloatingInput } from "@/components/ui/floating-input";
-import { FloatingSelect } from "@/components/ui/floating-select";
+import { FloatingInput } from "@/features/admin/components/admission/components/ui/floating-input";
+import { FloatingSelect } from "@/features/admin/components/admission/components/ui/floating-select";
 import { MapPin, Globe, Map } from "lucide-react";
 import React, { useEffect } from "react";
 import { useLocation } from "@/hooks/useLocation";
-import { Loader } from "@/components/ui/loader";
+import { Loader } from "@/features/admin/components/admission/components/ui/loader";
 
 const contactDetailsSchema = z.object({
   address: z.string().min(5, "Address is required"),

@@ -4,16 +4,16 @@ import { departmentService } from "@/features/admin/services/departmentService";
 import { facultyService } from "@/features/admin/services/facultyService";
 import { staffService } from "@/features/admin/services/staffService";
 import { Department, DepartmentWithHod, Hod } from "@/features/admin/types/department";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/features/admin/components/admission/components/ui/table";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
+import { Card } from "@/features/admin/components/admission/components/ui/card";
 import { User, Users, Plus, Search, Filter, Settings2, Building2, Trash2, Loader2, AlertTriangle, MoreHorizontal, X, Lock, Unlock, CalendarClock, GraduationCap, BookOpen } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Switch } from "@/features/admin/components/admission/components/ui/switch";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import CreateDepartmentModal from "./CreateDepartmentModal";
 import SetSignatureModal from "./SetSignatureModal";
@@ -30,8 +30,8 @@ import {
     PaginationItem,
     PaginationNext,
     PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+} from "@/features/admin/components/admission/components/ui/pagination";
+import { Popover, PopoverContent, PopoverTrigger } from "@/features/admin/components/admission/components/ui/popover";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -41,7 +41,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/features/admin/components/admission/components/ui/alert-dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -49,14 +49,14 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@/features/admin/components/admission/components/ui/select";
 
 
 

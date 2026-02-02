@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/features/admin/components/admission/components/ui/card";
 import { FileText, Loader2, AlertCircle, TrendingUp, BookOpen, GraduationCap, XCircle, CheckCircle } from "lucide-react";
 import { studentService } from "@/features/admin/services/studentService";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
 import {
     Table,
     TableBody,
@@ -10,9 +10,9 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+} from "@/features/admin/components/admission/components/ui/table";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
+import { Separator } from "@/features/admin/components/admission/components/ui/separator";
 
 // Interfaces based on the provided JSON structure
 interface Course {

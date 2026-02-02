@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/features/admin/components/admission/components/ui/dialog";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { departmentService } from "@/features/admin/services/departmentService";
 import { Qualification, Department } from "@/features/admin/types/department";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, GraduationCap, CheckCircle2, Circle } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/features/admin/components/admission/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface ManageQualificationsModalProps {

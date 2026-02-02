@@ -12,7 +12,7 @@ import StaffTable from "./StaffTable";
 import LevelAdviserTable from "./LevelAdviserTable";
 import StaffPagination from "./StaffPagination";
 import StaffModals from "./StaffModals";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/features/admin/components/admission/components/ui/card";
 import { Staff } from "../../types/staff";
 import { staffService } from "../../services/staffService";
 import { staffRoleService } from "../../services/staffRoleService";

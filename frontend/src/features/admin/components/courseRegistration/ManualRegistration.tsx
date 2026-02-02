@@ -5,13 +5,13 @@ import { studentService } from "@/features/admin/services/studentService";
 import { sessionService } from "@/features/admin/services/sessionService";
 import { courseService } from "@/features/admin/services/courseService";
 import { courseRegistrationService } from "@/features/admin/services/courseRegistrationService";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Input } from "@/features/admin/components/admission/components/ui/input";
+import { Label } from "@/features/admin/components/admission/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/features/admin/components/admission/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/features/admin/components/admission/components/ui/card";
 import { Loader2, Search, BookOpen, UserCircle, AlertCircle, CheckCircle2, Trash2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 
 const ManualRegistration = () => {

@@ -87,10 +87,9 @@ export const courseRegistrationService = {
     },
 
 
-    //HANDLES DOWNLOADING OF REGISTRATION REPORT
     downloadRegistrationReport: async (params: {
         semester: number;
-        level: number;
+        level?: number;
         course?: number;
     }): Promise<Blob> => {
         const response = await apiClient.get(`${BASE_URL}/download-registration-report`, {

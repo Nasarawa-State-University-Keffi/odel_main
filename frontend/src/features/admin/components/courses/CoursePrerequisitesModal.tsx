@@ -5,13 +5,13 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/features/admin/components/admission/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { courseService } from "@/features/admin/services/courseService";
 import { Loader2, AlertCircle, Info, BookOpen, Plus, Trash2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/features/admin/components/admission/components/ui/alert";
 import { ProgrammeCourse } from "@/features/admin/types/course";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -20,7 +20,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@/features/admin/components/admission/components/ui/select";
 
 interface CoursePrerequisitesModalProps {
     isOpen: boolean;

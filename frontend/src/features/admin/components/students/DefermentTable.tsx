@@ -6,9 +6,9 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from "@/features/admin/components/admission/components/ui/table";
+import { Button } from "@/features/admin/components/admission/components/ui/button";
+import { Badge } from "@/features/admin/components/admission/components/ui/badge";
 import { Loader2, Eye, Calendar, User } from "lucide-react";
 import { Deferment } from "../../types/student";
 import { format } from "date-fns";
@@ -19,7 +19,7 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/features/admin/components/admission/components/ui/dropdown-menu";
 import { MoreVertical, XCircle } from "lucide-react";
 
 interface DefermentTableProps {
@@ -36,9 +36,9 @@ import {
     CardHeader,
     CardTitle,
     CardDescription,
-} from "@/components/ui/card";
+} from "@/features/admin/components/admission/components/ui/card";
 import { PauseCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/features/admin/components/admission/components/ui/skeleton";
 
 const DefermentTable = ({ deferments, isLoading, isFetching, onViewDetails, onCancelDeferment }: DefermentTableProps) => {
     return (
