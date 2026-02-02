@@ -53,9 +53,9 @@ SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
 # Logging - More verbose in staging
-LOGGING['root']['level'] = 'INFO'
-LOGGING['loggers']['django']['level'] = 'INFO'
-LOGGING['loggers']['courses']['level'] = 'DEBUG'
+# LOGGING['root']['level'] = 'INFO'
+# LOGGING['loggers']['django']['level'] = 'INFO'
+# LOGGING['loggers']['courses']['level'] = 'DEBUG'
 
 # Email - Can use console backend in staging if needed
 if os.environ.get('USE_CONSOLE_EMAIL', 'False') == 'True':
