@@ -33,8 +33,12 @@ urlpatterns = [
     # Courses APIs
     path('', include('courses.urls')),
     
-    # Assessment APIs
-    path('api/assessment/', include('assessment.urls')),
+    # Student APIs
+    path('api/student/assessment/', include('assessment.student_urls')),
+    
+    # Staff APIs
+    path('api/staff/assessment/', include('assessment.staff_urls')),
+
     
     # Learning Content APIs
     path('api/content/', include('resource.content.urls')),

@@ -8,9 +8,8 @@ from decimal import Decimal
 from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from django.contrib.auth import get_user_model
-
-from courses.models import CourseCache
+from portal_auth.models import PortalUser
+from courses.models import CourseCache, StudentRegisteredCourse, StaffAssignedCourse
 from .models import (
     QuestionCategory, Question, QuestionAnswer,
     Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
@@ -18,17 +17,15 @@ from .models import (
 from .services import QuizService, QuestionService
 from .question_types import get_question_type_handler
 
-User = get_user_model()
-
 
 class QuestionPluginTests(TestCase):
     """Test question type plugins work correctly"""
     
     def setUp(self):
         self.course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
         )
         self.category = QuestionCategory.objects.create(
             course=self.course,
@@ -100,9 +97,9 @@ class QuizServiceTests(TestCase):
     
     def setUp(self):
         self.course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
         )
         self.category = QuestionCategory.objects.create(
             course=self.course,
@@ -196,9 +193,9 @@ class QuizWorkflowIntegrationTest(TestCase):
         """Test full quiz workflow from creation to completion"""
         # Setup
         course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Math Course',
-            code='MATH101'
+            course_external_id=101,
+            course_title='Math Course',
+            course_code='MATH101'
         )
         
         category = QuestionCategory.objects.create(
@@ -278,8 +275,8 @@ class QuizWorkflowIntegrationTest(TestCase):
         self.assertEqual(attempt.total_score, Decimal('75.00'))
 
 
-print("✓ Quiz tests created successfully!")
-print(f"✓ {QuestionPluginTests.__name__}: 2 tests")
-print(f"✓ {QuizServiceTests.__name__}: 3 tests") 
-print(f"✓ {QuizWorkflowIntegrationTest.__name__}: 1 test")
-print("✓ Total: 6 core tests")
+print("Quiz tests created successfully!")
+print(f"{QuestionPluginTests.__name__}: 2 tests")
+print(f"{QuizServiceTests.__name__}: 3 tests") 
+print(f"{QuizWorkflowIntegrationTest.__name__}: 1 test")
+print("Total: 6 core tests")

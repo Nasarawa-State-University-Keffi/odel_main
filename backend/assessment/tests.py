@@ -15,21 +15,18 @@ import uuid
 from decimal import Decimal
 from django.test import TestCase
 from django.utils import timezone
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-
-from courses.models import CourseCache
+from portal_auth.models import PortalUser
+from courses.models import CourseCache, StudentRegisteredCourse, StaffAssignedCourse
 from .models import (
     QuestionCategory, Question, QuestionAnswer,
-    Quiz, QuizQuestion, QuizAttempt, QuestionAttempt
+    Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
+    Assignment, AssignmentSubmission
 )
 from .services import QuizService, QuestionService
 from .question_types import get_question_type_handler
-
-
-User = get_user_model()
 
 
 class QuestionTypePluginTests(TestCase):
@@ -38,9 +35,9 @@ class QuestionTypePluginTests(TestCase):
     def setUp(self):
         """Create test course and category"""
         self.course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
         )
         self.category = QuestionCategory.objects.create(
             course=self.course,
@@ -226,9 +223,9 @@ class QuestionServiceTests(TestCase):
     
     def setUp(self):
         self.course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
         )
         self.category = QuestionCategory.objects.create(
             course=self.course,
@@ -297,9 +294,9 @@ class QuizServiceTests(TestCase):
     
     def setUp(self):
         self.course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
         )
         self.category = QuestionCategory.objects.create(
             course=self.course,
@@ -343,7 +340,7 @@ class QuizServiceTests(TestCase):
         """Test starting a quiz attempt"""
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id='student_1'
         )
         
         self.assertIsNotNone(attempt)
@@ -373,7 +370,7 @@ class QuizServiceTests(TestCase):
         """Test submitting a response"""
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id='student_1'
         )
         
         response = {'text': '4'}
@@ -392,7 +389,7 @@ class QuizServiceTests(TestCase):
         """Test finishing a quiz attempt"""
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id='student_1'
         )
         
         # Submit response
@@ -415,7 +412,7 @@ class QuizServiceTests(TestCase):
         """Test final grade calculation"""
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id='student_1'
         )
         
         # Submit correct response
@@ -435,7 +432,7 @@ class QuizServiceTests(TestCase):
         """Test attempt summary statistics"""
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id='student_1'
         )
         
         QuizService.submit_response(
@@ -460,21 +457,34 @@ class QuizAPITests(APITestCase):
     
     def setUp(self):
         # Create test users
-        self.instructor = User.objects.create_user(
-            username='instructor',
-            password='pass123',
+        self.instructor = PortalUser.objects.create(
+            external_id='instructor_1',
+            full_name='Instructor One',
             is_staff=True
         )
-        self.student = User.objects.create_user(
-            username='student@test.com',
-            password='pass123'
+        self.student = PortalUser.objects.create(
+            external_id='student_1',
+            full_name='Student One'
         )
         
         # Create test data
         self.course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
+        )
+        
+        # Setup enrollments
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=self.course,
+            role='instructor'
+        )
+        StudentRegisteredCourse.objects.create(
+            student_external_id=self.student.external_id,
+            course=self.course,
+            session_id=1,
+            semester_id=1
         )
         
         self.category = QuestionCategory.objects.create(
@@ -517,36 +527,36 @@ class QuizAPITests(APITestCase):
     def test_list_quizzes(self):
         """Test listing quizzes"""
         self.client.force_authenticate(user=self.student)
-        response = self.client.get('/api/assessment/quizzes/')
+        response = self.client.get('/api/student/assessment/quizzes/')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Test Quiz')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['name'], 'Test Quiz')
     
     def test_create_quiz_instructor_only(self):
         """Test that only instructors can create quizzes"""
         # Student should not be able to create
         self.client.force_authenticate(user=self.student)
         data = {
-            'course': str(self.course.id),
+            'course_id': str(self.course.course_external_id),
             'name': 'New Quiz',
             'max_grade': '100.00'
         }
-        response = self.client.post('/api/assessment/quizzes/', data)
+        response = self.client.post('/api/staff/assessment/quizzes/', data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         
         # Instructor should be able to create
         self.client.force_authenticate(user=self.instructor)
-        response = self.client.post('/api/assessment/quizzes/', data)
+        response = self.client.post('/api/staff/assessment/quizzes/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
     
     def test_start_quiz_attempt(self):
         """Test starting a quiz attempt via API"""
         self.client.force_authenticate(user=self.student)
         
-        data = {'user_external_id': 'student@test.com'}
+        data = {'user_external_id': self.student.external_id}
         response = self.client.post(
-            f'/api/assessment/quizzes/{self.quiz.id}/start/',
+            f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
             data,
             format='json'
         )
@@ -561,8 +571,8 @@ class QuizAPITests(APITestCase):
         
         # Start attempt
         start_response = self.client.post(
-            f'/api/assessment/quizzes/{self.quiz.id}/start/',
-            {'user_external_id': 'student@test.com'},
+            f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
+            {'user_external_id': self.student.external_id},
             format='json'
         )
         attempt_id = start_response.data['id']
@@ -573,7 +583,7 @@ class QuizAPITests(APITestCase):
             'response': {'text': '4'}
         }
         response = self.client.post(
-            f'/api/assessment/quizzes/{self.quiz.id}/attempts/{attempt_id}/submit/',
+            f'/api/student/assessment/quizzes/{self.quiz.id}/attempts/{attempt_id}/submit/',
             data,
             format='json'
         )
@@ -589,15 +599,15 @@ class QuizAPITests(APITestCase):
         
         # Start attempt
         start_response = self.client.post(
-            f'/api/assessment/quizzes/{self.quiz.id}/start/',
-            {'user_external_id': 'student@test.com'},
+            f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
+            {'user_external_id': self.student.external_id},
             format='json'
         )
         attempt_id = start_response.data['id']
         
         # Submit response
         self.client.post(
-            f'/api/assessment/quizzes/{self.quiz.id}/attempts/{attempt_id}/submit/',
+            f'/api/student/assessment/quizzes/{self.quiz.id}/attempts/{attempt_id}/submit/',
             {
                 'question_id': str(self.question.id),
                 'response': {'text': '4'}
@@ -607,7 +617,7 @@ class QuizAPITests(APITestCase):
         
         # Finish attempt
         response = self.client.post(
-            f'/api/assessment/quizzes/{self.quiz.id}/attempts/{attempt_id}/finish/',
+            f'/api/student/assessment/quizzes/{self.quiz.id}/attempts/{attempt_id}/finish/',
             format='json'
         )
         
@@ -622,14 +632,14 @@ class QuizAPITests(APITestCase):
         # Create an attempt
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id=self.student.external_id
         )
         
-        response = self.client.get('/api/assessment/quiz-attempts/')
+        response = self.client.get('/api/student/assessment/attempts/')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], str(attempt.id))
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], str(attempt.id))
     
     def test_manual_grading(self):
         """Test manual grading via API (instructor only)"""
@@ -652,7 +662,7 @@ class QuizAPITests(APITestCase):
         # Student starts attempt and submits essay
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id=self.student.external_id
         )
         
         question_attempt = QuizService.submit_response(
@@ -668,7 +678,7 @@ class QuizAPITests(APITestCase):
             'feedback': 'Good work, but missing some points'
         }
         response = self.client.post(
-            f'/api/assessment/quiz-attempts/{attempt.id}/questions/{question_attempt.id}/grade/',
+            f'/api/staff/assessment/attempts/{attempt.id}/questions/{question_attempt.id}/grade/',
             data,
             format='json'
         )
@@ -681,7 +691,7 @@ class QuizAPITests(APITestCase):
         """Test that students cannot manually grade"""
         attempt = QuizService.start_attempt(
             quiz=self.quiz,
-            user_external_id='student@test.com'
+            user_external_id=self.student.external_id
         )
         
         question_attempt = attempt.question_attempts.first()
@@ -689,7 +699,7 @@ class QuizAPITests(APITestCase):
         self.client.force_authenticate(user=self.student)
         data = {'fraction': '1.0', 'feedback': 'Perfect'}
         response = self.client.post(
-            f'/api/assessment/quiz-attempts/{attempt.id}/questions/{question_attempt.id}/grade/',
+            f'/api/staff/assessment/attempts/{attempt.id}/questions/{question_attempt.id}/grade/',
             data,
             format='json'
         )
@@ -701,20 +711,27 @@ class QuestionAPITests(APITestCase):
     """Test Question Bank API endpoints"""
     
     def setUp(self):
-        self.instructor = User.objects.create_user(
-            username='instructor',
-            password='pass123',
+        self.instructor = PortalUser.objects.create(
+            external_id='instructor_1',
+            full_name='Instructor One',
             is_staff=True
         )
-        self.student = User.objects.create_user(
-            username='student',
-            password='pass123'
+        self.student = PortalUser.objects.create(
+            external_id='student_1',
+            full_name='Student One'
         )
         
         self.course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
+        )
+        
+        # Setup enrollments
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=self.course,
+            role='instructor'
         )
         
         self.category = QuestionCategory.objects.create(
@@ -742,7 +759,7 @@ class QuestionAPITests(APITestCase):
         }
         
         response = self.client.post(
-            '/api/assessment/questions/',
+            '/api/staff/assessment/question-bank/questions/',
             data,
             format='json'
         )
@@ -767,7 +784,7 @@ class QuestionAPITests(APITestCase):
         }
         
         response = self.client.post(
-            '/api/assessment/questions/',
+            '/api/staff/assessment/question-bank/questions/',
             data,
             format='json'
         )
@@ -802,12 +819,12 @@ class QuestionAPITests(APITestCase):
         
         # Filter by category
         response = self.client.get(
-            f'/api/assessment/questions/?category={self.category.id}'
+            f'/api/staff/assessment/question-bank/questions/?category={self.category.id}'
         )
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Q1')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['name'], 'Q1')
 
 
 class IntegrationTests(TestCase):
@@ -817,9 +834,9 @@ class IntegrationTests(TestCase):
         """Test complete quiz workflow from creation to completion"""
         # Setup
         course = CourseCache.objects.create(
-            external_id='TEST101',
-            title='Test Course',
-            code='TEST101'
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
         )
         
         category = QuestionCategory.objects.create(
@@ -893,7 +910,7 @@ class IntegrationTests(TestCase):
         # Student starts quiz
         attempt = QuizService.start_attempt(
             quiz=quiz,
-            user_external_id='student@test.com'
+            user_external_id='student_1'
         )
         
         self.assertEqual(attempt.state, 'in_progress')
