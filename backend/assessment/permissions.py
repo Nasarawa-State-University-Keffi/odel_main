@@ -16,3 +16,12 @@ class IsInstructorOrReadOnly(permissions.BasePermission):
         
         # Write permissions are only allowed to instructors (staff users)
         return request.user and request.user.is_staff
+
+
+class IsPortalStudent(permissions.BasePermission):
+    """
+    Custom permission to allow students (authenticated portal users)
+    access to their own assignments and quizzes.
+    """
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated

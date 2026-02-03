@@ -16,7 +16,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from courses.models import StudentRegisteredCourse, StaffAssignedCourse
-from portal_auth.permissions import IsPortalStudent
+
 
 from .models import (
     Assignment, AssignmentSubmission, AssignmentContent, AssignmentSubmissionFile,
