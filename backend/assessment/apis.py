@@ -46,8 +46,8 @@ class StudentQuerySetMixin:
             student_external_id=student_id
         ).values_list('course', flat=True)
         
-        model = self.queryset.model if self.queryset else self.serializer_class.Meta.model
-        
+        serializer_class = self.get_serializer_class()
+        model = serializer_class.Meta.model          
         if model == Assignment:
             return Assignment.objects.filter(course__in=registered_courses, is_published=True).select_related("course")
         elif model == AssignmentSubmission:
@@ -83,8 +83,8 @@ class StaffQuerySetMixin:
             staff_external_id=staff_id
         ).values_list('course', flat=True)
         
-        model = self.queryset.model if self.queryset else self.serializer_class.Meta.model
-        
+        serializer_class = self.get_serializer_class()
+        model = serializer_class.Meta.model        
         if model == Assignment:
             return Assignment.objects.filter(course__in=assigned_courses).select_related("course")
         elif model == AssignmentSubmission:
