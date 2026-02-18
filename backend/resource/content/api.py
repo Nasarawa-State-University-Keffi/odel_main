@@ -3,7 +3,7 @@ API views for learning content management.
 Provides RESTful endpoints for uploading, listing, and managing content.
 """
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -35,51 +35,24 @@ from .services import (
 from courses.models import CourseCache
 
 
-class LearningContentViewSet(viewsets.ModelViewSet):
+class LearningContentListAPIView(generics.ListAPIView):
     """
-    ViewSet for learning content management.
-    
-    Provides read operations and custom upload endpoints.
-    Use /upload/ for file uploads, not the standard POST endpoint.
+    List learning content with filtering.
     """
-    
-    queryset = LearningContent.objects.all()
     serializer_class = LearningContentSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-    
-    def create(self, request, *args, **kwargs):
-        """Disable default POST endpoint. Use /upload/ or /add_youtube/ instead."""
-        return Response(
-            {
-                'status': 'error',
-                'detail': 'Direct POST not allowed. Use /api/content/content/upload/ for file uploads or /api/content/content/add_youtube/ for YouTube videos.'
-            },
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
     
     def get_queryset(self):
-        """
-        Filter contents based on query parameters.
+        queryset = LearningContent.objects.all()
         
-        Query params:
-        - course_id: Filter by course
-        - content_type: Filter by content type
-        - search: Search in title and description
-        """
-        queryset = super().get_queryset()
-        
-        # Filter by course
         course_id = self.request.query_params.get('course_id')
         if course_id:
             queryset = queryset.filter(course_id=course_id)
         
-        # Filter by content type
         content_type = self.request.query_params.get('content_type')
         if content_type:
             queryset = queryset.filter(content_type=content_type)
         
-        # Search
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
@@ -88,45 +61,47 @@ class LearningContentViewSet(viewsets.ModelViewSet):
                 Q(original_filename__icontains=search)
             )
         
-        # Only show published content to non-staff users
         if not self.request.user.is_staff:
             queryset = queryset.filter(is_published=True)
         
         return queryset.select_related('course', 'uploaded_by')
-    
+
+
+class LearningContentDetailAPIView(generics.RetrieveDestroyAPIView):
+    """
+    Retrieve or delete specific learning content.
+    """
+    queryset = LearningContent.objects.all()
+    serializer_class = LearningContentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        delete_learning_content(instance.id)
+
+
+class LearningContentUploadAPIView(views.APIView):
+    """
+    Upload learning content file.
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
     @extend_schema(
         summary="Upload learning content file",
-        description="Upload any file including videos (MP4, AVI, MOV), PDFs, documents, etc. For video files, set content_type='video'. To reference existing YouTube videos without uploading, use /add_youtube/ instead.",
+        description="Upload any file including videos (MP4, AVI, MOV), PDFs, documents, etc.",
         request=LearningContentUploadSerializer,
         responses={201: LearningContentSerializer},
         tags=['Content Upload']
     )
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
-    def upload(self, request):
-        """
-        Upload learning content file (including video files).
-        
-        POST /api/content/upload/
-        Form data:
-        - file: File to upload (accepts videos: MP4, AVI, MOV, WebM, etc.)
-        - course_id: Course external_id (e.g., 'CS101') or UUID
-        - content_type: Content type (note/video/resource/assignment)
-        - title: Display title (optional)
-        - description: Description (optional)
-        - storage_backend: Storage backend (optional - local/s3/cloudinary)
-        
-        Note: For video files, set content_type='video'
-        """
+    def post(self, request):
         serializer = LearningContentUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
             # Get course by external_id or UUID
             course_id = serializer.validated_data['course_id']
-            course = CourseCache.objects.filter(external_id=course_id).first()
+            course = CourseCache.objects.filter(course_external_id=course_id).first()
             if not course:
-                # Try UUID lookup
                 try:
                     import uuid
                     uuid_value = uuid.UUID(course_id)
@@ -136,13 +111,6 @@ class LearningContentViewSet(viewsets.ModelViewSet):
                         {'status': 'error', 'detail': 'Course not found'},
                         status=status.HTTP_404_NOT_FOUND
                     )
-            
-            # Upload file
-            # TODO: Handle storage_backend properly
-            # Force None if storage_backend not explicitly provided (will use DB default)
-            # storage_backend = serializer.validated_data.get('storage_backend')
-            # if storage_backend == '':
-            #     storage_backend = None
             
             content = upload_learning_content(
                 file_obj=serializer.validated_data['file'],
@@ -154,49 +122,39 @@ class LearningContentViewSet(viewsets.ModelViewSet):
                 storage_backend=serializer.validated_data.get('storage_backend')
             )
             
-            # Return created content
             return Response(
                 LearningContentSerializer(content).data,
                 status=status.HTTP_201_CREATED
             )
-            
         except Exception as e:
             return Response(
                 {'status': 'error', 'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
+
+class YouTubeVideoAddAPIView(views.APIView):
+    """
+    Add YouTube video reference.
+    """
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         summary="Add YouTube video reference",
-        description="Add a reference to an existing YouTube video (no file upload). To upload video files directly, use /upload/ endpoint instead.",
+        description="Add a reference to an existing YouTube video (no file upload).",
         request=YouTubeVideoSerializer,
         responses={201: LearningContentSerializer},
         tags=['Content Upload']
     )
-    @action(detail=False, methods=['post'])
-    def add_youtube(self, request):
-        """
-        Add YouTube video reference (no file upload).
-        
-        POST /api/content/add_youtube/
-        JSON body:
-        - video_url: YouTube URL or video ID (e.g., 'https://youtube.com/watch?v=xxxxx' or 'xxxxx')
-        - course_id: Course external_id (e.g., 'CS101') or UUID
-        - title: Display title
-        - description: Description (optional)
-        
-        Note: This only stores a reference to an existing YouTube video.
-        To upload video files (MP4, AVI, etc.), use /upload/ endpoint with content_type='video'
-        """
+    def post(self, request):
         serializer = YouTubeVideoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
             # Get course by external_id or UUID
             course_id = serializer.validated_data['course_id']
-            course = CourseCache.objects.filter(external_id=course_id).first()
+            course = CourseCache.objects.filter(course_external_id=course_id).first()
             if not course:
-                # Try UUID lookup
                 try:
                     import uuid
                     uuid_value = uuid.UUID(course_id)
@@ -207,7 +165,6 @@ class LearningContentViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_404_NOT_FOUND
                     )
             
-            # Add YouTube video
             content = upload_youtube_video(
                 video_url=serializer.validated_data['video_url'],
                 course=course,
@@ -216,21 +173,25 @@ class LearningContentViewSet(viewsets.ModelViewSet):
                 description=serializer.validated_data.get('description', '')
             )
             
-            # Return created content
             return Response(
                 LearningContentSerializer(content).data,
                 status=status.HTTP_201_CREATED
             )
-            
         except Exception as e:
             return Response(
                 {'status': 'error', 'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
+
+class LearningContentLogAccessAPIView(views.APIView):
+    """
+    Log content access.
+    """
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         summary="Log content access",
-        description="Log when a user views or downloads content",
         request={
             'application/json': {
                 'type': 'object',
@@ -243,16 +204,8 @@ class LearningContentViewSet(viewsets.ModelViewSet):
         responses={200: {'type': 'object', 'properties': {'status': {'type': 'string'}}}},
         tags=['Content']
     )
-    @action(detail=True, methods=['post'])
-    def log_access(self, request, pk=None):
-        """
-        Log content access.
-        
-        POST /api/content/{id}/log_access/
-        JSON body:
-        - action: 'view' or 'download'
-        """
-        content = self.get_object()
+    def post(self, request, pk):
+        content = get_object_or_404(LearningContent, pk=pk)
         action_type = request.data.get('action', 'view')
         
         if action_type not in ['view', 'download']:
@@ -261,7 +214,6 @@ class LearningContentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Log access
         log_content_access(
             content=content,
             user=request.user,
@@ -271,39 +223,36 @@ class LearningContentViewSet(viewsets.ModelViewSet):
         )
         
         return Response({'status': 'logged'})
-    
+
+
+class LearningContentStatsAPIView(views.APIView):
+    """
+    Get content statistics.
+    """
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         summary="Get content statistics",
-        description="Get statistics about content usage and storage",
         parameters=[
             OpenApiParameter(
                 name='course_id',
                 type=OpenApiTypes.UUID,
                 location=OpenApiParameter.QUERY,
-                description='Filter statistics by course ID',
-                required=False
+                description='Filter statistics by course ID'
             )
         ],
         responses={200: ContentStatisticsSerializer},
         tags=['Content']
     )
-    @action(detail=False, methods=['get'])
-    def statistics(self, request):
-        """
-        Get content statistics.
-        
-        GET /api/content/statistics/
-        Query params:
-        - course_id: Filter by course (optional)
-        """
-        queryset = self.get_queryset()
-        
-        # Filter by course if provided
+    def get(self, request):
+        queryset = LearningContent.objects.all()
+        if not request.user.is_staff:
+            queryset = queryset.filter(is_published=True)
+            
         course_id = request.query_params.get('course_id')
         if course_id:
             queryset = queryset.filter(course_id=course_id)
         
-        # Calculate statistics
         stats = {
             'total_contents': queryset.count(),
             'total_size': queryset.aggregate(total=Sum('file_size'))['total'] or 0,
@@ -325,59 +274,57 @@ class LearningContentViewSet(viewsets.ModelViewSet):
         
         serializer = ContentStatisticsSerializer(stats)
         return Response(serializer.data)
-    
-    def destroy(self, request, *args, **kwargs):
-        """Override delete to use service layer."""
-        content = self.get_object()
-        
-        try:
-            delete_learning_content(content.id)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            return Response(
-                {'status': 'error', 'detail': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
 
-@extend_schema(tags=['Storage Settings'])
-class StorageSettingsViewSet(viewsets.ModelViewSet):
+class StorageSettingsListCreateAPIView(generics.ListCreateAPIView):
     """
-    ViewSet for storage settings management.
-    Admin only.
+    List or create storage settings.
     """
-    
     queryset = StorageSettings.objects.all()
     serializer_class = StorageSettingsSerializer
     permission_classes = [IsAdminUser]
-    
+
+
+class StorageSettingsDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Manage specific storage settings.
+    """
+    queryset = StorageSettings.objects.all()
+    serializer_class = StorageSettingsSerializer
+    permission_classes = [IsAdminUser]
+
+
+class ActiveStorageSettingsAPIView(views.APIView):
+    """
+    Get active storage settings.
+    """
+    permission_classes = [IsAdminUser]
+
     @extend_schema(
         summary="Get active storage backend",
-        description="Retrieve the currently active storage backend configuration",
         responses={200: StorageSettingsSerializer},
         tags=['Storage Settings']
     )
-    @action(detail=False, methods=['get'])
-    def active(self, request):
-        """
-        Get active storage settings.
-        
-        GET /api/storage-settings/active/
-        """
+    def get(self, request):
         settings = StorageSettings.objects.filter(is_active=True).first()
-        
         if settings:
-            serializer = self.get_serializer(settings)
+            serializer = StorageSettingsSerializer(settings)
             return Response(serializer.data)
         
         return Response(
             {'backend': 'local', 'is_active': True},
             status=status.HTTP_200_OK
         )
-    
+
+
+class AvailableBackendsAPIView(views.APIView):
+    """
+    Get list of available storage backends.
+    """
+    permission_classes = [IsAdminUser]
+
     @extend_schema(
         summary="List available storage backends",
-        description="Get all supported storage backend types",
         responses={
             200: {
                 'type': 'object',
@@ -397,17 +344,9 @@ class StorageSettingsViewSet(viewsets.ModelViewSet):
         },
         tags=['Storage Settings']
     )
-    @action(detail=False, methods=['get'])
-    def backends(self, request):
-        """
-        Get list of available storage backends.
-        
-        GET /api/storage-settings/backends/
-        """
+    def get(self, request):
         from resource.storage.router import get_available_backends
-        
         backends = get_available_backends()
-        
         return Response({
             'backends': [
                 {'name': backend, 'display': backend.upper()}
@@ -416,27 +355,15 @@ class StorageSettingsViewSet(viewsets.ModelViewSet):
         })
 
 
-@extend_schema(tags=['Content Access Logs'])
-class ContentAccessLogViewSet(viewsets.ReadOnlyModelViewSet):
+class ContentAccessLogListAPIView(generics.ListAPIView):
     """
-    ViewSet for content access logs.
-    Read-only, admin only.
+    List content access logs.
     """
-    
-    queryset = ContentAccessLog.objects.all()
     serializer_class = ContentAccessLogSerializer
     permission_classes = [IsAdminUser]
     
     def get_queryset(self):
-        """
-        Filter logs based on query parameters.
-        
-        Query params:
-        - content_id: Filter by content
-        - user_id: Filter by user
-        - action: Filter by action type
-        """
-        queryset = super().get_queryset()
+        queryset = ContentAccessLog.objects.all()
         
         content_id = self.request.query_params.get('content_id')
         if content_id:

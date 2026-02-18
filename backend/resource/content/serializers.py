@@ -17,7 +17,8 @@ class LearningContentSerializer(serializers.ModelSerializer):
     """Serializer for learning content metadata."""
     
     url = serializers.ReadOnlyField()
-    uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
+    uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
+    uploaded_by_external_id = serializers.CharField(source='uploaded_by.external_id', read_only=True)
     course_title = serializers.CharField(source='course.title', read_only=True)
     file_extension = serializers.ReadOnlyField()
     is_video = serializers.ReadOnlyField()
@@ -35,7 +36,7 @@ class LearningContentSerializer(serializers.ModelSerializer):
             'is_video', 'is_document',
 
             # ownership
-            'uploaded_by', 'uploaded_by_username',
+            'uploaded_by', 'uploaded_by_name', 'uploaded_by_external_id',
 
             # visibility
             'is_published', 'download_count',
@@ -88,7 +89,7 @@ class LearningContentUploadSerializer(serializers.Serializer):
     def validate_course_id(self, value):
         """Validate course_id - accepts either external_id or UUID."""
         # Try to find by external_id first (most common case)
-        course = CourseCache.objects.filter(external_id=value).first()
+        course = CourseCache.objects.filter(course_external_id=value).first()
         if course:
             return value
         
@@ -225,13 +226,14 @@ class ContentAccessLogSerializer(serializers.ModelSerializer):
     """Serializer for content access tracking."""
     
     content_title = serializers.CharField(source='content.title', read_only=True)
-    username = serializers.CharField(source='user.username', read_only=True)
+    full_name = serializers.CharField(source='user.full_name', read_only=True)
+    external_id = serializers.CharField(source='user.external_id', read_only=True)
 
     class Meta:
         model = ContentAccessLog
         fields = [
             'id', 'content', 'content_title',
-            'user', 'username',
+            'user', 'full_name', 'external_id',
             'action', 'ip_address', 'user_agent',
             'accessed_at'
         ]

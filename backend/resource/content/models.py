@@ -9,6 +9,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 from courses.models import CourseCache
+from portal_auth.models import PortalUser
 
 
 class StorageSettings(models.Model):
@@ -114,7 +115,7 @@ class LearningContent(models.Model):
     )
 
     uploaded_by = models.ForeignKey(
-        User,
+        PortalUser,
         on_delete=models.SET_NULL,
         null=True,
         related_name='uploaded_contents'
@@ -201,7 +202,7 @@ class ContentAccessLog(models.Model):
     )
 
     user = models.ForeignKey(
-        User,
+        PortalUser,
         on_delete=models.SET_NULL,
         null=True
     )

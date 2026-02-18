@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.contrib.auth.models import User
 from django.db import transaction
 
+from portal_auth.models import PortalUser
 from resource.storage import get_storage_engine
 from resource.storage.base import StorageException
 from .models import LearningContent, ContentAccessLog, StorageSettings
@@ -25,7 +26,7 @@ def upload_learning_content(
     file_obj: UploadedFile,
     course: CourseCache,
     content_type: str,
-    user: User,
+    user: PortalUser,
     title: Optional[str] = None,
     description: str = '',
     storage_backend: Optional[str] = None
@@ -110,7 +111,7 @@ def upload_learning_content(
 def upload_youtube_video(
     video_url: str,
     course: CourseCache,
-    user: User,
+    user: PortalUser,
     title: str,
     description: str = ''
 ) -> LearningContent:
@@ -185,7 +186,7 @@ def get_course_contents(
 
 def log_content_access(
     content: LearningContent,
-    user: Optional[User],
+    user: Optional[PortalUser],
     action: str,
     ip_address: Optional[str] = None,
     user_agent: str = ''
