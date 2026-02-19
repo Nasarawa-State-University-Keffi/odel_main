@@ -5,8 +5,7 @@ import { Student, StudentStats, RegisteredCourse, PaginatedResponse, StudentQuer
 const normalizeStudent = (data: any): Student => {
     if (!data) return data;
 
-    // Check if wrapped in 'student' property (e.g. search-extension result)
-    // We prioritize the inner student object's fields (like id, names) but keep wrapper fields if missing
+
     if (data.student && typeof data.student === 'object') {
         data = { ...data, ...data.student };
     }

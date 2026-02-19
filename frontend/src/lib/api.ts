@@ -186,7 +186,21 @@ export const authAPI = {
 
     getCurrentUser: async (): Promise<CurrentUser> => {
         const response = await apiClient.get<any>("/get-current-user");
-        return response.data.data;
+        const userData = response.data.data;
+
+        // Map profilePicture object to profileImage string URL
+        if (userData.profilePicture && userData.profilePicture.location) {
+            // Assuming location is relative "photos/..." and implies fetching via API or raw file
+            // Use the dedicated fetch endpoint which likely handles auth/retrieval correctly
+            // We append a timestamp to force re-fetch when updatedTime changes
+            const timestamp = userData.profilePicture.updatedTime
+                ? new Date(userData.profilePicture.updatedTime).getTime()
+                : 0;
+            // Endpoint: /api/profile-picture/fetch?user={email}
+            userData.profileImage = `/profile-picture/fetch?user=${userData.email}&t=${timestamp}`;
+        }
+
+        return userData;
     },
 
     logout: async (): Promise<void> => {

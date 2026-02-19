@@ -20,9 +20,12 @@ const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"));
 const MFAVerification = lazy(() => import("./pages/Auth/MFAVerification"));
 
 // STUDENT
+const StudentLayout = lazy(() => import("./layouts/StudentLayout"));
 const Application = lazy(() => import("./pages/student/Application"));
-const Dashboard = lazy(() => import("./pages/student/Dashboard"));
-const DataCorrection = lazy(() => import("./pages/student/DataCorrection"));
+const StudentDashboard = lazy(() => import("./pages/student/Dashboard/StudentDashboard"));
+
+
+
 
 // ADMIN
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
@@ -65,9 +68,24 @@ const App = () => (
                 <Route path="/api/auth/login" element={<Login />} />
                 <Route path="/api/auth/register" element={<Register />} />
                 <Route path="/api/auth/forgot-password" element={<ForgotPassword />} />
-                <Route path="/application" element={<Application />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/data-correction" element={<DataCorrection />} />
+
+                {/* Protected Student Routes */}
+                <Route
+                  path="/student"
+                  element={
+                    <ProtectedRoute requiredRoles={['APPLICANT', 'STUDENT']}>
+                      <StudentLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="dashboard" element={<StudentDashboard />} />
+                  <Route path="application" element={<Application />} />
+                </Route>
+
+
+
+
+
 
                 {/* Admin Login (not protected) */}
                 <Route path="/api/auth/login" element={<Login />} />

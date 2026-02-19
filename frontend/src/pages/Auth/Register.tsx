@@ -32,6 +32,8 @@ const Register = () => {
   const [selectedAdmissionId, setSelectedAdmissionId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     email: "",
+    password: "",
+    confirmPassword: "",
     jambRegNumber: "",
   });
 
@@ -39,6 +41,7 @@ const Register = () => {
   const [selectedAdmission, setSelectedAdmission] = useState<Admission | null>(null);
   const [modesOfEntry, setModesOfEntry] = useState<ModeOfEntry[]>([]);
   const [selectedModeOfEntryId, setSelectedModeOfEntryId] = useState<string>("");
+  const [modesLoading, setModesLoading] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,18 +63,41 @@ const Register = () => {
 
   // Update selected admission object and fetch modes of entry
   useEffect(() => {
-    if (selectedAdmissionId) {
+    if (selectedAdmissionId && admissions.length > 0) {
       const adm = admissions.find(a => a.id === selectedAdmissionId) || null;
       setSelectedAdmission(adm);
 
-      if (adm?.applicationType?.programmeType?.id) {
-        modeOfEntryService.getAllModeOfEntries(adm.applicationType.programmeType.id)
-          .then(setModesOfEntry)
-          .catch(console.error);
-      } else {
-        setModesOfEntry([]);
+      const appType = adm?.applicationType;
+
+      // 1. If application type already has modes, use them
+      if (appType?.modeOfEntries?.length) {
+        setModesOfEntry(appType.modeOfEntries);
+        setModesLoading(false);
+      }
+      // 2. Fallback: fetch by programme type ID
+      else {
+        // Robust ID extraction
+        const progTypeId = appType?.programmeType?.id || (appType?.programmeType as any);
+
+        if (progTypeId && (typeof progTypeId === 'number' || typeof progTypeId === 'string')) {
+          setModesLoading(true);
+          modeOfEntryService.getAllModeOfEntries(Number(progTypeId))
+            .then(setModesOfEntry)
+            .catch((err) => {
+              console.error("Failed to fetch modes of entry", err);
+              setModesOfEntry([]);
+            })
+            .finally(() => setModesLoading(false));
+        } else {
+          setModesOfEntry([]);
+          setModesLoading(false);
+        }
       }
       setSelectedModeOfEntryId("");
+    } else {
+      setModesOfEntry([]);
+      setSelectedModeOfEntryId("");
+      setModesLoading(false);
     }
   }, [selectedAdmissionId, admissions]);
 
@@ -89,6 +115,12 @@ const Register = () => {
     let isValid = true;
 
     if (!formData.email.trim()) newErrors.email = "Email is required";
+    if (!formData.password) newErrors.password = "Password is required";
+    if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
     if (!selectedAdmissionId) {
       toast({
         title: "Missing Selection",
@@ -98,17 +130,22 @@ const Register = () => {
       isValid = false;
     }
 
-    if (!selectedModeOfEntryId) {
-      toast({
-        title: "Missing Selection",
-        description: "Please select a mode of entry.",
-        variant: "destructive",
-      });
-      isValid = false;
+    // Dynamic Validation based on Configuration
+    if (selectedAdmission?.applicationType?.modeOfEntryEnabled) {
+      if (!selectedModeOfEntryId) {
+        toast({
+          title: "Missing Selection",
+          description: "Please select a mode of entry.",
+          variant: "destructive",
+        });
+        isValid = false;
+      }
     }
 
-    if (!formData.jambRegNumber.trim()) {
-      newErrors.jambRegNumber = "JAMB/Registration Number is required";
+    if (selectedAdmission?.applicationType?.utmeRegEnabled) {
+      if (!formData.jambRegNumber.trim()) {
+        newErrors.jambRegNumber = "JAMB/Registration Number is required";
+      }
     }
 
     setErrors(newErrors);
@@ -130,9 +167,11 @@ const Register = () => {
     try {
       const submitData = {
         admissionId: selectedAdmissionId as number,
-        modeOfEntryId: Number(selectedModeOfEntryId),
+        modeOfEntryId: selectedModeOfEntryId ? Number(selectedModeOfEntryId) : 0,
         emailAddress: formData.email,
-        jambRegNumber: formData.jambRegNumber
+        jambRegNumber: formData.jambRegNumber || null,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
       };
 
       await applicantService.registerApplicant(submitData);
@@ -158,8 +197,15 @@ const Register = () => {
         title = "Bad Request";
         description = error.response?.data?.message || "Invalid registration details.";
       } else if (status === 422) {
-        title = "Incomplete Data";
-        description = "Please check all fields and try again.";
+        const msg = error.response?.data?.message || "";
+        if (msg && msg.toLowerCase().includes("email already taken")) {
+          title = "Email Exists";
+          description = "This email address is already registered.";
+          setErrors(prev => ({ ...prev, email: "Email already taken" }));
+        } else {
+          title = "Incomplete Data";
+          description = msg || "Please check all fields and try again.";
+        }
       }
 
       toast({
@@ -264,6 +310,54 @@ const Register = () => {
                     />
                   </div>
 
+                  {/* Password */}
+                  <div className="space-y-2 group">
+                    <div className="relative">
+                      <FloatingInput
+                        id="password"
+                        name="password"
+                        label="Password"
+                        type={showPassword ? "text" : "password"}
+                        disabled={isSubmitting}
+                        icon={<Lock className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
+                        className="bg-background/40 border-border/50 h-14 rounded-2xl group-focus-within:border-primary/50 group-focus-within:ring-primary/20 pr-10"
+                        value={formData.password}
+                        onChange={handleChange}
+                        error={errors.password}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors z-10 p-2"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-2 group">
+                    <FloatingInput
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      label="Confirm Password"
+                      type="password" // Always hide confirm password
+                      disabled={isSubmitting}
+                      icon={<Lock className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />}
+                      className="bg-background/40 border-border/50 h-14 rounded-2xl group-focus-within:border-primary/50 group-focus-within:ring-primary/20"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      error={errors.confirmPassword}
+                      required
+                    />
+                  </div>
+
                   {/* Admission & Programme Selection */}
                   <div className="space-y-4 pt-2">
                     <div className="p-6 rounded-2xl bg-muted/40 border border-border/50">
@@ -277,9 +371,9 @@ const Register = () => {
                           programmeType="ODEL"
                         />
 
-                        {selectedAdmissionId && modesOfEntry.length > 0 && (
+                        {selectedAdmissionId && (selectedAdmission?.applicationType?.modeOfEntryEnabled || modesOfEntry.length > 0) && (
                           <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mode of Entry *</Label>
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mode of Entry {selectedAdmission?.applicationType?.modeOfEntryEnabled && "*"}</Label>
                             <Select value={selectedModeOfEntryId} onValueChange={setSelectedModeOfEntryId}>
                               <SelectTrigger className="h-14 rounded-2xl bg-background/40 border-border/50">
                                 <SelectValue placeholder="Select Mode of Entry" />
@@ -295,41 +389,25 @@ const Register = () => {
                           </div>
                         )}
 
-                        <div className="space-y-2">
-                          <FloatingInput
-                            id="jambRegNumber"
-                            name="jambRegNumber"
-                            label="JAMB / Registration Number"
-                            disabled={isSubmitting}
-                            icon={<Menu className="h-4 w-4 text-muted-foreground" />}
-                            className="bg-background/40 border-border/50 h-14 rounded-2xl"
-                            value={formData.jambRegNumber}
-                            onChange={handleChange}
-                            error={errors.jambRegNumber}
-                            required
-                          />
-                        </div>
+                        {selectedAdmission?.applicationType?.utmeRegEnabled && (
+                          <div className="space-y-2">
+                            <FloatingInput
+                              id="jambRegNumber"
+                              name="jambRegNumber"
+                              label="JAMB / Registration Number"
+                              disabled={isSubmitting}
+                              icon={<Menu className="h-4 w-4 text-muted-foreground" />}
+                              className="bg-background/40 border-border/50 h-14 rounded-2xl"
+                              value={formData.jambRegNumber}
+                              onChange={handleChange}
+                              error={errors.jambRegNumber}
+                              required
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  {/* Password fields removed as per new endpoint requirement which only takes 4 fields */}
-                  {/* But I'll keep them if the user might still need them for login later? 
-                      Wait, the new endpoint payload is ONLY:
-                      {
-                        "admissionId": 0,
-                        "modeOfEntryId": 0,
-                        "emailAddress": "string",
-                        "jambRegNumber": "string"
-                      }
-                      So I should REMOVE firstName, lastName, phoneNumber, password, confirmPassword from the submission and maybe from the form if they aren't used.
-                      However, many registration forms still want names. 
-                      Let's stick to the requested payload.
-                  */}
-
-                  {/* Removed unused fields */}
-
-
 
                   <Button
                     type="submit"

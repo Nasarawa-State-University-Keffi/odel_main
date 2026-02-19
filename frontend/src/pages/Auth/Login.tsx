@@ -125,7 +125,7 @@ const AdminLogin = () => {
 
                 // Redirect based on role
                 if (response.roles.includes('STUDENT') || response.roles.includes('APPLICANT')) {
-                    navigate("/dashboard");
+                    navigate("/student/application");
                 } else {
                     navigate("/api/admin/dashboard");
                 }
