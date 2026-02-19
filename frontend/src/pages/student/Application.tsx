@@ -1,201 +1,125 @@
-import { useState, Fragment } from "react";
-import { Check } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import ApplicationLayout from "@/layouts/ApplicationLayout";
-import PersonalDetailsStep from "@/features/application/components/PersonalDetailsStep";
-import ContactDetailsStep from "@/features/application/components/ContactDetailsStep";
-import NextOfKinStep from "@/features/application/components/NextOfKinStep";
-import ProgrammeStep from "@/features/application/components/ProgrammeStep";
-import PaymentStep from "@/features/application/components/PaymentStep";
-import { Button } from "@/features/admin/components/admission/components/ui/button";
-import { Loader } from "@/features/admin/components/admission/components/ui/loader";
-import { useToast } from "@/hooks/use-toast";
+import { FormProvider } from "react-hook-form";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, AlertCircle } from "lucide-react";
+import { PersonalSection } from "@/features/student/components/application/PersonalSection";
+import { ContactSection } from "@/features/student/components/application/ContactSection";
+import { ProgrammeSection } from "@/features/student/components/application/ProgrammeSection";
+import { OLevelSection } from "@/features/student/components/application/OLevelSection";
+import { QualificationSection } from "@/features/student/components/application/QualificationSection";
+import { NYSCSection } from "@/features/student/components/application/NYSCSection";
+import { NextOfKinSection } from "@/features/student/components/application/NextOfKinSection";
+import { UtmeSection } from "@/features/student/components/application/UtmeSection";
+import { RefereeSection } from "@/features/student/components/application/RefereeSection";
+import { PassportUploadSection } from "@/features/student/components/application/PassportUploadSection";
+import { ReviewPaymentSection } from "@/features/student/components/application/ReviewPaymentSection";
+import { ApplicationStepper } from "@/features/student/components/application/ApplicationStepper";
+import { ApplicationNavigation } from "@/features/student/components/application/ApplicationNavigation";
+import { useApplicationData } from "@/features/student/hooks/useApplicationData";
+import { useApplicationForm } from "@/features/student/hooks/useApplicationForm";
+import { LoadingOverlay } from "@/features/student/components/application/LoadingOverlay";
+
+const LoadingScreen = () => (
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading application...</p>
+        </div>
+    </div>
+);
+
+const ErrorScreen = ({ message }: { message: string }) => (
+    <div className="flex h-screen w-full items-center justify-center bg-background p-4">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md">
+            <AlertCircle className="h-12 w-12 text-destructive/50" />
+            <h2 className="text-xl font-bold">Configuration Error</h2>
+            <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+    </div>
+);
 
 const Application = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({});
-  const [isStepValid, setIsStepValid] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+    const { isLoading, appConfig, applicantId, mappedData, userData } = useApplicationData();
 
-  const totalSteps = 5;
+    const {
+        methods,
+        currentStep,
+        steps,
+        direction,
+        isSubmitting,
+        canSkip,
+        nextStep,
+        prevStep,
+        skipStep,
+        onSubmit,
+        variants
+    } = useApplicationForm(appConfig, applicantId, mappedData, userData);
 
+    if (isLoading) return <LoadingScreen />;
+    if (!appConfig) return <ErrorScreen message="Unable to load application configuration. Please contact support if this persists." />;
 
-  const handleNext = () => {
-    if (!isStepValid && currentStep < 5) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields correctly.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    setTimeout(() => {
-      if (currentStep < totalSteps) {
-        setCurrentStep(currentStep + 1);
-        setIsStepValid(false);
-      } else {
-        navigate("/dashboard");
-      }
-      setIsLoading(false);
-    }, 500);
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setIsLoading(true);
-      setTimeout(() => {
-        setCurrentStep(currentStep - 1);
-        setIsLoading(false);
-      }, 300);
-    }
-  };
-
-  const handleReset = () => {
-    if (confirm("Are you sure you want to reset all form data?")) {
-      setFormData({});
-      setCurrentStep(1); // Reset to first step
-      setIsStepValid(false);
-      toast({
-        title: "Form Reset",
-        description: "All form data has been cleared.",
-      });
-    }
-  };
-
-  return (
-    <ApplicationLayout>
-      <div className="max-w-4xl mx-auto pt-20">
-        <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6 mb-6">
-          <div className="flex items-center justify-between w-full px-2">
-            {Array.from({ length: totalSteps }).map((_, index) => {
-              const stepNumber = index + 1;
-              const isCompleted = stepNumber < currentStep;
-              const isActive = stepNumber === currentStep;
-              const isLastStep = stepNumber === totalSteps;
-
-              return (
-                <Fragment key={stepNumber}>
-                  {/* Step Circle */}
-                  <div className="flex flex-col items-center relative z-10">
-                    <div
-                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
-                        ${isActive ? 'border-primary text-primary bg-white scale-110' :
-                          isCompleted ? 'border-primary bg-primary text-primary-foreground' : 'border-gray-200 text-gray-400 bg-white'}
-                      `}
-                    >
-                      {isCompleted ? (
-                        <Check className="w-5 h-5" />
-                      ) : (
-                        <span className="text-sm md:text-base font-semibold">{stepNumber}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Connector Line */}
-                  {!isLastStep && (
-                    <div className="flex-1 h-[2px] bg-gray-200 mx-2">
-                      <div
-                        className="h-full bg-primary transition-all duration-300"
-                        style={{ width: stepNumber < currentStep ? '100%' : '0%' }}
-                      />
-                    </div>
-                  )}
-                </Fragment>
-              );
-            })}
-          </div>
-          <div className="mt-4 text-center">
-            <span className="text-sm font-medium text-muted-foreground">
-              Step {currentStep} of {totalSteps}
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-lg shadow-sm border p-4 md:p-8">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader size="lg" />
-              <p className="text-muted-foreground mt-4">Loading...</p>
+    return (
+        <div className="space-y-6">
+            <div className="space-y-2 mb-8">
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[#01402c] uppercase">
+                    Registration <span className="text-primary">flow</span>
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                    Please provide accurate information in all required fields.
+                </p>
             </div>
-          ) : (
-            <>
-              {currentStep === 1 && (
-                <PersonalDetailsStep
-                  formData={formData}
-                  setFormData={setFormData}
-                  onValidationChange={setIsStepValid}
-                />
-              )}
-              {currentStep === 2 && (
-                <ContactDetailsStep
-                  formData={formData}
-                  setFormData={setFormData}
-                  onValidationChange={setIsStepValid}
-                />
-              )}
-              {currentStep === 3 && (
-                <NextOfKinStep
-                  formData={formData}
-                  setFormData={setFormData}
-                  onValidationChange={setIsStepValid}
-                />
-              )}
-              {currentStep === 4 && (
-                <ProgrammeStep
-                  formData={formData}
-                  setFormData={setFormData}
-                  onValidationChange={setIsStepValid}
-                />
-              )}
-              {currentStep === 5 && <PaymentStep />}
 
-              <div className="flex flex-col-reverse md:flex-row items-center justify-end gap-3 mt-8">
-                {currentStep > 1 && currentStep < 5 && (
-                  <Button
-                    onClick={handlePrevious}
-                    variant="secondary"
-                    disabled={isLoading}
-                  >
-                    Previous
-                  </Button>
-                )}
-                {currentStep < 5 && (
-                  <Button
-                    onClick={handleReset}
-                    variant="destructive"
-                    disabled={isLoading}
-                  >
-                    Reset
-                  </Button>
-                )}
-                {currentStep < 5 && (
-                  <Button
-                    onClick={handleNext}
-                    disabled={isLoading || !isStepValid}
-                  >
-                    Proceed
-                  </Button>
-                )}
-                {currentStep === 5 && (
-                  <Button
-                    onClick={handlePrevious}
-                    variant="secondary"
-                    disabled={isLoading}
-                  >
-                    Previous
-                  </Button>
-                )}
-              </div>
-            </>
-          )}
+            <ApplicationStepper steps={steps} currentStep={currentStep} />
+
+            <FormProvider {...methods}>
+                <form onSubmit={methods.handleSubmit(onSubmit)} className="relative min-h-[400px]">
+                    <div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+                        <div className="p-6 md:p-8 flex-grow">
+                            <AnimatePresence initial={false} custom={direction} mode="wait">
+                                <motion.div
+                                    key={currentStep}
+                                    custom={direction}
+                                    variants={variants}
+                                    initial="enter"
+                                    animate="center"
+                                    exit="exit"
+                                    transition={{
+                                        x: { type: "spring", stiffness: 300, damping: 30 },
+                                        opacity: { duration: 0.2 }
+                                    }}
+                                    className="w-full"
+                                >
+                                    {steps[currentStep].id === 'personal' && <PersonalSection config={appConfig} />}
+                                    {steps[currentStep].id === 'contact' && <ContactSection />}
+                                    {steps[currentStep].id === 'programme' && <ProgrammeSection />}
+                                    {steps[currentStep].id === 'olevel' && <OLevelSection config={appConfig} />}
+                                    {steps[currentStep].id === 'qualification' && <QualificationSection />}
+                                    {steps[currentStep].id === 'utme' && <UtmeSection />}
+                                    {steps[currentStep].id === 'nysc' && <NYSCSection />}
+                                    {steps[currentStep].id === 'nextOfKin' && <NextOfKinSection />}
+                                    {steps[currentStep].id === 'referees' && <RefereeSection config={appConfig} />}
+                                    {steps[currentStep].id === 'documents' && <PassportUploadSection config={appConfig} />}
+                                    {steps[currentStep].id === 'review' && <ReviewPaymentSection isLoading={isSubmitting} />}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+
+                        <div className="p-6 bg-muted/30 border-t border-border/50 mt-auto">
+                            <ApplicationNavigation
+                                currentStep={currentStep}
+                                stepId={steps[currentStep].id}
+                                onPrev={prevStep}
+                                onNext={nextStep}
+                                onSkip={skipStep}
+                                showSkip={canSkip}
+                            />
+                        </div>
+
+                        <LoadingOverlay isVisible={isSubmitting} />
+                    </div>
+                </form>
+            </FormProvider>
         </div>
-      </div>
-    </ApplicationLayout>
-  );
+    );
 };
 
 export default Application;

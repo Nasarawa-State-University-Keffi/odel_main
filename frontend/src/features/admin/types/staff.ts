@@ -99,6 +99,25 @@ export interface Gender {
     value: string;
 }
 
+export interface MaritalStatus {
+    id: number;
+    title: string;
+    value: string;
+}
+
+export interface Relationship {
+    id: number;
+    title: string;
+    value: string;
+}
+
+export interface BasicInformationResponse {
+    genders: Gender[];
+    maritalStatuses: MaritalStatus[];
+    titles: Title[];
+    relationships: Relationship[];
+}
+
 export interface State {
     id: number;
     name: string;

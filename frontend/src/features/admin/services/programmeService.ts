@@ -10,6 +10,7 @@ export const programmeService = {
         try {
             const url = programmeTypeId ? `${BASE_URL}/all/${programmeTypeId}` : `${BASE_URL}/all`;
             const response = await apiClient.get<Programme[]>(url);
+
             return response.data;
         } catch (error) {
             throw error;
