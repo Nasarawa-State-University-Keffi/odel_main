@@ -12,7 +12,7 @@ from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
 from .models import LearningContent, StorageSettings, ContentAccessLog
@@ -35,6 +35,7 @@ from .services import (
 from courses.models import CourseCache
 
 
+@extend_schema(tags=['Content'])
 class LearningContentListAPIView(generics.ListAPIView):
     """
     List learning content with filtering.
@@ -67,6 +68,7 @@ class LearningContentListAPIView(generics.ListAPIView):
         return queryset.select_related('course', 'uploaded_by')
 
 
+@extend_schema(tags=['Content'])
 class CourseContentAPIView(generics.ListAPIView):
     """
     List content for a specific course (filtered by UUID or external_id).
@@ -77,8 +79,7 @@ class CourseContentAPIView(generics.ListAPIView):
 
     @extend_schema(
         summary="List course content",
-        description="Filter content for a specific course using course ID or external ID.",
-        tags=['Content']
+        description="Filter content for a specific course using course ID or external ID."
     )
     def get_queryset(self):
         course_id = self.kwargs.get('course_id')
@@ -101,6 +102,7 @@ class CourseContentAPIView(generics.ListAPIView):
         return queryset.select_related('course', 'uploaded_by')
 
 
+@extend_schema(tags=['Content'])
 class LearningContentDetailAPIView(generics.RetrieveDestroyAPIView):
     """
     Retrieve or delete specific learning content.
@@ -113,6 +115,7 @@ class LearningContentDetailAPIView(generics.RetrieveDestroyAPIView):
         delete_learning_content(instance.id)
 
 
+@extend_schema(tags=['Content Upload'])
 class LearningContentUploadAPIView(views.APIView):
     """
     Upload learning content file.
@@ -124,8 +127,7 @@ class LearningContentUploadAPIView(views.APIView):
         summary="Upload learning content file",
         description="Upload any file including videos (MP4, AVI, MOV), PDFs, documents, etc.",
         request=LearningContentUploadSerializer,
-        responses={201: LearningContentSerializer},
-        tags=['Content Upload']
+        responses={201: LearningContentSerializer}
     )
     def post(self, request):
         serializer = LearningContentUploadSerializer(data=request.data)
@@ -167,6 +169,7 @@ class LearningContentUploadAPIView(views.APIView):
             )
 
 
+@extend_schema(tags=['Content Upload'])
 class YouTubeVideoAddAPIView(views.APIView):
     """
     Add YouTube video reference.
@@ -177,8 +180,7 @@ class YouTubeVideoAddAPIView(views.APIView):
         summary="Add YouTube video reference",
         description="Add a reference to an existing YouTube video (no file upload).",
         request=YouTubeVideoSerializer,
-        responses={201: LearningContentSerializer},
-        tags=['Content Upload']
+        responses={201: LearningContentSerializer}
     )
     def post(self, request):
         serializer = YouTubeVideoSerializer(data=request.data)
@@ -218,6 +220,7 @@ class YouTubeVideoAddAPIView(views.APIView):
             )
 
 
+@extend_schema(tags=['Content'])
 class LearningContentLogAccessAPIView(views.APIView):
     """
     Log content access.
@@ -235,8 +238,7 @@ class LearningContentLogAccessAPIView(views.APIView):
                 'required': ['action']
             }
         },
-        responses={200: {'type': 'object', 'properties': {'status': {'type': 'string'}}}},
-        tags=['Content']
+        responses={200: {'type': 'object', 'properties': {'status': {'type': 'string'}}}}
     )
     def post(self, request, pk):
         content = get_object_or_404(LearningContent, pk=pk)
@@ -259,6 +261,7 @@ class LearningContentLogAccessAPIView(views.APIView):
         return Response({'status': 'logged'})
 
 
+@extend_schema(tags=['Content'])
 class LearningContentStatsAPIView(views.APIView):
     """
     Get content statistics.
@@ -275,8 +278,7 @@ class LearningContentStatsAPIView(views.APIView):
                 description='Filter statistics by course ID'
             )
         ],
-        responses={200: ContentStatisticsSerializer},
-        tags=['Content']
+        responses={200: ContentStatisticsSerializer}
     )
     def get(self, request):
         queryset = LearningContent.objects.all()
@@ -310,6 +312,7 @@ class LearningContentStatsAPIView(views.APIView):
         return Response(serializer.data)
 
 
+@extend_schema(tags=['Storage Settings'])
 class StorageSettingsListCreateAPIView(generics.ListCreateAPIView):
     """
     List or create storage settings.
@@ -319,6 +322,7 @@ class StorageSettingsListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAdminUser]
 
 
+@extend_schema(tags=['Storage Settings'])
 class StorageSettingsDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     """
     Manage specific storage settings.
@@ -328,6 +332,7 @@ class StorageSettingsDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
 
 
+@extend_schema(tags=['Storage Settings'])
 class ActiveStorageSettingsAPIView(views.APIView):
     """
     Get active storage settings.
@@ -336,8 +341,7 @@ class ActiveStorageSettingsAPIView(views.APIView):
 
     @extend_schema(
         summary="Get active storage backend",
-        responses={200: StorageSettingsSerializer},
-        tags=['Storage Settings']
+        responses={200: StorageSettingsSerializer}
     )
     def get(self, request):
         settings = StorageSettings.objects.filter(is_active=True).first()
@@ -351,6 +355,7 @@ class ActiveStorageSettingsAPIView(views.APIView):
         )
 
 
+@extend_schema(tags=['Storage Settings'])
 class AvailableBackendsAPIView(views.APIView):
     """
     Get list of available storage backends.
@@ -375,8 +380,7 @@ class AvailableBackendsAPIView(views.APIView):
                     }
                 }
             }
-        },
-        tags=['Storage Settings']
+        }
     )
     def get(self, request):
         from resource.storage.router import get_available_backends
@@ -389,6 +393,7 @@ class AvailableBackendsAPIView(views.APIView):
         })
 
 
+@extend_schema(tags=['Content'])
 class ContentAccessLogListAPIView(generics.ListAPIView):
     """
     List content access logs.
