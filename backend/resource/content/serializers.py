@@ -151,7 +151,7 @@ class YouTubeVideoSerializer(serializers.Serializer):
     def validate_course_id(self, value):
         """Validate course_id - accepts either external_id or UUID."""
         # Try to find by external_id first
-        course = CourseCache.objects.filter(external_id=value).first()
+        course = CourseCache.objects.filter(course_external_id=value).first()
         if course:
             return value
         

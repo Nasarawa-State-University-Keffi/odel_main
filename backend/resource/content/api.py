@@ -67,6 +67,40 @@ class LearningContentListAPIView(generics.ListAPIView):
         return queryset.select_related('course', 'uploaded_by')
 
 
+class CourseContentAPIView(generics.ListAPIView):
+    """
+    List content for a specific course (filtered by UUID or external_id).
+    Used by students to view course materials.
+    """
+    serializer_class = LearningContentSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="List course content",
+        description="Filter content for a specific course using course ID or external ID.",
+        tags=['Content']
+    )
+    def get_queryset(self):
+        course_id = self.kwargs.get('course_id')
+        
+        # Resolve course first
+        course = CourseCache.objects.filter(course_external_id=course_id).first()
+        if not course:
+            try:
+                import uuid
+                uuid_value = uuid.UUID(course_id)
+                course = get_object_or_404(CourseCache, id=uuid_value)
+            except (ValueError, AttributeError):
+                return LearningContent.objects.none()
+
+        queryset = LearningContent.objects.filter(course=course)
+        
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(is_published=True)
+            
+        return queryset.select_related('course', 'uploaded_by')
+
+
 class LearningContentDetailAPIView(generics.RetrieveDestroyAPIView):
     """
     Retrieve or delete specific learning content.

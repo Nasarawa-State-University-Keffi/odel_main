@@ -15,7 +15,8 @@ from .api import (
     StorageSettingsDetailAPIView,
     ActiveStorageSettingsAPIView,
     AvailableBackendsAPIView,
-    ContentAccessLogListAPIView
+    ContentAccessLogListAPIView,
+    CourseContentAPIView
 )
 
 urlpatterns = [
@@ -24,6 +25,7 @@ urlpatterns = [
     path('content/upload/', LearningContentUploadAPIView.as_view(), name='content-upload'),
     path('content/add_youtube/', YouTubeVideoAddAPIView.as_view(), name='content-add-youtube'),
     path('content/statistics/', LearningContentStatsAPIView.as_view(), name='content-statistics'),
+    path('content/course/<str:course_id>/', CourseContentAPIView.as_view(), name='course-content-list'),
     path('content/<uuid:pk>/', LearningContentDetailAPIView.as_view(), name='content-detail'),
     path('content/<uuid:pk>/log_access/', LearningContentLogAccessAPIView.as_view(), name='content-log-access'),
 

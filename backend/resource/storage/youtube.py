@@ -110,15 +110,17 @@ class YouTubeStorageEngine(BaseStorageEngine):
         
         Supports:
         - youtube.com/watch?v=VIDEO_ID
+        - music.youtube.com/watch?v=VIDEO_ID
         - youtu.be/VIDEO_ID
         - youtube.com/embed/VIDEO_ID
+        - youtube.com/shorts/VIDEO_ID
         - Direct video ID
         """
         import re
         
         # Pattern for YouTube URLs
         patterns = [
-            r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
+            r'(?:youtube\.com\/watch\?v=|music\.youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})',
             r'^([a-zA-Z0-9_-]{11})$'  # Direct video ID
         ]
         
@@ -134,6 +136,7 @@ class YouTubeStorageEngine(BaseStorageEngine):
         Verify video exists using YouTube Data API v3.
         
         Requires YOUTUBE_API_KEY in settings.
+        If key is invalid or quota exceeded, it defaults to True to allow registration.
         """
         try:
             import requests
@@ -145,11 +148,15 @@ class YouTubeStorageEngine(BaseStorageEngine):
                 'key': self.api_key
             }
             
-            response = requests.get(url, params=params)
-            data = response.json()
+            response = requests.get(url, params=params, timeout=5)
             
+            # If request fails (invalid key, etc), assume video exists
+            if response.status_code != 200:
+                return True
+                
+            data = response.json()
             return len(data.get('items', [])) > 0
             
         except Exception:
-            # If verification fails, assume video exists
+            # If verification fails completely (e.g. network error), assume video exists
             return True
