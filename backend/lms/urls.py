@@ -45,6 +45,9 @@ urlpatterns = [
 
     # Dashboard endpoint urls
     path('api/dashboard/', include('dashboard.urls')),
+
+    # Notifications & Email Management
+    path('api/notifications/', include('notifications.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

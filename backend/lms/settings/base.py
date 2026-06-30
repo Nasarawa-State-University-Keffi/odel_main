@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'assessment',
     'resource.content',
     'portal_auth.apps.PortalAuthConfig',
+    'notifications',
 ]
 
 MIDDLEWARE = [
