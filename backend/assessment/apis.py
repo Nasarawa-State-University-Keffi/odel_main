@@ -3,6 +3,8 @@ API Views for the Assessment app - Moodle-style Quiz System
 
 REFACTORED: Separated Student and Staff endpoints with unified queryset logic.
 """
+import csv
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
@@ -16,6 +18,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from courses.models import StudentRegisteredCourse, StaffAssignedCourse
+from portal_auth.models import PortalUser
 
 
 from .models import (
@@ -581,4 +584,185 @@ class StaffQuizQuestionDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDes
     """Detail/Update/Delete quiz question slot (staff)"""
     serializer_class = QuizQuestionSlotSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+
+class StaffAssignmentExportView(APIView):
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @extend_schema(
+        summary="Export assignment scores as CSV (staff)",
+        description="Generates and downloads a CSV spreadsheet containing all student scores for the given assignment.",
+        responses={200: OpenApiResponse(description="CSV File download")},
+        tags=['Staff - Assignments']
+    )
+    def get(self, request, pk=None):
+        assignment = get_object_or_404(Assignment, id=pk)
+        staff_id = request.user.external_id
+        
+        # Check permission: Staff must be assigned to the course
+        if not StaffAssignedCourse.objects.filter(staff_external_id=staff_id, course=assignment.course).exists():
+            return Response(
+                {'error': 'You do not have permission to view this course\'s grades.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        # Get all registered students
+        registered = StudentRegisteredCourse.objects.filter(course=assignment.course)
+        student_ids = list(registered.values_list('student_external_id', flat=True))
+        
+        # Map portal users for names and emails
+        portal_users = PortalUser.objects.filter(external_id__in=student_ids)
+        user_map = {u.external_id: u for u in portal_users}
+        
+        # Get all submissions for this assignment
+        submissions = AssignmentSubmission.objects.filter(
+            assignment=assignment,
+            student_external_id__in=student_ids
+        )
+        
+        # Group submissions by student (keep the highest score attempt, or latest if no score)
+        submission_map = {}
+        for sub in submissions:
+            existing = submission_map.get(sub.student_external_id)
+            if not existing:
+                submission_map[sub.student_external_id] = sub
+            else:
+                if sub.status == 'graded' and existing.status != 'graded':
+                    submission_map[sub.student_external_id] = sub
+                elif sub.status == 'graded' and existing.status == 'graded':
+                    if (sub.marks or 0) > (existing.marks or 0):
+                        submission_map[sub.student_external_id] = sub
+                elif sub.status != 'graded' and existing.status != 'graded':
+                    if sub.attempt_number > existing.attempt_number:
+                        submission_map[sub.student_external_id] = sub
+
+        response = HttpResponse(content_type='text/csv')
+        filename = f"assignment_{assignment.title.replace(' ', '_')}_scores.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'Student ID', 'Student Name', 'Student Email',
+            'Submission Status', 'Attempt Number', 'Submitted At',
+            'Score', 'Max Marks', 'Percentage'
+        ])
+        
+        for student_id in student_ids:
+            user = user_map.get(student_id)
+            full_name = user.full_name if user else "N/A"
+            email = user.email if user else "N/A"
+            
+            sub = submission_map.get(student_id)
+            if not sub:
+                writer.writerow([
+                    student_id, full_name, email,
+                    'No Submission', 'N/A', 'N/A',
+                    'N/A', float(assignment.max_marks), 'N/A'
+                ])
+            else:
+                score = float(sub.marks) if sub.marks is not None else 'N/A'
+                percentage = float((sub.marks / assignment.max_marks) * 100) if sub.marks is not None else 'N/A'
+                submitted_at = sub.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if sub.submitted_at else 'N/A'
+                writer.writerow([
+                    student_id, full_name, email,
+                    sub.get_status_display(), sub.attempt_number, submitted_at,
+                    score, float(assignment.max_marks), percentage
+                ])
+                
+        return response
+
+
+class StaffQuizExportView(APIView):
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @extend_schema(
+        summary="Export quiz scores as CSV (staff)",
+        description="Generates and downloads a CSV spreadsheet containing all student scores for the given quiz.",
+        responses={200: OpenApiResponse(description="CSV File download")},
+        tags=['Staff - Quizzes']
+    )
+    def get(self, request, pk=None):
+        quiz = get_object_or_404(Quiz, id=pk)
+        staff_id = request.user.external_id
+        
+        # Check permission: Staff must be assigned to the course
+        if not StaffAssignedCourse.objects.filter(staff_external_id=staff_id, course=quiz.course).exists():
+            return Response(
+                {'error': 'You do not have permission to view this course\'s grades.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        # Get all registered students
+        registered = StudentRegisteredCourse.objects.filter(course=quiz.course)
+        student_ids = list(registered.values_list('student_external_id', flat=True))
+        
+        # Map portal users for names and emails
+        portal_users = PortalUser.objects.filter(external_id__in=student_ids)
+        user_map = {u.external_id: u for u in portal_users}
+        
+        # Get all attempts for this quiz
+        attempts = QuizAttempt.objects.filter(
+            quiz=quiz,
+            user_external_id__in=student_ids
+        )
+        
+        # Group attempts by student
+        student_attempts = {}
+        for attempt in attempts:
+            ext_id = attempt.user_external_id
+            if ext_id not in student_attempts:
+                student_attempts[ext_id] = []
+            student_attempts[ext_id].append(attempt)
+            
+        response = HttpResponse(content_type='text/csv')
+        filename = f"quiz_{quiz.name.replace(' ', '_')}_scores.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'Student ID', 'Student Name', 'Student Email',
+            'Attempt State', 'Total Attempts', 'Best Attempt Number',
+            'Score', 'Max Grade', 'Percentage', 'Finished At'
+        ])
+        
+        for student_id in student_ids:
+            user = user_map.get(student_id)
+            full_name = user.full_name if user else "N/A"
+            email = user.email if user else "N/A"
+            
+            user_attempts = student_attempts.get(student_id, [])
+            total_attempts = len(user_attempts)
+            
+            if total_attempts == 0:
+                writer.writerow([
+                    student_id, full_name, email,
+                    'No Attempt', 0, 'N/A',
+                    'N/A', float(quiz.max_grade), 'N/A', 'N/A'
+                ])
+            else:
+                best_attempt = None
+                for attempt in user_attempts:
+                    if best_attempt is None:
+                        best_attempt = attempt
+                    else:
+                        if attempt.total_score is not None and best_attempt.total_score is not None:
+                            if attempt.total_score > best_attempt.total_score:
+                                best_attempt = attempt
+                        elif attempt.total_score is not None and best_attempt.total_score is None:
+                            best_attempt = attempt
+                        elif attempt.total_score is None and best_attempt.total_score is None:
+                            if attempt.attempt_number > best_attempt.attempt_number:
+                                best_attempt = attempt
+                                
+                score = float(best_attempt.total_score) if best_attempt.total_score is not None else 'N/A'
+                percentage = float((best_attempt.total_score / quiz.max_grade) * 100) if best_attempt.total_score is not None else 'N/A'
+                finished_at = best_attempt.finished_at.strftime('%Y-%m-%d %H:%M:%S') if best_attempt.finished_at else 'N/A'
+                
+                writer.writerow([
+                    student_id, full_name, email,
+                    best_attempt.get_state_display(), total_attempts, best_attempt.attempt_number,
+                    score, float(quiz.max_grade), percentage, finished_at
+                ])
+                
+        return response
 

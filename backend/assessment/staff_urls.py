@@ -27,4 +27,8 @@ urlpatterns = [
     path('attempts/', apis.StaffQuizAttemptListView.as_view(), name='staff-attempt-list'),
     path('attempts/<uuid:pk>/', apis.StaffQuizAttemptDetailView.as_view(), name='staff-attempt-detail'),
     path('attempts/<uuid:pk>/questions/<uuid:question_attempt_id>/grade/', apis.StaffQuizManualGradeView.as_view(), name='staff-quiz-manual-grade'),
+    
+    # Exports
+    path('assignments/<uuid:pk>/export/', apis.StaffAssignmentExportView.as_view(), name='staff-assignment-export'),
+    path('quizzes/<uuid:pk>/export/', apis.StaffQuizExportView.as_view(), name='staff-quiz-export'),
 ]

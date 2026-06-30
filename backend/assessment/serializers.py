@@ -29,18 +29,29 @@ class CourseSlugValidationMixin:
         if not value:
             raise serializers.ValidationError("This field is required")
         
+        if isinstance(value, CourseCache):
+            return value
+            
+        course = None
         # Try course_external_id first (preferred field name)
-        course = CourseCache.objects.filter(course_external_id=value).first()
+        try:
+            course = CourseCache.objects.filter(course_external_id=value).first()
+        except (TypeError, ValueError):
+            pass
+            
         if not course:
             # Try legacy external_id field if the above fails
-            course = CourseCache.objects.filter(external_id=value).first()
+            try:
+                course = CourseCache.objects.filter(external_id=value).first()
+            except (TypeError, ValueError):
+                pass
             
         if not course:
             # Try UUID
             try:
-                uuid_value = uuid.UUID(value)
+                uuid_value = uuid.UUID(str(value))
                 course = CourseCache.objects.filter(id=uuid_value).first()
-            except (ValueError, AttributeError):
+            except (ValueError, AttributeError, TypeError):
                 pass
         
         if not course:

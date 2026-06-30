@@ -948,3 +948,142 @@ class IntegrationTests(TestCase):
         self.assertEqual(summary['answered_questions'], 2)
         # Score is scaled to max_grade: 15/20 = 75%
         self.assertEqual(summary['total_score'], 75.0)
+
+
+class ExportAPITests(APITestCase):
+    """Test case for exporting assignment and quiz scores as CSV files."""
+    
+    def setUp(self):
+        self.instructor = PortalUser.objects.create(
+            external_id='instructor_1',
+            full_name='Instructor One',
+            is_staff=True
+        )
+        self.other_instructor = PortalUser.objects.create(
+            external_id='instructor_2',
+            full_name='Instructor Two',
+            is_staff=True
+        )
+        self.student = PortalUser.objects.create(
+            external_id='student_1',
+            full_name='Student One',
+            email='student1@test.com'
+        )
+        
+        self.course = CourseCache.objects.create(
+            course_external_id=101,
+            course_title='Test Course',
+            course_code='TEST101'
+        )
+        
+        # Instructor is assigned to course, but other_instructor is not.
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=self.course,
+            role='instructor'
+        )
+        
+        # Student is registered for course
+        StudentRegisteredCourse.objects.create(
+            student_external_id=self.student.external_id,
+            course=self.course,
+            session_id=1,
+            semester_id=1
+        )
+        
+        self.assignment = Assignment.objects.create(
+            course=self.course,
+            title='Test Assignment',
+            description='Test Description',
+            open_at=timezone.now(),
+            due_at=timezone.now() + timezone.timedelta(days=1),
+            max_marks=Decimal('10.00'),
+            created_by=self.instructor
+        )
+        
+        self.quiz = Quiz.objects.create(
+            course=self.course,
+            name='Test Quiz',
+            max_grade=Decimal('100.00')
+        )
+        
+        self.client = APIClient()
+
+    def test_assignment_export_csv_authorized(self):
+        """Test that an authorized instructor can download the assignment scores CSV."""
+        # Create a submission for the student
+        sub = AssignmentSubmission.objects.create(
+            assignment=self.assignment,
+            student_external_id=self.student.external_id,
+            attempt_number=1,
+            status='graded',
+            marks=Decimal('8.50'),
+            submitted_at=timezone.now(),
+            graded_at=timezone.now()
+        )
+        
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.get(f'/api/staff/assessment/assignments/{self.assignment.id}/export/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertIn(f"attachment; filename=\"assignment_Test_Assignment_scores.csv\"", response['Content-Disposition'])
+        
+        # Check CSV content
+        content = response.content.decode('utf-8')
+        lines = content.split('\r\n')
+        self.assertTrue(len(lines) >= 2)
+        self.assertIn('Student ID,Student Name,Student Email,Submission Status,Attempt Number,Submitted At,Score,Max Marks,Percentage', lines[0])
+        self.assertIn('student_1,Student One,student1@test.com,Graded,1', content)
+        self.assertIn('8.5,10.0,85.0', content)
+
+    def test_assignment_export_csv_unauthorized(self):
+        """Test that students or unassigned instructors are forbidden to download the assignment scores CSV."""
+        # Test student forbidden
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(f'/api/staff/assessment/assignments/{self.assignment.id}/export/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # Test unassigned instructor forbidden
+        self.client.force_authenticate(user=self.other_instructor)
+        response = self.client.get(f'/api/staff/assessment/assignments/{self.assignment.id}/export/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_quiz_export_csv_authorized(self):
+        """Test that an authorized instructor can download the quiz scores CSV."""
+        # Create a quiz attempt for the student
+        attempt = QuizAttempt.objects.create(
+            quiz=self.quiz,
+            user_external_id=self.student.external_id,
+            attempt_number=1,
+            state='finished',
+            started_at=timezone.now(),
+            finished_at=timezone.now(),
+            total_score=Decimal('90.00')
+        )
+        
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/export/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertIn(f"attachment; filename=\"quiz_Test_Quiz_scores.csv\"", response['Content-Disposition'])
+        
+        # Check CSV content
+        content = response.content.decode('utf-8')
+        lines = content.split('\r\n')
+        self.assertTrue(len(lines) >= 2)
+        self.assertIn('Student ID,Student Name,Student Email,Attempt State,Total Attempts,Best Attempt Number,Score,Max Grade,Percentage,Finished At', lines[0])
+        self.assertIn('student_1,Student One,student1@test.com,Finished,1,1,90.0,100.0,90.0', content)
+
+    def test_quiz_export_csv_unauthorized(self):
+        """Test that students or unassigned instructors are forbidden to download the quiz scores CSV."""
+        # Test student forbidden
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/export/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # Test unassigned instructor forbidden
+        self.client.force_authenticate(user=self.other_instructor)
+        response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/export/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
