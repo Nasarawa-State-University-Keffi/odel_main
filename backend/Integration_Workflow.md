@@ -70,7 +70,57 @@ For a student to study materials:
 - **Manual Grading (Quizzes):** `POST /api/staff/assessment/attempts/<pk>/questions/<q_attempt_id>/grade/`
   - **Body:** `{ "fraction": 1.0, "feedback": "Excellent work" }`
 
+### 3.4 Score Exports (CSV Downloads)
+
+Both endpoints return a `text/csv` file download. The staff member must be assigned to the course the assessment belongs to, otherwise a `403 Forbidden` is returned.
+
+#### Export Assignment Scores
+```
+GET /api/staff/assessment/assignments/<uuid:pk>/export/
+```
+- **Permission:** Staff assigned to the assignment's course only.
+- **Response:** CSV file download — `attachment; filename="assignment_<Title>_scores.csv"`
+- **CSV Columns:**
+
+  | Column | Description |
+  |--------|-------------|
+  | Student ID | Portal external ID |
+  | Student Name | Full name from portal |
+  | Student Email | Email from portal |
+  | Submission Status | `No Submission`, `Draft`, `Submitted`, `Graded`, etc. |
+  | Attempt Number | Which attempt this row represents |
+  | Submitted At | `YYYY-MM-DD HH:MM:SS` or `N/A` |
+  | Score | Numeric marks awarded or `N/A` |
+  | Max Marks | The assignment's maximum possible marks |
+  | Percentage | `(Score / Max Marks) * 100` or `N/A` |
+
+- **Row Selection:** One row per enrolled student. If a student has multiple submissions, the **highest graded** attempt is used; for ungraded submissions, the latest attempt is shown.
+
+#### Export Quiz Scores
+```
+GET /api/staff/assessment/quizzes/<uuid:pk>/export/
+```
+- **Permission:** Staff assigned to the quiz's course only.
+- **Response:** CSV file download — `attachment; filename="quiz_<Name>_scores.csv"`
+- **CSV Columns:**
+
+  | Column | Description |
+  |--------|-------------|
+  | Student ID | Portal external ID |
+  | Student Name | Full name from portal |
+  | Student Email | Email from portal |
+  | Attempt State | `No Attempt`, `In Progress`, `Finished`, etc. |
+  | Total Attempts | Number of attempts made |
+  | Best Attempt Number | Attempt number with the highest score |
+  | Score | Best attempt's `total_score` or `N/A` |
+  | Max Grade | The quiz's maximum possible grade |
+  | Percentage | `(Score / Max Grade) * 100` or `N/A` |
+  | Finished At | `YYYY-MM-DD HH:MM:SS` of best attempt or `N/A` |
+
+- **Row Selection:** One row per enrolled student. The **best attempt** (highest `total_score`) is reported; if scores are equal, the latest attempt number wins.
+
 ---
+
 
 ## 4. Dashboard & Metrics
 

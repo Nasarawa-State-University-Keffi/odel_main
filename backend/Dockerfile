@@ -29,15 +29,11 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.t
 # Stage 2: Final production image
 FROM python:3.11-slim
 
-# Build-time argument for a dummy secret key (only used for collectstatic)
-ARG DJANGO_SECRET_KEY=dummy-build-time-secret-key-not-used-in-production
-
 # Environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=lms.settings \
-    DJANGO_ENV=production \
-    DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+    DJANGO_ENV=production
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -66,12 +62,6 @@ COPY --chown=appuser:appuser . .
 RUN mkdir -p /app/media /app/staticfiles /app/logs && \
     chown -R appuser:appuser /app/media /app/staticfiles /app/logs
 
-# Collect static files (uses dummy secret key from build arg)
-RUN python manage.py collectstatic --noinput --clear
-
-# Unset the build-time secret key so it's not baked into the final image
-# The real DJANGO_SECRET_KEY must be provided at runtime via environment variables
-ENV DJANGO_SECRET_KEY=
 
 # Switch to non-root user
 USER appuser
