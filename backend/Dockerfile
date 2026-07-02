@@ -76,4 +76,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 8000
 
 # Use gunicorn for production (overrideable via docker-compose)
-CMD ["gunicorn", "--config", "gunicorn_config.py", "lms_service.wsgi:application"]
+CMD ["gunicorn", "--config", "gunicorn_config.py", "lms.wsgi:application"]
