@@ -88,7 +88,28 @@ Retrieve real-time metrics for the user's dashboard.
 
 ---
 
-## 6. General Patterns
+## 6. Email System Management (Staff Only)
+
+Manage the active email delivery backend and its configuration directly via the API.
+
+- **List All Configurations:** `GET /api/notifications/settings/`
+- **Create New Configuration:** `POST /api/notifications/settings/`
+  - **Body Example:**
+    ```json
+    {
+      "backend_choice": "resend",
+      "is_active": true,
+      "config": {
+        "from_email": "notifications@yourdomain.com"
+      }
+    }
+    ```
+- **Update Configuration:** `PATCH /api/notifications/settings/<uuid:pk>/`
+- **Delete Configuration:** `DELETE /api/notifications/settings/<uuid:pk>/`
+
+---
+
+## 7. General Patterns
 
 ### Pagination
 Most list endpoints use standard DRF `PageNumberPagination`:
