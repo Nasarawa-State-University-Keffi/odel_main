@@ -19,7 +19,8 @@ class LearningContentSerializer(serializers.ModelSerializer):
     url = serializers.ReadOnlyField()
     uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
     uploaded_by_external_id = serializers.CharField(source='uploaded_by.external_id', read_only=True)
-    course_title = serializers.CharField(source='course.title', read_only=True)
+    course_title = serializers.CharField(source='course.course_title', read_only=True)
+    course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
     file_extension = serializers.ReadOnlyField()
     is_video = serializers.ReadOnlyField()
     is_document = serializers.ReadOnlyField()
@@ -28,7 +29,7 @@ class LearningContentSerializer(serializers.ModelSerializer):
         model = LearningContent
         fields = [
             # identity
-            'id', 'component', 'content_type', 'course', 'course_title',
+            'id', 'component', 'content_type', 'course_external_id', 'course_title',
 
             # metadata
             'title', 'description', 'original_filename', 'file_size',
@@ -89,9 +90,12 @@ class LearningContentUploadSerializer(serializers.Serializer):
     def validate_course_id(self, value):
         """Validate course_id - accepts either external_id or UUID."""
         # Try to find by external_id first (most common case)
-        course = CourseCache.objects.filter(course_external_id=value).first()
-        if course:
-            return value
+        try:
+            course = CourseCache.objects.filter(course_external_id=value).first()
+            if course:
+                return value
+        except ValueError:
+            pass
         
         # Try to find by UUID
         try:
@@ -151,9 +155,12 @@ class YouTubeVideoSerializer(serializers.Serializer):
     def validate_course_id(self, value):
         """Validate course_id - accepts either external_id or UUID."""
         # Try to find by external_id first
-        course = CourseCache.objects.filter(course_external_id=value).first()
-        if course:
-            return value
+        try:
+            course = CourseCache.objects.filter(course_external_id=value).first()
+            if course:
+                return value
+        except ValueError:
+            pass
         
         # Try to find by UUID
         try:

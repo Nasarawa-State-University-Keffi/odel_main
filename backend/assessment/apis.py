@@ -66,7 +66,7 @@ class StudentQuerySetMixin:
             queryset = Quiz.objects.filter(course__in=registered_courses).select_related("course")
             course_id = self.request.query_params.get('course')
             if course_id:
-                queryset = queryset.filter(course_id=course_id)
+                queryset = queryset.filter(course__course_external_id=course_id)
             return queryset
         elif model == QuizAttempt:
             queryset = QuizAttempt.objects.filter(user_external_id=student_id)
@@ -106,13 +106,13 @@ class StaffQuerySetMixin:
             queryset = Quiz.objects.filter(course__in=assigned_courses).select_related("course")
             course_id = self.request.query_params.get('course')
             if course_id:
-                queryset = queryset.filter(course_id=course_id)
+                queryset = queryset.filter(course__course_external_id=course_id)
             return queryset
         elif model == QuestionCategory:
             queryset = QuestionCategory.objects.filter(course__in=assigned_courses).select_related('course')
             course_id = self.request.query_params.get('course')
             if course_id:
-                queryset = queryset.filter(course_id=course_id)
+                queryset = queryset.filter(course__course_external_id=course_id)
             return queryset
         elif model == Question:
             queryset = Question.objects.filter(category__course__in=assigned_courses).select_related('category').prefetch_related('answers')

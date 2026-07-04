@@ -16,5 +16,5 @@ app_name = 'courses'
 
 # Only API endpoints - no web views
 urlpatterns = [
-    path('api/courses/', include(router.urls)),
+    path('api/', include(router.urls)),
 ]

@@ -198,3 +198,97 @@ class InstructorDashboardView(APIView):
             "total_quizzes_count": total_quizzes.count(),
         }
         return Response(status=200, data=data)
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from dashboard.serializers import CourseSummarySerializer, QuizSummarySerializer, AssignmentSummarySerializer
+from portal_auth.services import get_or_sync_student_registered_courses, get_or_sync_staff_registered_courses
+from courses.models import StudentRegisteredCourse, StaffAssignedCourse
+from assessment.models import Quiz, Assignment
+from django.utils import timezone
+from portal_auth.permissions import IsPortalStaff
+
+class StudentDetailDashboardView(APIView):
+    """
+    Endpoint for retrieving a specific student's dashboard data.
+    GET /api/dashboard/students/<external_id>/
+    """
+    permission_classes = [IsAuthenticated, IsPortalStaff]
+    
+    def get(self, request, external_id):
+        session_id = request.query_params.get("session_id")
+        semester_id = request.query_params.get("semester_id")
+
+        if not session_id or not semester_id:
+            return Response(
+                {"detail": "session_id and semester_id are required"},
+                status=400
+            )
+
+        get_or_sync_student_registered_courses(
+            token=request.auth,
+            student_external_id=external_id,
+            session_id=session_id,
+            semester_id=semester_id,
+        )
+
+        enrollments = StudentRegisteredCourse.objects.select_related("course").filter(
+            student_external_id=external_id,
+            session_id=session_id,
+            semester_id=semester_id,
+        )
+        courses = [e.course for e in enrollments]
+        course_ids = [c.id for c in courses]
+
+        now = timezone.now()
+        pending_quizzes = Quiz.objects.filter(
+            course_id__in=course_ids,
+            end_time__gt=now
+        )
+        upcoming_assignments = Assignment.objects.filter(
+            course_id__in=course_ids,
+            due_date__gt=now
+        )
+
+        data = {
+            "courses": CourseSummarySerializer(courses, many=True).data,
+            "course_count": len(courses),
+            "pending_quizzes": QuizSummarySerializer(pending_quizzes, many=True).data,
+            "upcoming_assignments": AssignmentSummarySerializer(upcoming_assignments, many=True).data,
+        }
+        return Response(status=200, data=data)
+
+
+class InstructorDetailDashboardView(APIView):
+    """
+    Endpoint for retrieving a specific instructor's dashboard data.
+    GET /api/dashboard/instructors/<external_id>/
+    """
+    permission_classes = [IsAuthenticated, IsPortalStaff]
+    
+    def get(self, request, external_id):
+        programme_id = request.query_params.get("programme_id")
+        
+        get_or_sync_staff_registered_courses(
+            token=request.auth,
+            staff_external_id=external_id,
+            programme_id=programme_id
+        )
+
+        course_assigned = StaffAssignedCourse.objects.filter(staff_external_id=external_id)
+        courses = [e.course for e in course_assigned]
+        course_ids = [c.id for c in courses]
+
+        total_assignments = Assignment.objects.filter(course_id__in=course_ids)
+        total_quizzes = Quiz.objects.filter(course_id__in=course_ids)
+
+        data = {
+            "total_courses": CourseSummarySerializer(courses, many=True).data,
+            "total_courses_count": len(courses),
+            "total_assignments": AssignmentSummarySerializer(total_assignments, many=True).data,
+            "total_assignments_count": total_assignments.count(),
+            "total_quizzes": QuizSummarySerializer(total_quizzes, many=True).data,
+            "total_quizzes_count": total_quizzes.count(),
+        }
+        return Response(status=200, data=data)

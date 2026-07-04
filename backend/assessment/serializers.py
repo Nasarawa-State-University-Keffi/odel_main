@@ -211,14 +211,15 @@ class QuestionCategorySerializer(serializers.ModelSerializer, CourseSlugValidati
     available_question_types = serializers.SerializerMethodField(
         help_text="List of question types available for this category's level"
     )
+    course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
     
     class Meta:
         model = QuestionCategory
         fields = [
-            'id', 'course', 'course_id', 'name', 'description', 'level', 'level_display',
+            'id', 'course_external_id', 'course_id', 'name', 'description', 'level', 'level_display',
             'questions_count', 'available_question_types', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'course']
+        read_only_fields = ['created_at', 'updated_at']
     
     def get_available_question_types(self, obj):
         return QuestionTypeAvailability.get_available_question_types(obj.level)
@@ -340,15 +341,16 @@ class BaseQuizSerializer(serializers.ModelSerializer, QuizMetricsMixin):
     """Base quiz serializer common to list and detail views."""
     questions_count = serializers.SerializerMethodField()
     total_marks = serializers.SerializerMethodField()
+    course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
 
     class Meta:
         model = Quiz
         fields = [
-            'id', 'course', 'name', 'description', 'time_open', 'time_close',
+            'id', 'course_external_id', 'name', 'description', 'time_open', 'time_close',
             'time_limit', 'max_grade', 'shuffle_questions', 'max_attempts',
             'show_feedback', 'questions_count', 'total_marks', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'course']
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class QuizSerializer(BaseQuizSerializer, CourseSlugValidationMixin):

@@ -8,7 +8,7 @@ from assessment.models import Assignment, Quiz
 class CourseSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseCache
-        fields = ["id", "course_code", "course_title"]
+        fields = ["course_external_id", "course_code", "course_title"]
 
 class QuizSummarySerializer(serializers.ModelSerializer):
     class Meta:

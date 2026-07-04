@@ -21,13 +21,13 @@ from .api import (
 
 urlpatterns = [
     # Learning Content
-    path('content/', LearningContentListAPIView.as_view(), name='content-list'),
-    path('content/upload/', LearningContentUploadAPIView.as_view(), name='content-upload'),
-    path('content/add_youtube/', YouTubeVideoAddAPIView.as_view(), name='content-add-youtube'),
-    path('content/statistics/', LearningContentStatsAPIView.as_view(), name='content-statistics'),
-    path('content/course/<str:course_id>/', CourseContentAPIView.as_view(), name='course-content-list'),
-    path('content/<uuid:pk>/', LearningContentDetailAPIView.as_view(), name='content-detail'),
-    path('content/<uuid:pk>/log_access/', LearningContentLogAccessAPIView.as_view(), name='content-log-access'),
+    path('', LearningContentListAPIView.as_view(), name='content-list'),
+    path('upload/', LearningContentUploadAPIView.as_view(), name='content-upload'),
+    path('add-youtube/', YouTubeVideoAddAPIView.as_view(), name='content-add-youtube'),
+    path('statistics/', LearningContentStatsAPIView.as_view(), name='content-statistics'),
+    path('course/<str:course_id>/', CourseContentAPIView.as_view(), name='course-content-list'),
+    path('<uuid:pk>/', LearningContentDetailAPIView.as_view(), name='content-detail'),
+    path('<uuid:pk>/log-access/', LearningContentLogAccessAPIView.as_view(), name='content-log-access'),
 
     # Storage Settings
     path('storage-settings/', StorageSettingsListCreateAPIView.as_view(), name='storage-settings-list'),
