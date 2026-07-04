@@ -13,12 +13,10 @@ export const useStudentDashboard = () => {
     const fetchDashboard = () => {
         startTransition(async () => {
             try {
-                const response = await repository.get(endpoint.dashboard.student)
-                console.log(response)
+                const response = await repository.get(endpoint.student.dashboard.student)
                 setDashboardData(response.data as Dashboard)
                 return response;
             } catch (error) {
-                console.log(error)
                 return error;
             }
         });

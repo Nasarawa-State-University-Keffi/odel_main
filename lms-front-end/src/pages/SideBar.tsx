@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 export const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "All Courses", href: "/courses", icon: BookOpen },
+  { name: "Content", href: "/content", icon: BookOpen },
   { name: "Assignments", href: "/assignments", icon: FileText },
   { name: "Quizzes", href: "/quizzes", icon: ClipboardCheck },
   { name: "My Grades", href: "/grades", icon: GraduationCap },
@@ -46,7 +47,7 @@ const SideBar = () => {
           return (
             <Link
               key={item.name}
-              to={item.href}
+              to={'/application/' + item.href}
               className={cn(
                 "flex items-center gap-4 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group",
                 isActive 
