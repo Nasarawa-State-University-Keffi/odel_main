@@ -222,7 +222,32 @@ class StudentDetailDashboardView(APIView):
     """
     permission_classes = [IsAuthenticated, IsPortalStaff]
     
-    @extend_schema(tags=["Staff - Dashboard"], operation_id="get_student_detail_dashboard", responses={200: dict})
+    @extend_schema(
+        tags=["Staff - Dashboard"],
+        operation_id="get_student_detail_dashboard",
+        responses={
+            200: OpenApiResponse(
+                description="Student Detail Dashboard summary data",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            "courses": [
+                                {"id": 1, "name": "Math 101"}
+                            ],
+                            "course_count": 1,
+                            "pending_quizzes": [
+                                {"id": 10, "title": "Quiz 1"}
+                            ],
+                            "upcoming_assignments": [
+                                {"id": 5, "title": "Assignment 1"}
+                            ]
+                        },
+                    )
+                ]
+            )
+        }
+    )
     def get(self, request, external_id):
         session_id = request.query_params.get("session_id")
         semester_id = request.query_params.get("semester_id")
@@ -274,7 +299,34 @@ class InstructorDetailDashboardView(APIView):
     """
     permission_classes = [IsAuthenticated, IsPortalStaff]
     
-    @extend_schema(tags=["Staff - Dashboard"], operation_id="get_instructor_detail_dashboard", responses={200: dict})
+    @extend_schema(
+        tags=["Staff - Dashboard"],
+        operation_id="get_instructor_detail_dashboard",
+        responses={
+            200: OpenApiResponse(
+                description="Instructor Detail Dashboard summary data",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            "total_courses": [
+                                {"id": 1, "name": "Math 101"}
+                            ],
+                            "total_courses_count": 1,
+                            "total_assignments": [
+                                {"id": 5, "title": "Assignment 1"}
+                            ],
+                            "total_assignments_count": 1,
+                            "total_quizzes": [
+                                {"id": 10, "title": "Quiz 1"}
+                            ],
+                            "total_quizzes_count": 1
+                        },
+                    )
+                ]
+            )
+        }
+    )
     def get(self, request, external_id):
         programme_id = request.query_params.get("programme_id")
         

@@ -12,7 +12,7 @@ from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
 from .models import LearningContent, StorageSettings, ContentAccessLog
@@ -238,7 +238,14 @@ class LearningContentLogAccessAPIView(views.APIView):
                 'required': ['action']
             }
         },
-        responses={200: {'type': 'object', 'properties': {'status': {'type': 'string'}}}}
+        responses={
+            200: OpenApiResponse(
+                description="Access logged successfully",
+                examples=[
+                    OpenApiExample('Example Response', value={'status': 'logged'})
+                ]
+            )
+        }
     )
     def post(self, request, pk):
         content = get_object_or_404(LearningContent, pk=pk)
@@ -365,21 +372,20 @@ class AvailableBackendsAPIView(views.APIView):
     @extend_schema(
         summary="List available storage backends",
         responses={
-            200: {
-                'type': 'object',
-                'properties': {
-                    'backends': {
-                        'type': 'array',
-                        'items': {
-                            'type': 'object',
-                            'properties': {
-                                'name': {'type': 'string'},
-                                'display': {'type': 'string'}
-                            }
+            200: OpenApiResponse(
+                description="List of available backends",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            'backends': [
+                                {'name': 'local', 'display': 'LOCAL'},
+                                {'name': 's3', 'display': 'S3'}
+                            ]
                         }
-                    }
-                }
-            }
+                    )
+                ]
+            )
         }
     )
     def get(self, request):

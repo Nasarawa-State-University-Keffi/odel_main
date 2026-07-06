@@ -233,7 +233,22 @@ class StudentSubmissionSubmitView(APIView):
         summary="Submit assignment (students)",
         description="Finalizes the submission, locking it from further changes.",
         request=SubmitAssignmentSerializer,
-        responses={200: dict},
+        responses={
+            200: OpenApiResponse(
+                description="Submission successful",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            'status': 'success',
+                            'message': 'Assignment submitted successfully',
+                            'submission_id': '550e8400-e29b-41d4-a716-446655440000',
+                            'submitted_at': '2025-10-15T12:00:00Z'
+                        }
+                    )
+                ]
+            )
+        },
         tags=['Student - Assignments']
     )
     def post(self, request, pk=None):
@@ -417,7 +432,23 @@ class StudentQuizSubmitResponseView(APIView):
     @extend_schema(
         summary="Submit question response (students)",
         request=SubmitResponseSerializer,
-        responses={200: dict},
+        responses={
+            200: OpenApiResponse(
+                description="Response saved successfully",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            'success': True,
+                            'question_attempt_id': '550e8400-e29b-41d4-a716-446655440000',
+                            'fraction': 1.0,
+                            'score': 5.0,
+                            'feedback': 'Correct answer!'
+                        }
+                    )
+                ]
+            )
+        },
         tags=['Student - Quizzes']
     )
     def post(self, request, pk=None, attempt_id=None):
@@ -532,7 +563,22 @@ class StaffQuizManualGradeView(APIView):
     @extend_schema(
         summary="Manually grade quiz question (staff)",
         request=ManualGradeSerializer,
-        responses={200: dict},
+        responses={
+            200: OpenApiResponse(
+                description="Question manually graded successfully",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            'success': True,
+                            'fraction': 0.8,
+                            'score': 4.0,
+                            'feedback': 'Good effort but missed a small detail.'
+                        }
+                    )
+                ]
+            )
+        },
         tags=['Staff - Quizzes']
     )
     def post(self, request, pk=None, question_attempt_id=None):
