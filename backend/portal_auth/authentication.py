@@ -37,3 +37,19 @@ class PortalJWTAuthentication(BaseAuthentication):
             raise AuthenticationFailed(str(e))
 
         return (portal_user, token)
+
+try:
+    from drf_spectacular.extensions import OpenApiAuthenticationExtension
+    
+    class PortalJWTAuthenticationScheme(OpenApiAuthenticationExtension):
+        target_class = 'portal_auth.authentication.PortalJWTAuthentication'
+        name = 'jwtAuth'
+
+        def get_security_definition(self, auto_schema):
+            return {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+except ImportError:
+    pass

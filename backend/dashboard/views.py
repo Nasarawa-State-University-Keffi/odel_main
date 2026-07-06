@@ -15,55 +15,58 @@ from portal_auth.permissions import IsPortalStudent, IsPortalStaff
 
 from drf_spectacular.utils import OpenApiParameter
 
-@extend_schema(
-    summary="Student Dashboard Summary",
-    description="Returns a summary of the student's dashboard including courses, pending quizzes, and upcoming assignments.",
-    parameters=[
-        OpenApiParameter(
-            name="session_id",
-            type=str,
-            location=OpenApiParameter.QUERY,
-            required=True,
-            description="Session ID (required)"
-        ),
-        OpenApiParameter(
-            name="semester_id",
-            type=str,
-            location=OpenApiParameter.QUERY,
-            required=True,
-            description="Semester ID (required)"
-        ),
-    ],
-    responses={
-        200: OpenApiResponse(
-            description="Dashboard summary data",
-            examples=[
-                OpenApiExample(
-                    'Example Response',
-                    value={
-                        "total_courses": [
-                            {"id": 1, "name": "Math 101"},
-                            {"id": 2, "name": "Physics 201"}
-                        ],
-                        "total_courses_count": 2,
-                        "pending_quizzes": [
-                            {"id": 10, "title": "Quiz 1", "due_date": "2025-12-30T12:00:00Z"}
-                        ],
-                        "upcoming_assignments": [
-                            {"id": 5, "title": "Assignment 1", "due_date": "2025-12-29T23:59:59Z"}
-                        ]
-                    },
-                )
-            ]
-        )
-    }
-)
 class StudentDashboardView(APIView):
     """
     endpoint for retrieving student dashboard data for summary.
     GET /api/dashboard/student/
     """
     permission_classes = [IsAuthenticated, IsPortalStudent]
+
+    @extend_schema(
+        tags=["Student - Dashboard"],
+        operation_id="get_student_dashboard",
+        summary="Student Dashboard Summary",
+        description="Returns a summary of the student's dashboard including courses, pending quizzes, and upcoming assignments.",
+        parameters=[
+            OpenApiParameter(
+                name="session_id",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Session ID (required)"
+            ),
+            OpenApiParameter(
+                name="semester_id",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Semester ID (required)"
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Dashboard summary data",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            "total_courses": [
+                                {"id": 1, "name": "Math 101"},
+                                {"id": 2, "name": "Physics 201"}
+                            ],
+                            "total_courses_count": 2,
+                            "pending_quizzes": [
+                                {"id": 10, "title": "Quiz 1", "due_date": "2025-12-30T12:00:00Z"}
+                            ],
+                            "upcoming_assignments": [
+                                {"id": 5, "title": "Assignment 1", "due_date": "2025-12-29T23:59:59Z"}
+                            ]
+                        },
+                    )
+                ]
+            )
+        }
+    )
     def get(self, request):
         
         user = request.user
@@ -125,49 +128,52 @@ class StudentDashboardView(APIView):
         return Response(status=200, data=data)
 
 
-@extend_schema(
-    summary="Instructor Dashboard Summary",
-    description="Returns a summary of the instructor's dashboard including courses, assignments, and quizzes.",
-     parameters=[
-        OpenApiParameter(
-            name="programme_id",
-            type=str,
-            location=OpenApiParameter.QUERY,
-            required=True,
-            description="Programme ID (required)"
-        ),
-    ],
-    responses={
-        200: OpenApiResponse(
-            description="Dashboard summary data",
-            examples=[
-                OpenApiExample(
-                    'Example Response',
-                    value={
-                        "total_courses": [
-                            {"id": 1, "name": "Math 101"}
-                        ],
-                        "total_courses_count": 1,
-                        "total_assignments": [
-                            {"id": 5, "title": "Assignment 1"}
-                        ],
-                        "total_assignments_count": 1,
-                        "total_quizzes": [
-                            {"id": 10, "title": "Quiz 1"}
-                        ],
-                        "total_quizzes_count": 1
-                    },
-                )
-            ]
-        )
-    }
-)
 class InstructorDashboardView(APIView):
     """
     endpoint for retrieving instructor dashboard data for summary.
     GET /api/dashboard/instructor/
     """
     permission_classes = [IsAuthenticated, IsPortalStaff]
+
+    @extend_schema(
+        tags=["Staff - Dashboard"],
+        operation_id="get_instructor_dashboard",
+        summary="Instructor Dashboard Summary",
+        description="Returns a summary of the instructor's dashboard including courses, assignments, and quizzes.",
+        parameters=[
+            OpenApiParameter(
+                name="programme_id",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Programme ID (required)"
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Dashboard summary data",
+                examples=[
+                    OpenApiExample(
+                        'Example Response',
+                        value={
+                            "total_courses": [
+                                {"id": 1, "name": "Math 101"}
+                            ],
+                            "total_courses_count": 1,
+                            "total_assignments": [
+                                {"id": 5, "title": "Assignment 1"}
+                            ],
+                            "total_assignments_count": 1,
+                            "total_quizzes": [
+                                {"id": 10, "title": "Quiz 1"}
+                            ],
+                            "total_quizzes_count": 1
+                        },
+                    )
+                ]
+            )
+        }
+    )
     def get(self, request):
         programme_id = request.query_params.get("programme_id")
         user = request.user
@@ -216,6 +222,7 @@ class StudentDetailDashboardView(APIView):
     """
     permission_classes = [IsAuthenticated, IsPortalStaff]
     
+    @extend_schema(tags=["Staff - Dashboard"], operation_id="get_student_detail_dashboard", responses={200: dict})
     def get(self, request, external_id):
         session_id = request.query_params.get("session_id")
         semester_id = request.query_params.get("semester_id")
@@ -267,6 +274,7 @@ class InstructorDetailDashboardView(APIView):
     """
     permission_classes = [IsAuthenticated, IsPortalStaff]
     
+    @extend_schema(tags=["Staff - Dashboard"], operation_id="get_instructor_detail_dashboard", responses={200: dict})
     def get(self, request, external_id):
         programme_id = request.query_params.get("programme_id")
         

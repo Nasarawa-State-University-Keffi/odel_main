@@ -16,14 +16,14 @@ from courses.models import CourseCache
 class LearningContentSerializer(serializers.ModelSerializer):
     """Serializer for learning content metadata."""
     
-    url = serializers.ReadOnlyField()
+    url = serializers.URLField(read_only=True)
     uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
     uploaded_by_external_id = serializers.CharField(source='uploaded_by.external_id', read_only=True)
     course_title = serializers.CharField(source='course.course_title', read_only=True)
     course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
-    file_extension = serializers.ReadOnlyField()
-    is_video = serializers.ReadOnlyField()
-    is_document = serializers.ReadOnlyField()
+    file_extension = serializers.CharField(read_only=True)
+    is_video = serializers.BooleanField(read_only=True)
+    is_document = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = LearningContent

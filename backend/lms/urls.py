@@ -22,13 +22,15 @@ from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from portal_auth.views import CustomTokenObtainPairView, CustomTokenRefreshView
+
 urlpatterns = [
     # Django Admin
     path('admin/', admin.site.urls),
     
     # Authentication
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/', include('portal_auth.urls')),
     
     # Courses APIs

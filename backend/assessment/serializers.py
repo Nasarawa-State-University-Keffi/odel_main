@@ -78,14 +78,14 @@ class CourseSlugValidationMixin:
 class QuizMetricsMixin:
     """Mixin providing common metrics for Quizzes and Categories."""
     
-    def get_questions_count(self, obj):
+    def get_questions_count(self, obj) -> int:
         if hasattr(obj, 'quiz_questions'):
              return obj.quiz_questions.count()
         if hasattr(obj, 'questions'): # For QuestionCategory
             return obj.questions.count()
         return 0
     
-    def get_total_marks(self, obj):
+    def get_total_marks(self, obj) -> float:
         if not hasattr(obj, 'quiz_questions'):
             return 0.0
         total = obj.quiz_questions.aggregate(total=Sum('max_mark'))['total']
@@ -127,7 +127,7 @@ class AssignmentWriteSerializer(serializers.ModelSerializer, CourseSlugValidatio
     
 
 class AssignmentContentSerializer(serializers.ModelSerializer):
-    url = serializers.ReadOnlyField()
+    url = serializers.URLField(read_only=True)
 
     class Meta:
         model = AssignmentContent
@@ -149,7 +149,7 @@ class AssignmentReadSerializer(serializers.ModelSerializer):
 
 
 class AssignmentSubmissionFileSerializer(serializers.ModelSerializer):
-    url = serializers.ReadOnlyField()
+    url = serializers.URLField(read_only=True)
 
     class Meta:
         model = AssignmentSubmissionFile
@@ -221,7 +221,7 @@ class QuestionCategorySerializer(serializers.ModelSerializer, CourseSlugValidati
         ]
         read_only_fields = ['created_at', 'updated_at']
     
-    def get_available_question_types(self, obj):
+    def get_available_question_types(self, obj) -> list:
         return QuestionTypeAvailability.get_available_question_types(obj.level)
     
     def validate(self, attrs):
@@ -375,10 +375,10 @@ class QuizDetailSerializer(BaseQuizSerializer):
     class Meta(BaseQuizSerializer.Meta):
         fields = BaseQuizSerializer.Meta.fields + ['quiz_questions', 'questions', 'time_limit_minutes']
     
-    def get_time_limit_minutes(self, obj):
+    def get_time_limit_minutes(self, obj) -> int:
         return obj.time_limit // 60 if obj.time_limit else None
     
-    def get_questions(self, obj):
+    def get_questions(self, obj) -> list:
         quiz_questions = obj.quiz_questions.select_related('question').prefetch_related('question__answers').all()
         questions_data = []
         for qq in quiz_questions:
@@ -407,7 +407,7 @@ class QuestionAttemptSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['fraction', 'score', 'graded_at', 'manually_graded']
     
-    def get_max_mark(self, obj):
+    def get_max_mark(self, obj) -> float:
         quiz_question = QuizQuestion.objects.filter(
             quiz=obj.quiz_attempt.quiz,
             question=obj.question
@@ -427,14 +427,14 @@ class QuestionAttemptDetailSerializer(serializers.ModelSerializer):
             'correct_answer', 'graded_at', 'manually_graded', 'feedback'
         ]
     
-    def get_max_mark(self, obj):
+    def get_max_mark(self, obj) -> float:
         quiz_question = QuizQuestion.objects.filter(
             quiz=obj.quiz_attempt.quiz,
             question=obj.question
         ).first()
         return float(quiz_question.max_mark) if quiz_question else 0.0
     
-    def get_correct_answer(self, obj):
+    def get_correct_answer(self, obj) -> dict:
         from .services import QuestionService
         return QuestionService.get_correct_answer(obj.question)
 
@@ -452,7 +452,7 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['started_at', 'finished_at', 'total_score', 'state']
     
-    def get_time_taken_seconds(self, obj):
+    def get_time_taken_seconds(self, obj) -> int:
         if obj.finished_at:
             return int((obj.finished_at - obj.started_at).total_seconds())
         return None
@@ -473,12 +473,12 @@ class QuizAttemptDetailSerializer(serializers.ModelSerializer):
             'time_taken_seconds', 'question_attempts', 'summary'
         ]
     
-    def get_time_taken_seconds(self, obj):
+    def get_time_taken_seconds(self, obj) -> int:
         if obj.finished_at:
             return int((obj.finished_at - obj.started_at).total_seconds())
         return None
     
-    def get_summary(self, obj):
+    def get_summary(self, obj) -> dict:
         from .services import QuizService
         return QuizService.get_attempt_summary(obj)
 
@@ -510,7 +510,7 @@ class ManualGradeSerializer(serializers.Serializer):
 
 class GradeSerializer(serializers.ModelSerializer):
     """Serializer for Grade model"""
-    item_name = serializers.ReadOnlyField()
+    item_name = serializers.CharField(read_only=True)
     course_name = serializers.CharField(source='course.title', read_only=True)
     
     class Meta:

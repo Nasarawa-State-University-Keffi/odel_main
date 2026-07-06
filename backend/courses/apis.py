@@ -11,12 +11,12 @@ from .serializers import CourseCacheSerializer
     list=extend_schema(
         summary="List all courses",
         description="Retrieve a list of all courses cached from the student portal",
-        tags=['Courses']
+        tags=['Global - Courses']
     ),
     retrieve=extend_schema(
         summary="Get course details",
         description="Retrieve detailed information about a specific course",
-        tags=['Courses']
+        tags=['Global - Courses']
     )
 )
 class CourseCacheViewSet(viewsets.ReadOnlyModelViewSet):

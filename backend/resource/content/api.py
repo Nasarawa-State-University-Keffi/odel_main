@@ -35,7 +35,7 @@ from .services import (
 from courses.models import CourseCache
 
 
-@extend_schema(tags=['Content'])
+@extend_schema(tags=['Global - Content'])
 class LearningContentListAPIView(generics.ListAPIView):
     """
     List learning content with filtering.
@@ -68,7 +68,7 @@ class LearningContentListAPIView(generics.ListAPIView):
         return queryset.select_related('course', 'uploaded_by')
 
 
-@extend_schema(tags=['Content'])
+@extend_schema(tags=['Student - Content'])
 class CourseContentAPIView(generics.ListAPIView):
     """
     List content for a specific course (filtered by UUID or external_id).
@@ -102,7 +102,7 @@ class CourseContentAPIView(generics.ListAPIView):
         return queryset.select_related('course', 'uploaded_by')
 
 
-@extend_schema(tags=['Content'])
+@extend_schema(tags=['Global - Content'])
 class LearningContentDetailAPIView(generics.RetrieveDestroyAPIView):
     """
     Retrieve or delete specific learning content.
@@ -115,7 +115,7 @@ class LearningContentDetailAPIView(generics.RetrieveDestroyAPIView):
         delete_learning_content(instance.id)
 
 
-@extend_schema(tags=['Content Upload'])
+@extend_schema(tags=['Staff - Content Upload'])
 class LearningContentUploadAPIView(views.APIView):
     """
     Upload learning content file.
@@ -169,7 +169,7 @@ class LearningContentUploadAPIView(views.APIView):
             )
 
 
-@extend_schema(tags=['Content Upload'])
+@extend_schema(tags=['Staff - Content Upload'])
 class YouTubeVideoAddAPIView(views.APIView):
     """
     Add YouTube video reference.
@@ -220,7 +220,7 @@ class YouTubeVideoAddAPIView(views.APIView):
             )
 
 
-@extend_schema(tags=['Content'])
+@extend_schema(tags=['Global - Content'])
 class LearningContentLogAccessAPIView(views.APIView):
     """
     Log content access.
@@ -261,7 +261,7 @@ class LearningContentLogAccessAPIView(views.APIView):
         return Response({'status': 'logged'})
 
 
-@extend_schema(tags=['Content'])
+@extend_schema(tags=['Staff - Content Stats'])
 class LearningContentStatsAPIView(views.APIView):
     """
     Get content statistics.
@@ -312,7 +312,7 @@ class LearningContentStatsAPIView(views.APIView):
         return Response(serializer.data)
 
 
-@extend_schema(tags=['Storage Settings'])
+@extend_schema(tags=['Admin - Storage Settings'])
 class StorageSettingsListCreateAPIView(generics.ListCreateAPIView):
     """
     List or create storage settings.
@@ -322,7 +322,7 @@ class StorageSettingsListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAdminUser]
 
 
-@extend_schema(tags=['Storage Settings'])
+@extend_schema(tags=['Admin - Storage Settings'])
 class StorageSettingsDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     """
     Manage specific storage settings.
@@ -332,7 +332,7 @@ class StorageSettingsDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
 
 
-@extend_schema(tags=['Storage Settings'])
+@extend_schema(tags=['Admin - Storage Settings'])
 class ActiveStorageSettingsAPIView(views.APIView):
     """
     Get active storage settings.
@@ -355,7 +355,7 @@ class ActiveStorageSettingsAPIView(views.APIView):
         )
 
 
-@extend_schema(tags=['Storage Settings'])
+@extend_schema(tags=['Admin - Storage Settings'])
 class AvailableBackendsAPIView(views.APIView):
     """
     Get list of available storage backends.
@@ -393,7 +393,7 @@ class AvailableBackendsAPIView(views.APIView):
         })
 
 
-@extend_schema(tags=['Content'])
+@extend_schema(tags=['Admin - Content Logs'])
 class ContentAccessLogListAPIView(generics.ListAPIView):
     """
     List content access logs.

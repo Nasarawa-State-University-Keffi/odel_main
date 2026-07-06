@@ -9,11 +9,11 @@ class PortalUserSerializer(serializers.ModelSerializer):
             'external_id', 
             'email', 
             'full_name', 
-            'user_type', 
+            'level', 
             'roles', 
-            'program_code',
+            'profile_picture',
             'is_active',
             'is_staff',
-            'is_superuser'
+            'last_synced_at'
         ]
         read_only_fields = fields

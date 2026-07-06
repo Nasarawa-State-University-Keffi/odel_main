@@ -143,12 +143,14 @@ class StaffQuerySetMixin:
             return queryset
         return model.objects.none()
 
+@extend_schema(tags=['Student - Assignments'])
 class StudentAssignmentListView(StudentQuerySetMixin, generics.ListAPIView):
     """Student read-only list access to assignments in their courses"""
     serializer_class = AssignmentReadSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 
+@extend_schema(tags=['Student - Assignments'])
 class StudentAssignmentDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
     """Student read-only detail access to an assignment"""
     serializer_class = AssignmentReadSerializer
@@ -158,12 +160,14 @@ class StudentAssignmentDetailView(StudentQuerySetMixin, generics.RetrieveAPIView
 # =========================================
 # STUDENT - ASSIGNMENT SUBMISSION APIs
 
+@extend_schema(tags=['Student - Assignments'])
 class StudentSubmissionListView(StudentQuerySetMixin, generics.ListAPIView):
     """List my submissions (students)"""
     serializer_class = AssignmentSubmissionSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 
+@extend_schema(tags=['Student - Assignments'])
 class StudentSubmissionDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
     """View my submission (students)"""
     serializer_class = AssignmentSubmissionSerializer
@@ -258,6 +262,7 @@ class StudentSubmissionSubmitView(APIView):
 # STAFF - ASSIGNMENT APIs
 # ==========================================
 
+@extend_schema(tags=['Staff - Assignments'])
 class StaffAssignmentListCreateView(StaffQuerySetMixin, generics.ListCreateAPIView):
     """
     Unified endpoint for list/create assignments.
@@ -312,6 +317,7 @@ class StaffAssignmentListCreateView(StaffQuerySetMixin, generics.ListCreateAPIVi
 
 
 
+@extend_schema(tags=['Staff - Assignments'])
 class StaffAssignmentDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroyAPIView):
     """Staff detail/update/delete access to assignments"""
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
@@ -325,12 +331,14 @@ class StaffAssignmentDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestr
 # ==========================================
 # STAFF - ASSIGNMENT SUBMISSION APIs
 
+@extend_schema(tags=['Staff - Assignments'])
 class StaffSubmissionListView(StaffQuerySetMixin, generics.ListAPIView):
     """List all submissions (staff) with filtering"""
     serializer_class = AssignmentSubmissionSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Assignments'])
 class StaffSubmissionDetailView(StaffQuerySetMixin, generics.RetrieveAPIView):
     """View any submission (staff)"""
     serializer_class = AssignmentSubmissionSerializer
@@ -367,12 +375,14 @@ class StaffSubmissionGradeView(APIView):
 # STUDENT - QUIZ APIs
 # ==========================================
 
+@extend_schema(tags=['Student - Quizzes'])
 class StudentQuizListView(StudentQuerySetMixin, generics.ListAPIView):
     """List available quizzes (students)"""
     serializer_class = QuizSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 
+@extend_schema(tags=['Student - Quizzes'])
 class StudentQuizDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
     """View quiz details (students)"""
     serializer_class = QuizDetailSerializer
@@ -447,6 +457,7 @@ class StudentQuizFinishView(APIView):
 
     @extend_schema(
         summary="Finish quiz attempt (students)",
+        request=None,
         responses={200: QuizAttemptDetailSerializer},
         tags=['Student - Quizzes']
     )
@@ -469,12 +480,14 @@ class StudentQuizFinishView(APIView):
 # ==========================================
 # STUDENT - QUIZ ATTEMPT APIs
 
+@extend_schema(tags=['Student - Quizzes'])
 class StudentAttemptListView(StudentQuerySetMixin, generics.ListAPIView):
     """List my quiz attempts (students)"""
     serializer_class = QuizAttemptSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 
+@extend_schema(tags=['Student - Quizzes'])
 class StudentAttemptDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
     """Detail of a specific quiz attempt (students)"""
     serializer_class = QuizAttemptDetailSerializer
@@ -484,24 +497,28 @@ class StudentAttemptDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
 # STAFF - QUIZ APIs
 # ==========================================
 
+@extend_schema(tags=['Staff - Quizzes'])
 class StaffQuizListCreateView(StaffQuerySetMixin, generics.ListCreateAPIView):
     """List/Create quizzes (staff)"""
     serializer_class = QuizSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Quizzes'])
 class StaffQuizDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroyAPIView):
     """Detail/Update/Delete quiz (staff)"""
     serializer_class = QuizSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Quizzes'])
 class StaffQuizAttemptListView(StaffQuerySetMixin, generics.ListAPIView):
     """List all quiz attempts (staff)"""
     serializer_class = QuizAttemptSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Quizzes'])
 class StaffQuizAttemptDetailView(StaffQuerySetMixin, generics.RetrieveAPIView):
     """View any attempt details (staff)"""
     serializer_class = QuizAttemptDetailSerializer
@@ -542,18 +559,21 @@ class StaffQuizManualGradeView(APIView):
 # ==========================================
 # STAFF - QUESTION BANK APIs
 
+@extend_schema(tags=['Staff - Question Bank'])
 class StaffQuestionCategoryListCreateView(StaffQuerySetMixin, generics.ListCreateAPIView):
     """List/Create question categories (staff)"""
     serializer_class = QuestionCategorySerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Question Bank'])
 class StaffQuestionCategoryDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroyAPIView):
     """Detail/Update/Delete question category (staff)"""
     serializer_class = QuestionCategorySerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Question Bank'])
 class StaffQuestionListCreateView(StaffQuerySetMixin, generics.ListCreateAPIView):
     """List/Create questions (staff)"""
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
@@ -564,6 +584,7 @@ class StaffQuestionListCreateView(StaffQuerySetMixin, generics.ListCreateAPIView
         return QuestionSerializer
 
 
+@extend_schema(tags=['Staff - Question Bank'])
 class StaffQuestionDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroyAPIView):
     """Detail/Update/Delete question (staff)"""
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
@@ -574,12 +595,14 @@ class StaffQuestionDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroy
         return QuestionSerializer
 
 
+@extend_schema(tags=['Staff - Quizzes'])
 class StaffQuizQuestionListCreateView(StaffQuerySetMixin, generics.ListCreateAPIView):
     """List/Create quiz question slots (staff)"""
     serializer_class = QuizQuestionSlotSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Quizzes'])
 class StaffQuizQuestionDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroyAPIView):
     """Detail/Update/Delete quiz question slot (staff)"""
     serializer_class = QuizQuestionSlotSerializer

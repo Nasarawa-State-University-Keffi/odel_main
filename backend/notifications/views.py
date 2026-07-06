@@ -4,6 +4,9 @@ from .models import EmailConfiguration
 from .serializers import EmailConfigurationSerializer
 
 
+from drf_spectacular.utils import extend_schema
+
+@extend_schema(tags=['Admin - Notifications'])
 class EmailConfigurationViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing email backend settings.
