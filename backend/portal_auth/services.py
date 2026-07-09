@@ -35,6 +35,8 @@ def get_or_sync_portal_user(token: str) -> PortalUser:
             external_id=external_id,
             defaults={
                 "full_name": user_data.get("name"),
+                "first_name": user_data.get("firstName") or user_data.get("given_name") or "",
+                "last_name": user_data.get("lastName") or user_data.get("family_name") or "",
                 "email": user_data.get("email"),
                 "level": level,
                 "roles": roles,

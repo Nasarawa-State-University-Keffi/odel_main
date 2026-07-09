@@ -62,16 +62,17 @@ COPY --chown=appuser:appuser . .
 RUN mkdir -p /app/media /app/staticfiles /app/logs && \
     chown -R appuser:appuser /app/media /app/staticfiles /app/logs
 
-
 # Switch to non-root user
 USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/api/ || exit 1
+    CMD curl -f http://localhost:8000/health/ || exit 1
 
 # Expose port
 EXPOSE 8000
+
+ENTRYPOINT ["sh", "/app/docker/entrypoint.sh"]
 
 # Use gunicorn for production (overrideable via docker-compose)
 CMD ["gunicorn", "--config", "gunicorn_config.py", "lms.wsgi:application"]

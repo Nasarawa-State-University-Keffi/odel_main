@@ -1,8 +1,9 @@
 import jwt
-from rest_framework.authentication import BaseAuthentication
+from rest_framework.authentication import BaseAuthentication, SessionAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from django.conf import settings
 from .services import get_or_sync_portal_user
+from .models import PortalUser
 
 
 class PortalJWTAuthentication(BaseAuthentication):
@@ -37,6 +38,22 @@ class PortalJWTAuthentication(BaseAuthentication):
             raise AuthenticationFailed(str(e))
 
         return (portal_user, token)
+
+
+class PortalSessionAuthentication(SessionAuthentication):
+    def authenticate(self, request):
+        portal_user_id = request.session.get("portal_user_id")
+        if not portal_user_id:
+            return None
+
+        try:
+            user = PortalUser.objects.get(id=portal_user_id, is_active=True)
+        except PortalUser.DoesNotExist:
+            request.session.pop("portal_user_id", None)
+            return None
+
+        self.enforce_csrf(request)
+        return (user, None)
 
 try:
     from drf_spectacular.extensions import OpenApiAuthenticationExtension

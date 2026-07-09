@@ -1,0 +1,177 @@
+from unittest.mock import patch
+
+from django.test import TestCase, override_settings
+import jwt
+from rest_framework.test import APIClient
+
+from .models import PortalUser
+from .oidc import OIDC_SESSION_KEY, sync_user_from_claims
+
+
+@override_settings(
+    AUTHENTIK_ISSUER_URL="https://auth.example.edu.ng/application/o/lms/",
+    AUTHENTIK_CLIENT_ID="lms-client",
+    AUTHENTIK_CLIENT_SECRET="secret",
+    AUTHENTIK_REDIRECT_URI="https://lms.example.edu.ng/auth/oidc/callback",
+    OIDC_LOGIN_REDIRECT_URL="/dashboard",
+)
+class OIDCAuthTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch("portal_auth.oidc.get_provider_metadata")
+    def test_login_redirects_to_authentik_and_stores_login_state(self, metadata):
+        metadata.return_value = {
+            "authorization_endpoint": "https://auth.example.edu.ng/application/o/authorize/",
+            "token_endpoint": "https://auth.example.edu.ng/application/o/token/",
+            "jwks_uri": "https://auth.example.edu.ng/application/o/lms/jwks/",
+        }
+
+        response = self.client.get("/auth/login")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("https://auth.example.edu.ng/application/o/authorize/", response["Location"])
+        self.assertIn("client_id=lms-client", response["Location"])
+        self.assertIn("scope=openid+profile+email", response["Location"])
+        self.assertIn("code_challenge_method=S256", response["Location"])
+        self.assertIn(OIDC_SESSION_KEY, self.client.session)
+        self.assertIn("state", self.client.session[OIDC_SESSION_KEY])
+        self.assertIn("nonce", self.client.session[OIDC_SESSION_KEY])
+
+    def test_callback_rejects_invalid_state(self):
+        session = self.client.session
+        session[OIDC_SESSION_KEY] = {"state": "expected", "nonce": "nonce", "code_verifier": "verifier"}
+        session.save()
+
+        response = self.client.get("/auth/oidc/callback?code=abc&state=wrong")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "Invalid OIDC state")
+
+    @patch("portal_auth.views.validate_id_token")
+    @patch("portal_auth.views.exchange_code_for_tokens")
+    def test_callback_syncs_user_sets_session_and_redirects(self, exchange_code, validate_id_token):
+        session = self.client.session
+        session[OIDC_SESSION_KEY] = {"state": "expected", "nonce": "nonce", "code_verifier": "verifier"}
+        session.save()
+        exchange_code.return_value = {"id_token": "header.payload.signature"}
+        validate_id_token.return_value = {
+            "sub": "authentik-subject",
+            "preferred_username": "staff001",
+            "email": "staff@example.edu.ng",
+            "given_name": "John",
+            "family_name": "Doe",
+            "name": "John Doe",
+            "groups": ["STAFF", "teacher"],
+            "nonce": "nonce",
+            "exp": 4102444800,
+        }
+
+        response = self.client.get("/auth/oidc/callback?code=abc&state=expected")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/dashboard")
+
+        user = PortalUser.objects.get(external_id="staff001")
+        self.assertEqual(user.email, "staff@example.edu.ng")
+        self.assertEqual(user.first_name, "John")
+        self.assertEqual(user.last_name, "Doe")
+        self.assertTrue(user.is_staff)
+        self.assertEqual(self.client.session["portal_user_id"], user.id)
+        self.assertNotIn(OIDC_SESSION_KEY, self.client.session)
+
+    def test_me_returns_session_user(self):
+        user = PortalUser.objects.create(
+            external_id="staff001",
+            full_name="John Doe",
+            first_name="John",
+            last_name="Doe",
+            email="staff@example.edu.ng",
+            roles=["teacher"],
+            is_staff=True,
+        )
+        session = self.client.session
+        session["portal_user_id"] = user.id
+        session.save()
+
+        response = self.client.get("/auth/me")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id"], user.id)
+        self.assertEqual(response.json()["username"], "staff001")
+        self.assertEqual(response.json()["firstName"], "John")
+        self.assertEqual(response.json()["lastName"], "Doe")
+        self.assertEqual(response.json()["roles"], ["teacher"])
+        self.assertTrue(response.json()["csrfToken"])
+
+    def test_logout_clears_session(self):
+        user = PortalUser.objects.create(external_id="staff001", full_name="John Doe")
+        session = self.client.session
+        session["portal_user_id"] = user.id
+        session.save()
+
+        response = self.client.post("/auth/logout")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn("portal_user_id", self.client.session)
+
+    def test_logout_requires_csrf_for_session_authentication(self):
+        user = PortalUser.objects.create(external_id="staff001", full_name="John Doe")
+        client = APIClient(enforce_csrf_checks=True)
+        session = client.session
+        session["portal_user_id"] = user.id
+        session.save()
+
+        response = client.post("/auth/logout")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_logout_accepts_csrf_token_from_me_response(self):
+        user = PortalUser.objects.create(external_id="staff001", full_name="John Doe")
+        client = APIClient(enforce_csrf_checks=True)
+        session = client.session
+        session["portal_user_id"] = user.id
+        session.save()
+
+        me_response = client.get("/auth/me")
+        csrf_token = me_response.json()["csrfToken"]
+
+        response = client.post("/auth/logout", HTTP_X_CSRFTOKEN=csrf_token)
+
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn("portal_user_id", client.session)
+
+    @patch("portal_auth.views.validate_id_token")
+    @patch("portal_auth.views.exchange_code_for_tokens")
+    def test_callback_rejects_invalid_id_token_and_clears_login_state(self, exchange_code, validate_id_token):
+        session = self.client.session
+        session[OIDC_SESSION_KEY] = {"state": "expected", "nonce": "nonce", "code_verifier": "verifier"}
+        session.save()
+        exchange_code.return_value = {"id_token": "header.payload.signature"}
+        validate_id_token.side_effect = jwt.InvalidTokenError("bad token")
+
+        response = self.client.get("/auth/oidc/callback?code=abc&state=expected")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["detail"], "Invalid OIDC ID token")
+        self.assertNotIn(OIDC_SESSION_KEY, self.client.session)
+
+
+class OIDCUserMappingTests(TestCase):
+    def test_sync_user_from_claims_prefers_preferred_username(self):
+        user = sync_user_from_claims({
+            "sub": "stable-subject",
+            "preferred_username": "student001",
+            "email": "student@example.edu.ng",
+            "given_name": "Jane",
+            "family_name": "Doe",
+            "groups": ["STUDENT"],
+        })
+
+        self.assertEqual(user.external_id, "student001")
+        self.assertEqual(user.full_name, "Jane Doe")
+        self.assertEqual(user.email, "student@example.edu.ng")
+        self.assertEqual(user.first_name, "Jane")
+        self.assertEqual(user.last_name, "Doe")
+        self.assertEqual(user.roles, ["STUDENT"])
+        self.assertFalse(user.is_staff)

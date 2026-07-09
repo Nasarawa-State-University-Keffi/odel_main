@@ -6,6 +6,7 @@ django-cors-headers>=4.0
 # Authentication & JWT
 djangorestframework-simplejwt>=5.3
 PyJWT>=2.8
+cryptography>=42.0
 
 # Database
 psycopg2-binary>=2.9  # PostgreSQL adapter

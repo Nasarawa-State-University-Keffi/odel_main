@@ -1,184 +1,111 @@
-version: '3.8'
+x-app-environment: &app-environment
+  DJANGO_ENV: production
+  DJANGO_SETTINGS_MODULE: lms.settings
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in Dokploy}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?Set DJANGO_ALLOWED_HOSTS in Dokploy}
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in Dokploy}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}@redis:6379/1
+  CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}@redis:6379/0
+  CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}@redis:6379/0
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in Dokploy}
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?Set CSRF_TRUSTED_ORIGINS in Dokploy}
+  AUTHENTIK_ISSUER_URL: ${AUTHENTIK_ISSUER_URL:?Set AUTHENTIK_ISSUER_URL in Dokploy}
+  AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:?Set AUTHENTIK_CLIENT_ID in Dokploy}
+  AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:?Set AUTHENTIK_CLIENT_SECRET in Dokploy}
+  AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:?Set AUTHENTIK_REDIRECT_URI in Dokploy}
+  AUTHENTIK_SCOPES: ${AUTHENTIK_SCOPES:-openid profile email}
+  OIDC_LOGIN_REDIRECT_URL: ${OIDC_LOGIN_REDIRECT_URL:?Set OIDC_LOGIN_REDIRECT_URL in Dokploy}
+  PORTAL_API_BASE_URL: ${PORTAL_API_BASE_URL:-https://test.nsuk.edu.ng/api}
+  PORTAL_JWT_PUBLIC_KEY: ${PORTAL_JWT_PUBLIC_KEY:-}
+  PORTAL_JWT_ISSUER: ${PORTAL_JWT_ISSUER:-portal.nsuk.edu.ng}
 
 services:
-  # PostgreSQL Database (recommended for production)
-  db:
-    image: postgres:15-alpine
-    container_name: lms_postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-lms_db}
-      - POSTGRES_USER=${POSTGRES_USER:-lms_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
-    # Port NOT exposed to host — communicate via lms_network only
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
+    command: sh -c 'redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"'
+    volumes:
+      - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lms_user}"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - lms_network
-    restart: unless-stopped
+      - lms_internal
 
-  # Redis - Message broker for Celery and caching
-  redis:
-    image: redis:7-alpine
-    container_name: lms_redis
-    # Port NOT exposed to host — communicate via lms_network only
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispass}
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - lms_network
-    restart: unless-stopped
-
-  # Django web application
   web:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-    container_name: lms_web
-    command: gunicorn --config gunicorn_config.py lms.wsgi:application
-    volumes:
-      # Source code is baked into the image via Dockerfile COPY
-      # Do NOT mount .:/app in production — it overwrites the built image
-      - media_volume:/app/media
-      - static_volume:/app/staticfiles
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
     env_file:
       - .env
     environment:
-      - DJANGO_ENV=${DJANGO_ENV:-development}
-      - DJANGO_SETTINGS_MODULE=lms.settings
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-lms_db}
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
+      <<: *app-environment
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
+      RUN_COLLECTSTATIC: ${RUN_COLLECTSTATIC:-1}
+    expose:
+      - "8000"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    networks:
+      - dokploy-network
+      - lms_internal
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - lms_network
-    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Celery worker
   celery_worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: lms_celery_worker
-    command: celery -A lms worker -l info --concurrency=4
-    volumes:
-      # Source code is baked into the image — no host mount needed
-      - media_volume:/app/media
+    restart: unless-stopped
+    command: celery -A lms worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
     env_file:
       - .env
     environment:
-      - DJANGO_ENV=${DJANGO_ENV:-development}
-      - DJANGO_SETTINGS_MODULE=lms.settings
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-lms_db}
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      <<: *app-environment
+    volumes:
+      - media_data:/app/media
+    networks:
+      - lms_internal
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - lms_network
-    restart: unless-stopped
 
-  # Celery Beat - Periodic task scheduler
   celery_beat:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: lms_celery_beat
+    restart: unless-stopped
     command: celery -A lms beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
       - .env
     environment:
-      - DJANGO_ENV=${DJANGO_ENV:-development}
-      - DJANGO_SETTINGS_MODULE=lms.settings
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-lms_user}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-lms_db}
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      <<: *app-environment
     networks:
-      - lms_network
-    restart: unless-stopped
-
-  # Flower - Celery monitoring tool (optional, disable in production if not needed)
-  flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: lms_flower
-    command: celery -A lms flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin}
-    ports:
-      - "5555:5555"
-    env_file:
-      - .env
-    environment:
-      - DJANGO_ENV=${DJANGO_ENV:-development}
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - lms_internal
     depends_on:
       redis:
         condition: service_healthy
-    networks:
-      - lms_network
-    restart: unless-stopped
-    profiles:
-      - monitoring  # Only start when explicitly requested
-
-  # Nginx reverse proxy (optional, for production)
-  nginx:
-    image: nginx:alpine
-    container_name: lms_nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - static_volume:/app/staticfiles:ro
-      - media_volume:/app/media:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - web
-    networks:
-      - lms_network
-    restart: unless-stopped
-    profiles:
-      - production  # Only start in production
 
 volumes:
-  postgres_data:
   redis_data:
-  media_volume:
-  static_volume:
+  media_data:
+  static_data:
 
 networks:
-  lms_network:
+  dokploy-network:
+    external: true
+  lms_internal:
     driver: bridge
-

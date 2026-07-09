@@ -8,6 +8,14 @@ from datetime import timedelta
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+
+def csv_env(name, default=''):
+    return [
+        value.strip()
+        for value in os.environ.get(name, default).split(',')
+        if value.strip()
+    ]
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -89,9 +97,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
+STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
 # Use WhiteNoise's compressed storage for serving static files efficiently
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
@@ -127,6 +133,7 @@ YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "portal_auth.authentication.PortalJWTAuthentication",
+        "portal_auth.authentication.PortalSessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -283,3 +290,13 @@ LOGOUT_REDIRECT_URL = '/login/'
 PORTAL_API_BASE_URL = os.environ.get('PORTAL_API_BASE_URL', 'https://test.nsuk.edu.ng/api')
 PORTAL_JWT_PUBLIC_KEY = os.environ.get('PORTAL_JWT_PUBLIC_KEY', '')
 PORTAL_JWT_ISSUER = os.environ.get('PORTAL_JWT_ISSUER', 'portal.nsuk.edu.ng')
+
+# ====================================
+# Authentik OIDC SSO Integration
+# ====================================
+AUTHENTIK_ISSUER_URL = os.environ.get('AUTHENTIK_ISSUER_URL', '')
+AUTHENTIK_CLIENT_ID = os.environ.get('AUTHENTIK_CLIENT_ID', '')
+AUTHENTIK_CLIENT_SECRET = os.environ.get('AUTHENTIK_CLIENT_SECRET', '')
+AUTHENTIK_REDIRECT_URI = os.environ.get('AUTHENTIK_REDIRECT_URI', '')
+AUTHENTIK_SCOPES = os.environ.get('AUTHENTIK_SCOPES', 'openid profile email')
+OIDC_LOGIN_REDIRECT_URL = os.environ.get('OIDC_LOGIN_REDIRECT_URL', '/dashboard')
