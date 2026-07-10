@@ -21,6 +21,7 @@ class PortalUserSerializer(serializers.ModelSerializer):
             'level', 
             'roles', 
             'profile_picture',
+            'programme',
             'is_active',
             'is_staff',
             'last_synced_at'

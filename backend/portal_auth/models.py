@@ -10,6 +10,13 @@ class PortalUser(models.Model):
     level = models.CharField(max_length=20, blank=True, null=True)
     roles = models.JSONField(default=list)
     profile_picture = models.URLField(blank=True, null=True)
+    programme = models.ForeignKey(
+        'synchronization.Programme',
+        on_delete=models.SET_NULL,
+        related_name='students',
+        null=True,
+        blank=True,
+    )
 
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

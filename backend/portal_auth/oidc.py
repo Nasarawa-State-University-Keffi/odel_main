@@ -10,7 +10,7 @@ from django.core.cache import cache
 from jwt import PyJWKClient
 
 from .models import PortalUser
-from .services import STAFF_ROLES
+from .services import STAFF_ROLES, resolve_programme
 
 
 OIDC_SESSION_KEY = "oidc_login"
@@ -177,6 +177,7 @@ def sync_user_from_claims(claims):
     external_id = get_external_id_from_claims(claims)
     roles = get_roles_from_claims(claims)
     normalized_roles = {str(role).upper() for role in roles}
+    programme = resolve_programme(claims)
 
     user, _ = PortalUser.objects.update_or_create(
         external_id=external_id,
@@ -188,6 +189,7 @@ def sync_user_from_claims(claims):
             "roles": roles,
             "is_staff": bool(STAFF_ROLES & normalized_roles),
             "is_active": True,
+            **({'programme': programme} if programme else {}),
         },
     )
     return user

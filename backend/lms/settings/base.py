@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'resource.content',
     'portal_auth.apps.PortalAuthConfig',
     'notifications',
+    'synchronization',
 ]
 
 MIDDLEWARE = [
@@ -288,6 +289,9 @@ LOGOUT_REDIRECT_URL = '/login/'
 # Portal JWT Integration
 # ====================================
 PORTAL_API_BASE_URL = os.environ.get('PORTAL_API_BASE_URL', 'https://test.nsuk.edu.ng/api')
+PORTAL_SYNC_BASE_URL = os.environ.get('PORTAL_SYNC_BASE_URL', 'https://test.nsuk.edu.ng')
+PORTAL_SYNC_PUBLIC_KEY = os.environ.get('PORTAL_SYNC_PUBLIC_KEY', '')
+PORTAL_SYNC_PRIVATE_KEY = os.environ.get('PORTAL_SYNC_PRIVATE_KEY', '')
 PORTAL_JWT_PUBLIC_KEY = os.environ.get('PORTAL_JWT_PUBLIC_KEY', '')
 PORTAL_JWT_ISSUER = os.environ.get('PORTAL_JWT_ISSUER', 'portal.nsuk.edu.ng')
 

@@ -14,6 +14,30 @@ def extract_level_title(level_data):
     return level_data or None
 
 
+def resolve_programme(identity_data):
+    from synchronization.models import Programme
+
+    programme_data = identity_data.get('programme') or identity_data.get('program') or {}
+    upstream_id = identity_data.get('programme_id') or identity_data.get('programmeId')
+    code = identity_data.get('programme_code') or identity_data.get('programmeCode')
+    if isinstance(programme_data, dict):
+        upstream_id = programme_data.get('id') or programme_data.get('upStreamId') or upstream_id
+        code = programme_data.get('code') or code
+    elif programme_data:
+        code = str(programme_data)
+
+    queryset = Programme.objects.all()
+    if upstream_id:
+        queryset = queryset.filter(up_stream_id=upstream_id)
+    elif code:
+        queryset = queryset.filter(code__iexact=code)
+    else:
+        return None
+
+    matches = list(queryset[:2])
+    return matches[0] if len(matches) == 1 else None
+
+
 def get_or_sync_portal_user(token: str) -> PortalUser:
     client = PortalClient(token)
 
@@ -29,6 +53,7 @@ def get_or_sync_portal_user(token: str) -> PortalUser:
     def sync_user():
         roles = user_data.get("roles", [])
         is_staff = any(role in STAFF_ROLES for role in roles)
+        programme = resolve_programme(user_data)
         # Extract level title if level is a dict, fallback to None
         level = extract_level_title(user_data.get("level"))
         obj, _ = PortalUser.objects.update_or_create(
@@ -43,6 +68,7 @@ def get_or_sync_portal_user(token: str) -> PortalUser:
                 "profile_picture": user_data.get("profilePicture"),
                 "is_staff": is_staff,
                 "is_active": True,
+                **({'programme': programme} if programme else {}),
             },
         )
         return obj

@@ -59,6 +59,7 @@ urlpatterns = [
 
     # Notifications & Email Management
     path('api/notifications/', include('notifications.urls')),
+    path('api/', include('synchronization.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
