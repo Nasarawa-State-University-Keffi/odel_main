@@ -1,4 +1,33 @@
 from django.db import models
+from django.db.models.functions import Lower
+
+
+class AcademicSession(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=50, unique=True)
+
+    class Meta:
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(Lower('name'), name='unique_academic_session_name_ci'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class Semester(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(Lower('name'), name='unique_semester_name_ci'),
+        ]
+
+    def __str__(self):
+        return self.name
 
 
 class CourseCache(models.Model):

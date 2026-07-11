@@ -2,11 +2,12 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 
-from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
+from courses.models import AcademicSession, CourseCache, Semester, StaffAssignedCourse, StudentRegisteredCourse
 from assessment.models import Assignment, Quiz
 from portal_auth.services import (
     get_or_sync_staff_registered_courses,
@@ -19,6 +20,23 @@ from portal_auth.permissions import IsPortalStudent, IsPortalStaff
 
 
 from drf_spectacular.utils import OpenApiParameter
+
+
+def resolve_academic_period(session_name, semester_name):
+    normalized_session = normalize_session_name(session_name)
+    normalized_semester = normalize_semester_name(semester_name)
+    session = AcademicSession.objects.filter(name__iexact=normalized_session).first()
+    semester = Semester.objects.filter(name__iexact=normalized_semester).first()
+
+    errors = {}
+    if not session:
+        errors['session'] = 'Unknown academic session'
+    if not semester:
+        errors['semester'] = 'Unknown semester'
+    if errors:
+        raise ValidationError(errors)
+
+    return session.name, semester.name
 
 class StudentDashboardView(APIView):
     """
@@ -84,8 +102,7 @@ class StudentDashboardView(APIView):
                 status=400
             )
 
-        session = normalize_session_name(session)
-        semester = normalize_semester_name(semester)
+        session, semester = resolve_academic_period(session, semester)
 
         get_or_sync_student_registered_courses(
             student_external_id=user.external_id,
@@ -190,6 +207,8 @@ class InstructorDashboardView(APIView):
             return Response({"detail": "programme_type_code is required"}, status=400)
         if bool(session) != bool(semester):
             return Response({"detail": "session and semester must be supplied together"}, status=400)
+        if session and semester:
+            session, semester = resolve_academic_period(session, semester)
 
         get_or_sync_staff_registered_courses(
             staff_external_id=user.external_id,
@@ -273,8 +292,7 @@ class StudentDetailDashboardView(APIView):
                 status=400
             )
 
-        session = normalize_session_name(session)
-        semester = normalize_semester_name(semester)
+        session, semester = resolve_academic_period(session, semester)
 
         get_or_sync_student_registered_courses(
             student_external_id=external_id,
@@ -353,6 +371,8 @@ class InstructorDetailDashboardView(APIView):
             return Response({"detail": "programme_type_code is required"}, status=400)
         if bool(session) != bool(semester):
             return Response({"detail": "session and semester must be supplied together"}, status=400)
+        if session and semester:
+            session, semester = resolve_academic_period(session, semester)
         
         get_or_sync_staff_registered_courses(
             staff_external_id=external_id,

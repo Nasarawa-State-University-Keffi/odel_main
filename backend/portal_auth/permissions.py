@@ -12,7 +12,10 @@ class IsPortalAdmin(BasePermission):
             str(role).upper()
             for role in getattr(request.user, "roles", [])
         }
-        return bool(request.user and roles & {"ADMIN", "SUPER_ADMIN"})
+        return bool(
+            request.user
+            and roles & {"ADMIN", "SUPER_ADMIN", "PORTAL_ADMIN", "PORTAL_ADMINS"}
+        )
 
 
 class IsPortalStudent(BasePermission):

@@ -11,6 +11,8 @@ from . import apis
 # API Router for REST endpoints
 router = routers.DefaultRouter()
 router.register(r'courses', apis.CourseCacheViewSet, basename='course')
+router.register(r'sessions', apis.AcademicSessionViewSet, basename='academic-session')
+router.register(r'semesters', apis.SemesterViewSet, basename='semester')
 
 app_name = 'courses'
 

@@ -1,5 +1,39 @@
 from rest_framework import serializers
-from .models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
+import re
+from .models import AcademicSession, CourseCache, Semester, StaffAssignedCourse, StudentRegisteredCourse
+
+
+class UniqueNameSerializer(serializers.ModelSerializer):
+    def validate_name(self, value):
+        value = value.strip()
+        queryset = self.Meta.model.objects.filter(name__iexact=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError('A record with this name already exists.')
+        return value
+
+
+class AcademicSessionSerializer(UniqueNameSerializer):
+    def validate_name(self, value):
+        value = value.strip()
+        if re.fullmatch(r'\d{4}-\d{4}', value):
+            value = value.replace('-', '/')
+        return super().validate_name(value)
+
+    class Meta:
+        model = AcademicSession
+        fields = ['id', 'name']
+
+
+class SemesterSerializer(UniqueNameSerializer):
+    def validate_name(self, value):
+        value = ' '.join(value.replace('-', ' ').split())
+        return super().validate_name(value)
+
+    class Meta:
+        model = Semester
+        fields = ['id', 'name']
 
 
 class CourseCacheSerializer(serializers.ModelSerializer):

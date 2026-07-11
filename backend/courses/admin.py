@@ -1,5 +1,17 @@
 from django.contrib import admin
-from .models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
+from .models import AcademicSession, CourseCache, Semester, StaffAssignedCourse, StudentRegisteredCourse
+
+
+@admin.register(AcademicSession)
+class AcademicSessionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name')
+    search_fields = ('name',)
+
+
+@admin.register(Semester)
+class SemesterAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name')
+    search_fields = ('name',)
 
 
 @admin.register(CourseCache)
