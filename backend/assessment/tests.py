@@ -483,8 +483,8 @@ class QuizAPITests(APITestCase):
         StudentRegisteredCourse.objects.create(
             student_external_id=self.student.external_id,
             course=self.course,
-            session_id=1,
-            semester_id=1
+            session='2025/2026',
+            semester='First Semester'
         )
         
         self.category = QuestionCategory.objects.create(
@@ -987,8 +987,8 @@ class ExportAPITests(APITestCase):
         StudentRegisteredCourse.objects.create(
             student_external_id=self.student.external_id,
             course=self.course,
-            session_id=1,
-            semester_id=1
+            session='2025/2026',
+            semester='First Semester'
         )
         
         self.assignment = Assignment.objects.create(

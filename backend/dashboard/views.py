@@ -8,7 +8,12 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 from assessment.models import Assignment, Quiz
-from portal_auth.services import get_or_sync_staff_registered_courses, get_or_sync_student_registered_courses
+from portal_auth.services import (
+    get_or_sync_staff_registered_courses,
+    get_or_sync_student_registered_courses,
+    normalize_semester_name,
+    normalize_session_name,
+)
 from .serializers import CourseSummarySerializer, QuizSummarySerializer, AssignmentSummarySerializer
 from portal_auth.permissions import IsPortalStudent, IsPortalStaff
 
@@ -29,18 +34,18 @@ class StudentDashboardView(APIView):
         description="Returns a summary of the student's dashboard including courses, pending quizzes, and upcoming assignments.",
         parameters=[
             OpenApiParameter(
-                name="session_id",
+                name="session",
                 type=str,
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="Session ID (required)"
+                description="Session name, for example 2025/2026 (required)"
             ),
             OpenApiParameter(
-                name="semester_id",
+                name="semester",
                 type=str,
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="Semester ID (required)"
+                description="Semester name, for example First Semester (required)"
             ),
         ],
         responses={
@@ -70,28 +75,29 @@ class StudentDashboardView(APIView):
     def get(self, request):
         
         user = request.user
-        session_id = request.query_params.get("session_id")
-        semester_id = request.query_params.get("semester_id")
+        session = request.query_params.get("session")
+        semester = request.query_params.get("semester")
 
-        if not session_id or not semester_id:
+        if not session or not semester:
             return Response(
-                {"detail": "session_id and semester_id are required"},
+                {"detail": "session and semester are required"},
                 status=400
             )
-          # 1️⃣ Ensure portal data is synced (cheap due to cache)
-        print(f"user data {request.data} {user.external_id} {request.auth}")
+
+        session = normalize_session_name(session)
+        semester = normalize_semester_name(semester)
+
         get_or_sync_student_registered_courses(
-            token=request.auth,
             student_external_id=user.external_id,
-            session_id=session_id,
-            semester_id=semester_id,
+            session=session,
+            semester=semester,
         )
 
            # 2️⃣ Fetch enrolled courses
         enrollments = StudentRegisteredCourse.objects.select_related("course").filter(
             student_external_id=user.external_id,
-            session_id=session_id,
-            semester_id=semester_id,
+            session=session,
+            semester=semester,
         )
         courses = [e.course for e in enrollments]
         course_ids = [c.id for c in courses]
@@ -142,11 +148,11 @@ class InstructorDashboardView(APIView):
         description="Returns a summary of the instructor's dashboard including courses, assignments, and quizzes.",
         parameters=[
             OpenApiParameter(
-                name="programme_id",
+                name="programme_type_code",
                 type=str,
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="Programme ID (required)"
+                description="Programme type code, for example UG (required)"
             ),
         ],
         responses={
@@ -175,18 +181,27 @@ class InstructorDashboardView(APIView):
         }
     )
     def get(self, request):
-        programme_id = request.query_params.get("programme_id")
+        programme_type_code = request.query_params.get("programme_type_code")
+        session = request.query_params.get("session")
+        semester = request.query_params.get("semester")
         user = request.user
 
-        # 1️⃣ Fetch enrolled courses
+        if not programme_type_code:
+            return Response({"detail": "programme_type_code is required"}, status=400)
+        if bool(session) != bool(semester):
+            return Response({"detail": "session and semester must be supplied together"}, status=400)
+
         get_or_sync_staff_registered_courses(
-            token=request.auth,
-            staff_external_id="SS0944",
-            programme_id=programme_id
+            staff_external_id=user.external_id,
+            programme_type_code=programme_type_code,
+            session=session,
+            semester=semester,
         )
-        print(f"user data {request.data} {request.user.external_id} {request.auth}")
-         
-        course_assigned = StaffAssignedCourse.objects.filter(staff_external_id='SS0944') # Example usage of CourseCache
+
+        course_assigned = StaffAssignedCourse.objects.filter(
+            staff_external_id=user.external_id,
+            programme_type_code=programme_type_code.upper(),
+        )
         courses = [e.course for e in course_assigned]
         course_ids = [c.id for c in courses]
 
@@ -249,26 +264,28 @@ class StudentDetailDashboardView(APIView):
         }
     )
     def get(self, request, external_id):
-        session_id = request.query_params.get("session_id")
-        semester_id = request.query_params.get("semester_id")
+        session = request.query_params.get("session")
+        semester = request.query_params.get("semester")
 
-        if not session_id or not semester_id:
+        if not session or not semester:
             return Response(
-                {"detail": "session_id and semester_id are required"},
+                {"detail": "session and semester are required"},
                 status=400
             )
 
+        session = normalize_session_name(session)
+        semester = normalize_semester_name(semester)
+
         get_or_sync_student_registered_courses(
-            token=request.auth,
             student_external_id=external_id,
-            session_id=session_id,
-            semester_id=semester_id,
+            session=session,
+            semester=semester,
         )
 
         enrollments = StudentRegisteredCourse.objects.select_related("course").filter(
             student_external_id=external_id,
-            session_id=session_id,
-            semester_id=semester_id,
+            session=session,
+            semester=semester,
         )
         courses = [e.course for e in enrollments]
         course_ids = [c.id for c in courses]
@@ -328,15 +345,26 @@ class InstructorDetailDashboardView(APIView):
         }
     )
     def get(self, request, external_id):
-        programme_id = request.query_params.get("programme_id")
+        programme_type_code = request.query_params.get("programme_type_code")
+        session = request.query_params.get("session")
+        semester = request.query_params.get("semester")
+
+        if not programme_type_code:
+            return Response({"detail": "programme_type_code is required"}, status=400)
+        if bool(session) != bool(semester):
+            return Response({"detail": "session and semester must be supplied together"}, status=400)
         
         get_or_sync_staff_registered_courses(
-            token=request.auth,
             staff_external_id=external_id,
-            programme_id=programme_id
+            programme_type_code=programme_type_code,
+            session=session,
+            semester=semester,
         )
 
-        course_assigned = StaffAssignedCourse.objects.filter(staff_external_id=external_id)
+        course_assigned = StaffAssignedCourse.objects.filter(
+            staff_external_id=external_id,
+            programme_type_code=programme_type_code.upper(),
+        )
         courses = [e.course for e in course_assigned]
         course_ids = [c.id for c in courses]
 

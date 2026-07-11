@@ -13,11 +13,11 @@ class StaffRegisteredCourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StaffAssignedCourse
-        fields = ['staff_external_id', 'course', 'role', 'created_at']
+        fields = ['staff_external_id', 'course', 'programme_type_code', 'role', 'created_at']
 
 class StudentRegisteredCourseSerializer(serializers.ModelSerializer):
     course = CourseCacheSerializer(read_only=True)
 
     class Meta:
         model = StudentRegisteredCourse
-        fields = ['student_external_id', 'course', 'session_id', 'semester_id']
+        fields = ['student_external_id', 'course', 'session', 'semester']

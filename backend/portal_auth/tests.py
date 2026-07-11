@@ -1,11 +1,14 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.test import TestCase, override_settings
 import jwt
 from rest_framework.test import APIClient
 
 from .models import PortalUser
+from .client import PortalClient
 from .oidc import OIDC_SESSION_KEY, sync_user_from_claims
+from .services import get_or_sync_student_registered_courses
+from courses.models import CourseCache, StudentRegisteredCourse
 
 
 @override_settings(
@@ -191,3 +194,65 @@ class OIDCUserMappingTests(TestCase):
         self.assertEqual(user.last_name, "Doe")
         self.assertEqual(user.roles, ["STUDENT"])
         self.assertFalse(user.is_staff)
+
+
+@override_settings(
+    PORTAL_SYNC_BASE_URL="https://portal.example.edu.ng",
+    PORTAL_SYNC_PUBLIC_KEY="lms-client",
+    PORTAL_SYNC_PRIVATE_KEY="external-secret",
+)
+class PortalLMSClientTests(TestCase):
+    @patch("portal_auth.client.requests.get")
+    def test_student_courses_use_external_credentials_and_response_envelope(self, get):
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "data": [{"id": 42, "courseCode": "CSC401", "title": "Software Engineering", "alias": None}]
+        }
+        get.return_value = response
+
+        courses = PortalClient().get_student_registered_courses(
+            student_external_id="NSU/2025/1234",
+            session="2025/2026",
+            semester="First Semester",
+        )
+
+        self.assertEqual(courses[0]["id"], 42)
+        get.assert_called_once_with(
+            "https://portal.example.edu.ng/api/lms/students/NSU%2F2025%2F1234/courses",
+            headers={
+                "Identity": "lms-client",
+                "Secret": "external-secret",
+                "Accept": "application/json",
+            },
+            params={"session": "2025/2026", "semester": "First Semester"},
+            timeout=10,
+        )
+
+    @patch("portal_auth.services.PortalClient.get_student_registered_courses")
+    def test_student_course_sync_uses_names_and_removes_stale_enrollments(self, get_courses):
+        stale_course = CourseCache.objects.create(
+            course_external_id=1,
+            course_code="OLD101",
+            course_title="Old Course",
+        )
+        StudentRegisteredCourse.objects.create(
+            student_external_id="student001",
+            course=stale_course,
+            session="2025/2026",
+            semester="First Semester",
+        )
+        get_courses.return_value = [
+            {"id": 42, "courseCode": "CSC401", "title": "Software Engineering", "alias": None}
+        ]
+
+        enrollments = get_or_sync_student_registered_courses(
+            student_external_id="student001",
+            session="2025-2026",
+            semester="First-Semester",
+        )
+
+        self.assertEqual(len(enrollments), 1)
+        self.assertEqual(enrollments[0].session, "2025/2026")
+        self.assertEqual(enrollments[0].semester, "First Semester")
+        self.assertFalse(StudentRegisteredCourse.objects.filter(course=stale_course).exists())

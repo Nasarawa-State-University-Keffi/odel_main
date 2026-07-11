@@ -4,6 +4,8 @@ from .utils import fetch_from_portal
 
 from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 from django.db import transaction
+import hashlib
+import re
 
 STAFF_ROLES = {"ADMIN", "SUPER_ADMIN", "STAFF"}
 
@@ -94,22 +96,40 @@ def normalize_portal_course(course: dict) -> dict:
     }
 
 
+def normalize_session_name(value: str) -> str:
+    value = value.strip()
+    if re.fullmatch(r"\d{4}-\d{4}", value):
+        return value.replace("-", "/")
+    return value
+
+
+def normalize_semester_name(value: str) -> str:
+    return " ".join(value.replace("-", " ").split())
+
+
+def course_sync_cache_key(prefix: str, *parts: str) -> str:
+    digest = hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
+    return f"portal:{prefix}:courses:{digest}"
+
+
 # ========================================================
 # STUDENT REGISTERED COURSES SYNC
 # ========================================================
 def get_or_sync_student_registered_courses(
     *,
-    token: str,
     student_external_id: str,
-    session_id: int,
-    semester_id: int,
+    session: str,
+    semester: str,
 ) -> list[StudentRegisteredCourse]:
+    client = PortalClient()
+    session = normalize_session_name(session)
+    semester = normalize_semester_name(semester)
 
-    client = PortalClient(token)
-
-    cache_key = (
-        f"portal:student:{student_external_id}:"
-        f"session:{session_id}:semester:{semester_id}:courses"
+    cache_key = course_sync_cache_key(
+        "student",
+        student_external_id,
+        session,
+        semester,
     )
 
     # 1️⃣ Fetch RAW portal data (cached)
@@ -117,8 +137,8 @@ def get_or_sync_student_registered_courses(
         cache_key=cache_key,
         fetcher=lambda: client.get_student_registered_courses(
             student_external_id=student_external_id,
-            session_id=session_id,
-            semester_id=semester_id,
+            session=session,
+            semester=semester,
         ),
         ttl=300,
     )
@@ -129,7 +149,6 @@ def get_or_sync_student_registered_courses(
     with transaction.atomic():
         for raw_course in raw_courses:
             normalized = normalize_portal_course(raw_course)
-            print(f"Normalized course data: {normalized}")
 
             course_obj, _ = CourseCache.objects.update_or_create(
                 course_external_id=normalized["course_external_id"],
@@ -146,11 +165,21 @@ def get_or_sync_student_registered_courses(
             enrollment, _ = StudentRegisteredCourse.objects.get_or_create(
                 student_external_id=student_external_id,
                 course=course_obj,
-                session_id=session_id,
-                semester_id=semester_id,
+                session=session,
+                semester=semester,
             )
 
             enrollments.append(enrollment)
+
+        current_course_ids = [enrollment.course_id for enrollment in enrollments]
+        stale_enrollments = StudentRegisteredCourse.objects.filter(
+            student_external_id=student_external_id,
+            session=session,
+            semester=semester,
+        )
+        if current_course_ids:
+            stale_enrollments = stale_enrollments.exclude(course_id__in=current_course_ids)
+        stale_enrollments.delete()
 
     return enrollments
 
@@ -160,16 +189,22 @@ def get_or_sync_student_registered_courses(
 # =========================================================
 def get_or_sync_staff_registered_courses(
     *,
-    token: str,
     staff_external_id: str,
-    programme_id: int,
+    programme_type_code: str,
+    session: str | None = None,
+    semester: str | None = None,
 ) -> list[StaffAssignedCourse]:
+    client = PortalClient()
+    programme_type_code = programme_type_code.strip().upper()
+    session = normalize_session_name(session) if session else None
+    semester = normalize_semester_name(semester) if semester else None
 
-    client = PortalClient(token)
-
-    cache_key = (
-        f"portal:staff:{staff_external_id}:"
-        f"programme:{programme_id}:courses"
+    cache_key = course_sync_cache_key(
+        "staff",
+        staff_external_id,
+        programme_type_code,
+        session or "",
+        semester or "",
     )
 
     # 1️⃣ Fetch RAW portal data (cached)
@@ -177,7 +212,9 @@ def get_or_sync_staff_registered_courses(
         cache_key=cache_key,
         fetcher=lambda: client.get_staff_assigned_courses(
             staff_external_id=staff_external_id,
-            programme_id=programme_id,
+            programme_type_code=programme_type_code,
+            session=session,
+            semester=semester,
         ),
         ttl=300,
     )
@@ -195,11 +232,22 @@ def get_or_sync_staff_registered_courses(
                 },
             )
 
-            enrollment, _ = StaffAssignedCourse.objects.get_or_create(
+            enrollment, _ = StaffAssignedCourse.objects.update_or_create(
                 staff_external_id=staff_external_id,
                 course=course_obj,
+                programme_type_code=programme_type_code,
+                defaults={"role": "INSTRUCTOR"},
             )
 
             assignments.append(enrollment)
+
+        current_course_ids = [assignment.course_id for assignment in assignments]
+        stale_assignments = StaffAssignedCourse.objects.filter(
+            staff_external_id=staff_external_id,
+            programme_type_code=programme_type_code,
+        )
+        if current_course_ids:
+            stale_assignments = stale_assignments.exclude(course_id__in=current_course_ids)
+        stale_assignments.delete()
 
     return assignments

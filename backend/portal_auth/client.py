@@ -1,16 +1,59 @@
 import requests
 from django.conf import settings
 import logging
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
 
 class PortalClient:
-    def __init__(self, token: str):
+    def __init__(self, token: str | None = None):
         self.token = token
 
+    @staticmethod
+    def _lms_base_url() -> str:
+        base_url = settings.PORTAL_SYNC_BASE_URL.rstrip("/")
+        if base_url.endswith("/api/lms"):
+            return base_url
+        if base_url.endswith("/api"):
+            return f"{base_url}/lms"
+        return f"{base_url}/api/lms"
+
+    @staticmethod
+    def _external_headers() -> dict:
+        identity = getattr(settings, "PORTAL_SYNC_PUBLIC_KEY", "")
+        secret = getattr(settings, "PORTAL_SYNC_PRIVATE_KEY", "")
+        if not identity or not secret:
+            raise RuntimeError("Portal external-client credentials are not configured")
+        return {
+            "Identity": identity,
+            "Secret": secret,
+            "Accept": "application/json",
+        }
+
+    def _get_lms_data(self, path: str, params: dict) -> list:
+        url = f"{self._lms_base_url()}{path}"
+        try:
+            response = requests.get(
+                url,
+                headers=self._external_headers(),
+                params=params,
+                timeout=10,
+            )
+            response.raise_for_status()
+        except requests.Timeout as exc:
+            raise RuntimeError("Portal LMS API request timed out") from exc
+        except requests.RequestException as exc:
+            raise RuntimeError("Portal LMS API request failed") from exc
+
+        payload = response.json()
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, list):
+            raise RuntimeError("Invalid portal LMS API response: missing data list")
+        return data
+
     def get_current_user(self) -> dict:
-        url = f"{settings.PORTAL_API_BASE_URL}/get-current-user"
+        url = f"{settings.PORTAL_API_BASE_URL.rstrip('/')}/api/get-current-user"
         headers = {"Authorization": f"Bearer {self.token}"}
 
         try:
@@ -36,93 +79,27 @@ class PortalClient:
         self,
         *,
         student_external_id: str,
-        session_id: int,
-        semester_id: int,
+        session: str,
+        semester: str,
     ) -> list:
-
-        url = f"{settings.PORTAL_API_BASE_URL}/students/get-registered-course"
-        headers = {"Authorization": f"Bearer {self.token}"}
-        params = {
-            "student": student_external_id,
-            "session": session_id,
-            "semester": semester_id,
-        }
-        print(f"Fetching registered courses with params: {params} {headers}")
-        logger.info(f"Fetching registered courses with params: {params} {headers}")
-        try:
-            response = requests.get(
-                url,
-                headers=headers,
-                params=params,
-                timeout=10,
-            )
-
-            # Portal-side error — DO NOT crash LMS
-            if response.status_code >= 500:
-                logger.error(
-                    "Portal 5xx error",
-                    extra={"url": url, "params": params, "status": response.status_code},
-                )
-                return []  # graceful fallback
-
-            if response.status_code in (401, 403):
-                raise PermissionError("Unauthorized or forbidden from portal")
-
-            response.raise_for_status()
-
-            data = response.json()
-            return data or []
-
-        except requests.Timeout:
-            logger.warning("Portal timeout", extra={"url": url})
-            return []
-
-        except requests.RequestException as e:
-            logger.exception("Portal request failed")
-            return []
+        matric_number = quote(student_external_id, safe="")
+        return self._get_lms_data(
+            f"/students/{matric_number}/courses",
+            {"session": session, "semester": semester},
+        )
 
     def get_staff_assigned_courses(
-            self,
-            *,
-            staff_external_id: str,
-            programme_id: int,
-        ) -> list:
-
-            url = f"{settings.PORTAL_API_BASE_URL}/staff/get-assigned-courses/{programme_id}/{staff_external_id}"
-            headers = {"Authorization": f"Bearer {self.token}"}
-            # params = {
-            #     "staffId": staff_external_id,
-            #     "programmeType": programme_id,
-            # }
-            logger.info(f"Fetching assigned courses with params: {headers}")
-            try:
-                response = requests.get(
-                    url,
-                    headers=headers,
-                    # params=params,
-                    timeout=10,
-                )
-
-                # Portal-side error — DO NOT crash LMS
-                if response.status_code >= 500:
-                    logger.error(
-                        "Portal 5xx error",
-                        extra={"url": url, "status": response.status_code},
-                    )
-                    return []  # graceful fallback
-
-                if response.status_code in (401, 403):
-                    raise PermissionError("Unauthorized or forbidden from portal")
-
-                response.raise_for_status()
-
-                data = response.json()
-                return data or []
-
-            except requests.Timeout:
-                logger.warning("Portal timeout", extra={"url": url})
-                return []
-
-            except requests.RequestException as e:
-                logger.exception("Portal request failed")
-                return []
+        self,
+        *,
+        staff_external_id: str,
+        programme_type_code: str,
+        session: str | None = None,
+        semester: str | None = None,
+    ) -> list:
+        params = {
+            "userId": staff_external_id,
+            "programmeTypeCode": programme_type_code,
+        }
+        if session and semester:
+            params.update({"session": session, "semester": semester})
+        return self._get_lms_data("/staff/courses", params)

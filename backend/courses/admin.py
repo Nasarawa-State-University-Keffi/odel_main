@@ -11,12 +11,12 @@ class CourseCacheAdmin(admin.ModelAdmin):
 
 @admin.register(StaffAssignedCourse)
 class StaffRegisteredCourseAdmin(admin.ModelAdmin):
-    list_display = ('staff_external_id', 'course', 'role', 'created_at')
+    list_display = ('staff_external_id', 'course', 'programme_type_code', 'role', 'created_at')
     search_fields = ('staff_external_id', 'course__course_title')
-    list_filter = ('role', 'created_at')
+    list_filter = ('programme_type_code', 'role', 'created_at')
 
 @admin.register(StudentRegisteredCourse)
 class StudentRegisteredCourseAdmin(admin.ModelAdmin):
-    list_display = ('student_external_id', 'course', 'session_id', 'semester_id')
+    list_display = ('student_external_id', 'course', 'session', 'semester')
     search_fields = ('student_external_id', 'course__course_title')
-    list_filter = ('session_id', 'semester_id')
+    list_filter = ('session', 'semester')
