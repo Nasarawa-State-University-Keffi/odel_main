@@ -6,7 +6,6 @@ import axios, {
     type InternalAxiosRequestConfig,
     type AxiosError,
 } from "axios";
-import { jwtDecode } from "jwt-decode";
 
 // --- Types & Interfaces ---
 
@@ -23,24 +22,15 @@ export interface ApiClientConfig {
     headers?: Record<string, string>;
 }
 
-interface JwtPayload {
-    exp: number;
-    [key: string]: any;
-}
-
-// Extending to support the custom _retry flag for the interceptor
-interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
-    _retry?: boolean;
-}
-
 interface DownloadOptions {
     isPdf?: boolean;
 }
 
+// Global variable to hold the CSRF token retrieved from /auth/me
+let globalCsrfToken: string | null = null;
+
 class ApiClient {
-    // Using native JS private fields for proper encapsulation
     #instance: AxiosInstance;
-    #tokenRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
     constructor(config: ApiClientConfig) {
         this.#instance = axios.create({
@@ -55,104 +45,38 @@ class ApiClient {
         });
 
         this.#setupInterceptors();
-        this.#setupTokenRefresh();
-    }
-
-    //   async #refreshAccessToken(): Promise<string | null> {
-    //     try {
-    //       const refreshToken = sessionStorage.getItem("refreshToken");
-    //       if (!refreshToken) return null;
-
-    //       const response = await axios.post(
-    //         `${this.#instance.defaults.baseURL}/user/refresh-token`,
-    //         { refreshToken },
-    //         { headers: { "Content-Type": "application/json" } }
-    //       );
-
-    //       if (response.data?.success && response.data?.data?.accessToken) {
-    //         const newAccessToken = response.data.data.accessToken;
-    //         sessionStorage.setItem("accessToken", newAccessToken);
-    //         this.#setupTokenRefresh();
-
-    //         return newAccessToken;
-    //       }
-    //       return null;
-    //     } catch (error) {
-    //       console.error("Failed to refresh token:", error);
-    //       logout();
-    //       return null;
-    //     }
-    //   }
-
-    #setupTokenRefresh(): void {
-        // if (this.#tokenRefreshTimeout) {
-        //   clearTimeout(this.#tokenRefreshTimeout);
-        // }
-
-        const accessToken = sessionStorage.getItem("accessToken");
-        if (!accessToken) return;
-
-        try {
-            const decodedToken = jwtDecode<JwtPayload>(accessToken);
-            const expirationTime = decodedToken.exp * 1000;
-            const currentTime = Date.now();
-
-            // Set time to refresh (5 seconds before expiration)
-            const timeUntilRefresh = Math.max(0, expirationTime - currentTime - 5000);
-
-            this.#tokenRefreshTimeout = setTimeout(async () => {
-                //const newToken = await this.#refreshAccessToken();
-                //if (newToken) this.#setupTokenRefresh();
-            }, timeUntilRefresh);
-        } catch (error) {
-            console.error("Error setting up token refresh:", error);
-        }
     }
 
     #setupInterceptors(): void {
+        // REQUEST INTERCEPTOR
         this.#instance.interceptors.request.use(
             (config: InternalAxiosRequestConfig) => {
-                const token = sessionStorage.getItem("accessToken");
-                const isAuthRoute =
-                    config.url?.includes("authenticate") || config.url?.includes("refresh-token");
+                const method = (config.method || "GET").toUpperCase();
 
-                if (token && !isAuthRoute) {
-                    config.headers.Authorization = `Bearer ${token}`;
-                    config.withCredentials = true;
-                } else {
-                    config.withCredentials = false;
+                // Attach CSRF token only for unsafe methods as required by Django/Authentik docs
+                if (["POST", "PUT", "PATCH", "DELETE"].includes(method) && globalCsrfToken) {
+                    config.headers["X-CSRFToken"] = globalCsrfToken;
                 }
+
                 return config;
             },
             (error: unknown) => Promise.reject(error)
         );
 
+        // RESPONSE INTERCEPTOR
         this.#instance.interceptors.response.use(
             (response: AxiosResponse) => response,
-            async (error: AxiosError) => {
+            (error: AxiosError) => {
                 if (!error.response) return Promise.reject(error);
 
-                const { status, config } = error.response;
-                const originalRequest = config as CustomAxiosRequestConfig;
-                // const isRefreshRoute = originalRequest.url?.includes("refresh-token");
+                const { status } = error.response;
 
-                // Handle expired token
-                if (status === 401 && !originalRequest._retry) {
-                    originalRequest._retry = true;
-                    //const newAccessToken = await this.#refreshAccessToken();
-                    const newAccessToken = sessionStorage.getItem("accessToken");
-
-                    if (newAccessToken) {
-                        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-                        return this.#instance(originalRequest);
-                    } else {
-                        logout();
-                    }
-                }
-
-                // If refresh token itself fails
-                if (status === 401) {
-                    logout();
+                // If the backend rejects the session cookie, force the user to log in again
+                if (status === 401 || status === 403) {
+                    // Prevent redirect loops if they are already on the login page
+                    // if (window.location.pathname !== "/") {
+                    //     window.location.href = "/";
+                    // }
                 }
 
                 if (status >= 500) {
@@ -182,9 +106,9 @@ class ApiClient {
                     return { success: false, message: errorData, data: null };
                 }
 
-                if (errorData && status !== 401) {
-                    toastError(errorData.message);
-                    // Return the full structured error Data
+                // Don't show toast errors for 401/403, the interceptor handles the redirect
+                if (errorData && status !== 401 && status !== 403) {
+                    toastError(errorData.message || "An error occurred");
                     return { success: false, message: errorData.message, data: null, ...errorData };
                 }
             }
@@ -229,7 +153,6 @@ class ApiClient {
         });
     }
 
-    // Consolidated download method handling regular files and PDFs cleanly
     public async download(
         url: string,
         filename: string,
@@ -255,8 +178,6 @@ class ApiClient {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
-            // Prevent memory leaks
             window.URL.revokeObjectURL(downloadUrl);
 
             return true;
@@ -269,25 +190,26 @@ class ApiClient {
 
 // --- Utilities & Exports ---
 
-export const storeAuthTokens = (accessToken: string, refreshToken: string): void => {
-    sessionStorage.setItem("accessToken", accessToken);
-    sessionStorage.setItem("refreshToken", refreshToken);
+// Use this function inside your useAuth hook after calling /auth/me
+export const setGlobalCsrfToken = (token: string): void => {
+    globalCsrfToken = token;
 };
 
-export const isAuthenticated = (): boolean => {
-    return !!sessionStorage.getItem("accessToken");
-};
-
-export const logout = (): void => {
-    sessionStorage.removeItem("accessToken");
-    //sessionStorage.removeItem("refreshToken");
-    if (window.location.pathname !== "/auth/signin") {
-        window.location.href = "/auth/signin";
+// Logout requires a POST request with the CSRF token now, per the docs
+export const logout = async (): Promise<void> => {
+    try {
+        await client.post('/auth/logout');
+    } catch (error) {
+        console.error("Logout request failed", error);
+    } finally {
+        setGlobalCsrfToken("");
+        //window.location.href = "/";
     }
 };
 
 const apiConfig: ApiClientConfig = {
-    baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
+    // Make sure this points to your backend origin
+    baseURL: (import.meta.env.VITE_API_BASE_URL || "https://odel-lms-api.nsuk.edu.ng") + "/api",
 };
 
 const client = new ApiClient(apiConfig);

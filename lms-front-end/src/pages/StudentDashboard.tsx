@@ -12,9 +12,14 @@ import { useStudentDashboard } from "@/service/useStudentDashboard";
 const StudentDashboard = () => {
     const { fetchDashboard, isPending, dashboardData } = useStudentDashboard();
 
+
     // Fetch data when the component loads
     useEffect(() => {
-        fetchDashboard();
+        const initializeDashboard = async () => {
+            fetchDashboard();
+        };
+
+        initializeDashboard();
     }, []);
 
     // --- LOADING STATE ---

@@ -1,6 +1,11 @@
 export const endpoint = {
     auth: {
-        signin: '/auth/signin',
+        signin: '/auth/login',
+        me: '/auth/me',
+    },
+
+    sync: {
+        all: "/synchronize/sync-all"
     },
 
     student: {

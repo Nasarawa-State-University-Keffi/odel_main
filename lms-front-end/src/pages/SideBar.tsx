@@ -1,14 +1,21 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  GraduationCap, 
-  ClipboardCheck, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  GraduationCap,
+  ClipboardCheck,
   FileText,
   Settings,
   LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { z } from "zod";
+
+const navSchema = z.object({
+  name: z.string(),
+  href: z.string(),
+  icon: z.any(),
+});
 
 export const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -19,12 +26,12 @@ export const navItems = [
   { name: "My Grades", href: "/grades", icon: GraduationCap },
 ];
 
-const SideBar = () => {
+const SideBar: React.FC<{ navItems: z.infer<typeof navSchema>[] }> = ({ navItems }) => {
   const location = useLocation();
 
   return (
     <aside className="hidden lg:flex flex-col w-64 h-screen bg-zinc-950 text-zinc-300 border-r border-zinc-900 transition-all duration-300">
-      
+
       {/* Brand Header */}
       <div className="h-16 flex items-center px-6 border-b border-zinc-900/50 shrink-0">
         <div className="flex items-center gap-3 text-lg font-bold tracking-tight text-white">
@@ -43,15 +50,15 @@ const SideBar = () => {
         {navItems.map((item) => {
           // Improved active logic: Handles exact matches or root redirects
           const isActive = location.pathname === item.href || (location.pathname === '/' && item.name === 'Dashboard');
-          
+
           return (
             <Link
               key={item.name}
               to={'/application/' + item.href}
               className={cn(
                 "flex items-center gap-4 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group",
-                isActive 
-                  ? "bg-emerald-500/10 text-emerald-400" 
+                isActive
+                  ? "bg-emerald-500/10 text-emerald-400"
                   : "hover:bg-zinc-900 hover:text-white"
               )}
             >

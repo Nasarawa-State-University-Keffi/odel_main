@@ -1,26 +1,67 @@
+import { useTransition } from "react";
+import { useState, useEffect } from "react";
 import BaseRepository from "@/repository/base.repository";
 import type { SigninFormData } from "@/types/auth.types";
 import { endpoint } from "@/utils/endpoint";
-import { useTransition } from "react";
+import type { UserDto } from "@/types/auth.types";
+import { setGlobalCsrfToken } from "@/api/client";
+export interface User {
+    id: number;
+    username: string;
+    email: string;
+    full_name: string;
+    roles: string[];
+    csrfToken: string;
+}
 
 export const useAuth = () => {
     const [isPending, startTransition] = useTransition();
     const repository = new BaseRepository();
+    const [user, setUser] = useState<User | null>(null);
+
 
     const handleSignin = (data: SigninFormData) => {
         startTransition(async () => {
             try {
-                // const response = await repository.post(endpoint.auth.signin, data);
-                // return response;
-                sessionStorage.setItem("accessToken", "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlcyI6W3siYXV0aG9yaXR5IjoiU1RVREVOVCJ9XSwic3ViIjoiRlQyMkJDTVAwNjc3IiwianRpIjoiMTU2Mzc3ZTAtMDBmNy00ZDRhLTk2MDctYjM4N2Y2ZmM1NzQ4IiwiaWF0IjoxNzgzMTcwNzA5LCJleHAiOjE3ODMzNDM1MDl9.YfP-yUJJplFRiwf3AEEbaEh83JAB3XHfYq6MUvQQT0E")
+                window.location.href = import.meta.env.VITE_API_BASE_URL + `/api${endpoint.auth.signin}`;
             } catch (error) {
                 return error;
             }
         });
     };
 
+    // // In useStudentDashboard.ts
+    // const myData = async () => {
+    //     startTransition(async () => {
+    //         try {
+    //             const response = await repository.get(endpoint.auth.me);
+    //             if (response.success) {
+    //                 console.log("THIS IS THE DATA: ", response.data)
+    //                 const userData = response.data as UserDto;
+    //                 setUser(userData);
+    //                 if (userData.csrfToken) {
+    //                     setGlobalCsrfToken(userData.csrfToken);
+    //                 }
+    //             }
+    //             return response;
+    //         } catch (error) {
+    //             return error;
+    //         }
+    //     });
+    // };
+
+
     return {
         handleSignin,
         isPending,
+        user,
+        //myData,
     }
 }
+
+
+
+
+
+
+
