@@ -15,6 +15,13 @@ from .services import STAFF_ROLES, resolve_programme
 
 OIDC_SESSION_KEY = "oidc_login"
 
+ROLE_ALIASES = {
+    "PORTAL_ADMINS": "ADMIN",
+    "PORTAL_SUPER_ADMINS": "SUPER_ADMIN",
+    "PORTAL_STAFF": "STAFF",
+    "PORTAL_STUDENTS": "STUDENT",
+}
+
 
 class OIDCConfigurationError(RuntimeError):
     pass
@@ -151,7 +158,18 @@ def get_roles_from_claims(claims):
     groups = claims.get("groups") or []
     if isinstance(groups, str):
         groups = [groups]
-    return list(groups)
+
+    roles = []
+    for group in groups:
+        group_name = str(group).strip()
+        if not group_name:
+            continue
+
+        role = ROLE_ALIASES.get(group_name.upper(), group_name)
+        if role not in roles:
+            roles.append(role)
+
+    return roles
 
 
 def get_external_id_from_claims(claims):

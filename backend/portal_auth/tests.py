@@ -62,7 +62,7 @@ class OIDCAuthTests(TestCase):
             "given_name": "John",
             "family_name": "Doe",
             "name": "John Doe",
-            "groups": ["STAFF", "teacher"],
+            "groups": ["PORTAL_STAFF", "teacher"],
             "nonce": "nonce",
             "exp": 4102444800,
         }
@@ -76,6 +76,7 @@ class OIDCAuthTests(TestCase):
         self.assertEqual(user.email, "staff@example.edu.ng")
         self.assertEqual(user.first_name, "John")
         self.assertEqual(user.last_name, "Doe")
+        self.assertEqual(user.roles, ["STAFF", "teacher"])
         self.assertTrue(user.is_staff)
         self.assertEqual(self.client.session["portal_user_id"], user.id)
         self.assertNotIn(OIDC_SESSION_KEY, self.client.session)
@@ -158,6 +159,21 @@ class OIDCAuthTests(TestCase):
 
 
 class OIDCUserMappingTests(TestCase):
+    def test_sync_user_from_claims_maps_authentik_group_aliases(self):
+        user = sync_user_from_claims({
+            "preferred_username": "admin001",
+            "name": "Portal Admin",
+            "groups": [
+                "PORTAL_USERS",
+                "PORTAL_ADMINS",
+                "PORTAL_STAFF",
+                "PORTAL_ADMINS",
+            ],
+        })
+
+        self.assertEqual(user.roles, ["PORTAL_USERS", "ADMIN", "STAFF"])
+        self.assertTrue(user.is_staff)
+
     def test_sync_user_from_claims_prefers_preferred_username(self):
         user = sync_user_from_claims({
             "sub": "stable-subject",
