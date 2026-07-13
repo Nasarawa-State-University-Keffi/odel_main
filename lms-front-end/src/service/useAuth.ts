@@ -1,9 +1,8 @@
 import { useTransition } from "react";
-import { useState, useEffect } from "react";
 import BaseRepository from "@/repository/base.repository";
 import type { SigninFormData } from "@/types/auth.types";
 import { endpoint } from "@/utils/endpoint";
-import type { UserDto } from "@/types/auth.types";
+import { useNavigate } from "react-router-dom";
 import { setGlobalCsrfToken } from "@/api/client";
 export interface User {
     id: number;
@@ -17,7 +16,7 @@ export interface User {
 export const useAuth = () => {
     const [isPending, startTransition] = useTransition();
     const repository = new BaseRepository();
-    const [user, setUser] = useState<User | null>(null);
+    const navigate = useNavigate();
 
 
     const handleSignin = (data: SigninFormData) => {
@@ -30,32 +29,26 @@ export const useAuth = () => {
         });
     };
 
-    // // In useStudentDashboard.ts
-    // const myData = async () => {
-    //     startTransition(async () => {
-    //         try {
-    //             const response = await repository.get(endpoint.auth.me);
-    //             if (response.success) {
-    //                 console.log("THIS IS THE DATA: ", response.data)
-    //                 const userData = response.data as UserDto;
-    //                 setUser(userData);
-    //                 if (userData.csrfToken) {
-    //                     setGlobalCsrfToken(userData.csrfToken);
-    //                 }
-    //             }
-    //             return response;
-    //         } catch (error) {
-    //             return error;
-    //         }
-    //     });
-    // };
+    const handleLogout = async () => {
+        startTransition(async () => {
+            try {
+                const response = await repository.post(endpoint.auth.logout);
+                if (response.success) {
+                    setGlobalCsrfToken("")
+                    navigate("/", { replace: true })
+                }
+                return response;
+            } catch (error) {
+                return error;
+            }
+        });
+    };
 
 
     return {
         handleSignin,
+        handleLogout,
         isPending,
-        user,
-        //myData,
     }
 }
 

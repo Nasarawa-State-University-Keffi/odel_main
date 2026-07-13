@@ -6,10 +6,9 @@ import { useUserContext } from "@/context/UserProvider";
 import { AnimateIn } from "@/components/ui/animate-in";
 
 const CentralDashboard = () => {
-    const { user, isPending } = useUserContext();
+    const { user, isLoading } = useUserContext();
     const navigate = useNavigate();
 
-    //  Cycle through loading messages to make the wait feel shorter
     const [loadingText, setLoadingText] = useState("Verifying session...");
 
     useEffect(() => {
@@ -29,20 +28,19 @@ const CentralDashboard = () => {
     }, []);
 
     useEffect(() => {
-        if (!isPending) {
-            // Fallback
+        if (!isLoading) {
+
             if (!user) {
-                navigate("/login", { replace: true });
+                navigate("/", { replace: true });
                 return;
             }
 
-            // Role-based routing logic
             const isAdmin = user.roles?.includes("ADMIN");
-            const targetRoute = isAdmin ? "/admin" : "/dashboard";
+            const targetRoute = isAdmin ? "/admin/dashboard" : "student/dashboard";
 
             navigate(targetRoute, { replace: true });
         }
-    }, [isPending, user, navigate]);
+    }, [isLoading, user, navigate]);
 
     return (
         <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-slate-50 dark:bg-[#0f172a]">

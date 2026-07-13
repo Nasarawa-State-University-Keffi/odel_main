@@ -17,14 +17,6 @@ const navSchema = z.object({
   icon: z.any(),
 });
 
-export const navItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "All Courses", href: "/courses", icon: BookOpen },
-  { name: "Content", href: "/content", icon: BookOpen },
-  { name: "Assignments", href: "/assignments", icon: FileText },
-  { name: "Quizzes", href: "/quizzes", icon: ClipboardCheck },
-  { name: "My Grades", href: "/grades", icon: GraduationCap },
-];
 
 const SideBar: React.FC<{ navItems: z.infer<typeof navSchema>[] }> = ({ navItems }) => {
   const location = useLocation();
@@ -54,7 +46,8 @@ const SideBar: React.FC<{ navItems: z.infer<typeof navSchema>[] }> = ({ navItems
           return (
             <Link
               key={item.name}
-              to={'/application/' + item.href}
+              replace
+              to={item.href}
               className={cn(
                 "flex items-center gap-4 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group",
                 isActive

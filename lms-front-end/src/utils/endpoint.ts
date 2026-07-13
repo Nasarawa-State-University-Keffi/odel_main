@@ -1,6 +1,7 @@
 export const endpoint = {
     auth: {
         signin: '/auth/login',
+        logout: '/auth/logout',
         me: '/auth/me',
     },
 
@@ -15,6 +16,9 @@ export const endpoint = {
         courses: {
             list: '/courses/courses/',
         }
-    }
+    },
+
+    semester: '/semesters/',
+    session: '/sessions/'
 
 }

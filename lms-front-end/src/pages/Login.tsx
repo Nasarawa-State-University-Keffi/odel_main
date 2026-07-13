@@ -17,11 +17,12 @@ const Login = () => {
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2 bg-white dark:bg-zinc-950">
 
-      {/* LEFT SIDE: Image Branding & Hero Panel */}
+      {/* Image Branding & Hero Panel */}
       <div className="hidden relative flex-col lg:flex justify-between overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop')" }}
+          //style={{ backgroundImage: "url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop')" }}
+          style={{ backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/2/25/Gate_of_Nassarawa_State_University.jpg')" }}
         />
         <div className="absolute inset-0 bg-zinc-950/60 mix-blend-multiply" />
         <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/80 to-transparent" />

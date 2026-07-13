@@ -5,6 +5,8 @@ import StudentDashboard from "./StudentDashboard";
 import Courses from "./Course";
 import CourseDetail from "./CourseDetail";
 import CentralDashboard from "./CentralDashboard";
+import AdminDashboard from "./AdminDashboard";
+import AcademicSetup from "./AcademicSetup";
 
 const Presentation = () => {
     return (
@@ -25,10 +27,11 @@ const Presentation = () => {
                 */
 
                 <Route path="/admin/dashboard" element={<ApplicationLayout />} >
-                    <Route index element={<StudentDashboard />} />
+                    <Route index element={<AdminDashboard />} />
+                     <Route path="academic-setup" element={<AcademicSetup />} />
                     <Route path="courses" element={<Courses />} />
                     <Route path="courses/:id" element={<CourseDetail />} />
-                    <Route path="dashboard" element={<StudentDashboard />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
                 </Route>
             </Routes>
         </div>

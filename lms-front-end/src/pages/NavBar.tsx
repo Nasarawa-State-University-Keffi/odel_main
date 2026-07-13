@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 import { Bell, Menu, Search } from "lucide-react";
-import { navItems } from "./SideBar";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { navItems } from "@/data";
 
 const NavBar = () => {
     const location = useLocation();

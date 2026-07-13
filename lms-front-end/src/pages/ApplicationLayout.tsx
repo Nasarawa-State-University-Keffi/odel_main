@@ -1,12 +1,14 @@
 import { Outlet } from "react-router-dom";
 import SideBar from "./SideBar";
 import NavBar from "./NavBar";
+import { navItems } from "@/data";
+
 
 const ApplicationLayout = () => {
     return (
         <div className="flex h-screen w-full bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
 
-            <SideBar />
+            <SideBar navItems={navItems} />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 

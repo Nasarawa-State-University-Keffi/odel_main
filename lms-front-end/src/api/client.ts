@@ -74,9 +74,9 @@ class ApiClient {
                 // If the backend rejects the session cookie, force the user to log in again
                 if (status === 401 || status === 403) {
                     // Prevent redirect loops if they are already on the login page
-                    // if (window.location.pathname !== "/") {
-                    //     window.location.href = "/";
-                    // }
+                    if (window.location.pathname !== "/") {
+                        window.location.href = "/";
+                    }
                 }
 
                 if (status >= 500) {
