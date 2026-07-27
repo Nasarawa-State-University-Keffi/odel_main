@@ -5,6 +5,10 @@ export const endpoint = {
         me: '/auth/me',
     },
 
+    courses: {
+        list: "/courses/",
+    },
+
     sync: {
         all: "/synchronize/sync-all"
     },
@@ -18,7 +22,25 @@ export const endpoint = {
         }
     },
 
+    staff: {
+        dashboard: {
+            staff: '/dashboard/instructors',
+            accessment: {
+                assignment: "/staff/assessment/assignments/",
+                submissions: "/staff/assessment/submissions/"
+            }
+        }
+    },
+
     semester: '/semesters/',
-    session: '/sessions/'
+    session: '/sessions/',
+
+    admin: {
+        storage: {
+            content: {
+                base: "/content/storage-settings/"
+            }
+        }
+    }
 
 }

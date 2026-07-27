@@ -7,6 +7,10 @@ import CourseDetail from "./CourseDetail";
 import CentralDashboard from "./CentralDashboard";
 import AdminDashboard from "./AdminDashboard";
 import AcademicSetup from "./AcademicSetup";
+import StaffDashboard from "./StaffDashboard";
+import StaffAssignmentPage from "./StaffAssignmentPage";
+import CreateAssignment from "./CreateAssignment";
+import StaffAssessmentSubmissionsPage from "./StaffAssessmentSubmissionsPage";
 
 const Presentation = () => {
     return (
@@ -15,7 +19,7 @@ const Presentation = () => {
                 <Route path="/" element={<Login />} />
                 <Route path="/dashboard" element={<CentralDashboard />} />
 
-                <Route path="/student/dashboard" element={<ApplicationLayout />} >
+                <Route path="/student" element={<ApplicationLayout />} >
                     <Route index element={<StudentDashboard />} />
                     <Route path="courses" element={<Courses />} />
                     <Route path="courses/:id" element={<CourseDetail />} />
@@ -28,10 +32,24 @@ const Presentation = () => {
 
                 <Route path="/admin/dashboard" element={<ApplicationLayout />} >
                     <Route index element={<AdminDashboard />} />
-                     <Route path="academic-setup" element={<AcademicSetup />} />
+                    <Route path="academic-setup" element={<AcademicSetup />} />
                     <Route path="courses" element={<Courses />} />
                     <Route path="courses/:id" element={<CourseDetail />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
+                </Route>
+
+                /**
+                * Staff Dashboard
+                */
+
+                <Route path="/staff/dashboard" element={<ApplicationLayout />} >
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="assignments" element={<StaffAssignmentPage />} />
+                    <Route path="assignments/create" element={<CreateAssignment />} />
+                    <Route path="assessment-submissions/submissions" element={<StaffAssessmentSubmissionsPage />} />
+                    <Route path="courses" element={<Courses />} />
+                    <Route path="courses/:id" element={<CourseDetail />} />
+                    <Route path="dashboard" element={<StaffDashboard />} />
                 </Route>
             </Routes>
         </div>

@@ -4,6 +4,7 @@ import { Loader2, GraduationCap, ShieldCheck } from "lucide-react";
 
 import { useUserContext } from "@/context/UserProvider";
 import { AnimateIn } from "@/components/ui/animate-in";
+import { ROLES } from "@/types/user.types";
 
 const CentralDashboard = () => {
     const { user, isLoading } = useUserContext();
@@ -34,9 +35,18 @@ const CentralDashboard = () => {
                 navigate("/", { replace: true });
                 return;
             }
+            console.log("this is the user: ", user)
 
-            const isAdmin = user.roles?.includes("ADMIN");
-            const targetRoute = isAdmin ? "/admin/dashboard" : "student/dashboard";
+            const isAdmin = user.roles?.includes(ROLES.ADMIN);
+            const isStaff = user.roles?.includes(ROLES.STAFF);
+
+            let targetRoute = "/student/dashboard";
+            if (isAdmin) {
+                targetRoute = "/admin/dashboard";
+            } else if (isStaff) {
+                targetRoute = "/staff/dashboard";
+            }
+
 
             navigate(targetRoute, { replace: true });
         }

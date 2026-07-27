@@ -44,11 +44,25 @@ export const useCourse = () => {
         });
     };
 
+    const fetchCourseList = () => {
+        startTransition(async () => {
+            try {
+                const response = await repository.get(endpoint.courses.list);
+                setCoursesData(response.data as PaginatedCourses);
+                return response.data;
+            } catch (error) {
+                console.error("Failed to fetch course list:", error);
+                return error;
+            }
+        });
+    };
+
     return {
         fetchCourses,
         isPending,
         coursesData,
         fetchCourseDetail,
         courseDetail,
+        fetchCourseList,
     };
 };

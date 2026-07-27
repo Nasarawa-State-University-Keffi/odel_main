@@ -14,10 +14,19 @@ import {
   Loader2
 } from "lucide-react";
 import { useAuth } from "@/service/useAuth";
+import { useStaffDashboard } from "@/service/useStaffDashboard";
+import { useEffect } from "react";
 
 const AdminDashboard = () => {
   const { user, isLoading } = useUserContext();
   const { handleLogout, isPending } = useAuth()
+  const {fetchStaffData, isPending: isStaffPending} = useStaffDashboard()
+
+  useEffect(() => {
+  if(user?.external_id){
+    fetchStaffData(user.external_id)
+  }
+  }, [user])
 
   if (isLoading) {
     return (

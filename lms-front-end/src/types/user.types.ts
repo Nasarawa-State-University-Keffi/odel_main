@@ -41,3 +41,11 @@ export const userSchema = z.object({
 });
 
 export type UserDto = z.infer<typeof userSchema>;
+
+export const ROLES = {
+    ADMIN: "ADMIN",
+    STAFF: "STAFF",
+    STUDENT: "PORTAL_USERS",
+} as const;
+
+export type Role = (typeof ROLES)[keyof typeof ROLES];
