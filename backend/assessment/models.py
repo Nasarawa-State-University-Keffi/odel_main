@@ -132,7 +132,7 @@ class AssignmentContent(models.Model):
 
     @property
     def url(self):
-        from resource.storage import get_storage_engine
+        from learning_resources.storage import get_storage_engine
         try:
             return get_storage_engine(self.storage_backend).url(self.storage_path)
         except Exception:
@@ -144,7 +144,7 @@ class AssignmentContent(models.Model):
 
     def delete(self, *args, **kwargs):
         """Delete file from storage backend before deleting DB entry"""
-        from resource.storage import get_storage_engine
+        from learning_resources.storage import get_storage_engine
         try:
             engine = get_storage_engine(self.storage_backend)
             engine.delete(self.storage_path)
@@ -232,7 +232,7 @@ class AssignmentSubmissionFile(models.Model):
 
     @property
     def url(self):
-        from resource.storage import get_storage_engine
+        from learning_resources.storage import get_storage_engine
         try:
             return get_storage_engine(self.storage_backend).url(self.storage_path)
         except Exception:
@@ -240,7 +240,7 @@ class AssignmentSubmissionFile(models.Model):
 
     def delete(self, *args, **kwargs):
         """Delete file from storage backend before deleting DB entry"""
-        from resource.storage import get_storage_engine
+        from learning_resources.storage import get_storage_engine
         try:
             engine = get_storage_engine(self.storage_backend)
             engine.delete(self.storage_path)

@@ -14,14 +14,14 @@ class SyncAllView(APIView):
     permission_classes = [IsPortalAdmin]
 
     def post(self, request):
-        sync_all_task.delay()
+        task = sync_all_task.delay()
         return Response({
-            'message': 'Synchronization in progress',
-            'status': 200,
-            'data': '',
+            'message': 'Synchronization queued',
+            'status': 202,
+            'data': {'task_id': task.id},
             'success': True,
             'errors': [],
-        }, status=status.HTTP_200_OK)
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class FilteredListView(generics.ListAPIView):

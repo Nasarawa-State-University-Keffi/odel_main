@@ -1,5 +1,5 @@
 """
-Cloudinary storage engine.
+Cloudinary learning-resource storage engine.
 Stores files in Cloudinary cloud storage service.
 """
 

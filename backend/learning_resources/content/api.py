@@ -1,5 +1,5 @@
 """
-API views for learning content management.
+API views for LMS learning-content management.
 Provides RESTful endpoints for uploading, listing, and managing content.
 """
 
@@ -389,7 +389,7 @@ class AvailableBackendsAPIView(views.APIView):
         }
     )
     def get(self, request):
-        from resource.storage.router import get_available_backends
+        from learning_resources.storage.router import get_available_backends
         backends = get_available_backends()
         return Response({
             'backends': [

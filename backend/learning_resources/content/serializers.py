@@ -1,5 +1,5 @@
 """
-Serializers for learning content API.
+Serializers for the LMS learning-content API.
 """
 
 from rest_framework import serializers

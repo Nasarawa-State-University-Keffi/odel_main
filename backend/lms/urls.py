@@ -52,7 +52,7 @@ urlpatterns = [
 
     
     # Learning Content APIs
-    path('api/content/', include('resource.content.urls')),
+    path('api/content/', include('learning_resources.content.urls')),
 
     # Dashboard endpoint urls
     path('api/dashboard/', include('dashboard.urls')),

@@ -1,5 +1,5 @@
 """
-Storage module for pluggable file storage backends.
+Learning-resource module for pluggable file storage backends.
 Provides abstraction layer for storing files in different backends (local, S3, Cloudinary, etc.)
 """
 

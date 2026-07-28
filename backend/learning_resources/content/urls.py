@@ -1,5 +1,5 @@
 """
-URL configuration for content API.
+URL configuration for the LMS content API.
 """
 
 from django.urls import path

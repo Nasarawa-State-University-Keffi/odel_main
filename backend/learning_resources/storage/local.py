@@ -1,5 +1,5 @@
 """
-Local filesystem storage engine.
+Local filesystem learning-resource storage engine.
 Stores files in the local filesystem under MEDIA_ROOT.
 """
 

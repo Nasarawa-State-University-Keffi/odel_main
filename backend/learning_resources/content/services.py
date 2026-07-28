@@ -1,5 +1,5 @@
 """
-Service layer for learning content management.
+Service layer for LMS learning-content management.
 Corrected and production-ready version.
 """
 
@@ -12,8 +12,8 @@ from django.contrib.auth.models import User
 from django.db import transaction
 
 from portal_auth.models import PortalUser
-from resource.storage import get_storage_engine
-from resource.storage.base import StorageException
+from learning_resources.storage import get_storage_engine
+from learning_resources.storage.base import StorageException
 from .models import LearningContent, ContentAccessLog, StorageSettings
 from courses.models import CourseCache
 

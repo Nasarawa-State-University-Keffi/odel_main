@@ -1,5 +1,5 @@
 """
-Storage router - selects appropriate storage backend based on configuration.
+Learning-resource storage router - selects a backend based on configuration.
 Similar to Moodle's file storage API routing system.
 """
 
@@ -84,7 +84,7 @@ def _get_configured_backend() -> str:
     """
     try:
         # Try to import StorageSettings model
-        from resource.content.models import StorageSettings
+        from learning_resources.content.models import StorageSettings
         
         # Get active settings
         settings = StorageSettings.objects.filter(is_active=True).first()
@@ -114,7 +114,7 @@ def register_storage_engine(name: str, engine_class: type):
         ValueError: If engine_class doesn't inherit from BaseStorageEngine
         
     Example:
-        >>> from resource.storage import register_storage_engine
+        >>> from learning_resources.storage import register_storage_engine
         >>> from myapp.storage import DropboxStorageEngine
         >>> register_storage_engine('dropbox', DropboxStorageEngine)
     """

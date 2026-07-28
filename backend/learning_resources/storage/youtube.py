@@ -1,5 +1,5 @@
 """
-YouTube storage engine.
+YouTube learning-resource storage engine.
 For video content, stores metadata and references YouTube video IDs.
 Note: This doesn't actually upload to YouTube (requires OAuth), but manages YouTube video references.
 """

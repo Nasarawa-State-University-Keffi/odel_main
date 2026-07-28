@@ -1,5 +1,5 @@
 """
-Admin interface for learning content management.
+Admin interface for LMS learning-content management.
 """
 
 from django.contrib import admin

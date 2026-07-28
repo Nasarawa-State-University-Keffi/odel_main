@@ -29,10 +29,11 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'drf_spectacular',
     'corsheaders',
+    'django_celery_beat',
     # Local apps
     'courses',
     'assessment',
-    'resource.content',
+    'learning_resources.content',
     'portal_auth.apps.PortalAuthConfig',
     'notifications',
     'synchronization',
@@ -154,7 +155,7 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "user": "1000/hour",
     },
-    "EXCEPTION_HANDLER": "resource.content.exceptions.custom_exception_handler",
+    "EXCEPTION_HANDLER": "learning_resources.content.exceptions.custom_exception_handler",
 }
 
 # Simple JWT Settings

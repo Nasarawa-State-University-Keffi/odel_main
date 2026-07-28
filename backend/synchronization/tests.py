@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
@@ -9,6 +10,7 @@ from portal_auth.oidc import sync_user_from_claims
 from .client import UpstreamSynchronizationClient
 from .models import Department, Faculty, Programme, ProgrammeType
 from .services import sync_all
+from .tasks import SYNC_LOCK_KEY, sync_all_task
 
 
 class FakeUpstreamClient:
@@ -69,6 +71,38 @@ class SynchronizationServiceTests(TestCase):
         )
 
 
+class SynchronizationTaskTests(TestCase):
+    def tearDown(self):
+        cache.delete(SYNC_LOCK_KEY)
+
+    @patch('synchronization.tasks.sync_all')
+    def test_task_returns_counts_and_releases_lock(self, run_sync):
+        expected = {
+            'programme_types': 1,
+            'faculties': 1,
+            'departments': 1,
+            'programmes': 1,
+            'skipped_departments': 0,
+            'skipped_programmes': 0,
+        }
+        run_sync.return_value = expected
+
+        result = sync_all_task.apply(task_id='sync-task-1').get()
+
+        self.assertEqual(result, expected)
+        self.assertIsNone(cache.get(SYNC_LOCK_KEY))
+
+    @patch('synchronization.tasks.sync_all')
+    def test_task_skips_when_another_sync_is_running(self, run_sync):
+        cache.set(SYNC_LOCK_KEY, 'active-sync-task', timeout=60)
+
+        result = sync_all_task.apply(task_id='duplicate-sync-task').get()
+
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['active_task_id'], 'active-sync-task')
+        run_sync.assert_not_called()
+
+
 class SynchronizationApiTests(TestCase):
     def setUp(self):
         self.admin = PortalUser.objects.create(
@@ -82,11 +116,13 @@ class SynchronizationApiTests(TestCase):
 
     @patch('synchronization.views.sync_all_task.delay')
     def test_admin_can_queue_sync(self, delay):
+        delay.return_value.id = 'sync-task-123'
         self.client.force_authenticate(self.admin)
         response = self.client.post('/api/synchronize/sync-all')
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 202)
         self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['data']['task_id'], 'sync-task-123')
         delay.assert_called_once_with()
 
     @patch('synchronization.views.sync_all_task.delay')

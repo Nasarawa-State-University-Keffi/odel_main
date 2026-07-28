@@ -1,5 +1,5 @@
 """
-Models for learning content management.
+Models for LMS learning-content management.
 Implements Moodle-style file areas and storage abstraction.
 """
 
@@ -144,7 +144,7 @@ class LearningContent(models.Model):
         """
         Resolve public URL via storage backend router.
         """
-        from resource.storage import get_storage_engine
+        from learning_resources.storage import get_storage_engine
         try:
             storage = get_storage_engine(self.storage_backend)
             return storage.url(self.storage_path)
@@ -177,7 +177,7 @@ class LearningContent(models.Model):
         """
         Delete file from storage backend and then DB entry.
         """
-        from resource.storage import get_storage_engine
+        from learning_resources.storage import get_storage_engine
 
         try:
             engine = get_storage_engine(self.storage_backend)

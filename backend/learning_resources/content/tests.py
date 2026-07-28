@@ -1,11 +1,12 @@
 """
-Comprehensive test suite for content upload functionality.
+Comprehensive test suite for LMS content upload functionality.
 Tests file upload, YouTube video addition, storage backends, and error handling.
 """
 
 import io
 import os
 from unittest.mock import patch, MagicMock, Mock
+from django.apps import apps
 from django.test import TestCase, override_settings
 from portal_auth.models import PortalUser
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -15,7 +16,15 @@ from rest_framework import status
 from courses.models import CourseCache
 from .models import LearningContent, StorageSettings, ContentAccessLog
 from .services import upload_learning_content, upload_youtube_video, delete_learning_content
-from resource.storage.base import StorageException
+from learning_resources.storage.base import StorageException
+
+
+class ContentAppConfigurationTests(TestCase):
+    def test_package_name_does_not_collide_with_stdlib_resource_module(self):
+        app_config = apps.get_app_config('content')
+
+        self.assertEqual(app_config.name, 'learning_resources.content')
+        self.assertEqual(app_config.label, 'content')
 
 
 class ContentUploadAPITestCase(APITestCase):
@@ -522,7 +531,7 @@ class ErrorHandlingTestCase(APITestCase):
         self.assertEqual(response.data['status'], 'error')
         self.assertIn('detail', response.data)
 
-    @patch('resource.storage.local.LocalStorageEngine.save')
+    @patch('learning_resources.storage.local.LocalStorageEngine.save')
     def test_storage_failure_handling(self, mock_save):
         """Test handling of storage failures."""
         mock_save.side_effect = Exception('Storage full')

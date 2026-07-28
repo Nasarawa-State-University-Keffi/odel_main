@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.core.files.uploadedfile import UploadedFile
 from assessment.models import Assignment, AssignmentSubmission, AssignmentContent, AssignmentSubmissionFile
-from resource.storage import get_storage_engine
+from learning_resources.storage import get_storage_engine
 
 
 def get_next_attempt(assignment, student_external_id):

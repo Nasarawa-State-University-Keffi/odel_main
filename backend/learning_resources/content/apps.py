@@ -7,5 +7,5 @@ from django.apps import AppConfig
 
 class ContentConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'resource.content'
+    name = 'learning_resources.content'
     verbose_name = 'Learning Content Management'

@@ -1,5 +1,5 @@
 """
-Base storage engine interface.
+Base learning-resource storage engine interface.
 All storage backends must inherit from BaseStorageEngine and implement required methods.
 """
 

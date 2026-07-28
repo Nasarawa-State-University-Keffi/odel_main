@@ -1,5 +1,5 @@
 """
-Amazon S3 storage engine.
+Amazon S3 learning-resource storage engine.
 Stores files in AWS S3 buckets.
 """
 

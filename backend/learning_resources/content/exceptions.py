@@ -1,5 +1,5 @@
 """
-Custom exception handling for consistent error responses.
+Custom exception handling for consistent LMS error responses.
 All errors return format: {'status': 'error', 'detail': '...'}
 """
 
