@@ -191,20 +191,20 @@ def get_or_sync_staff_registered_courses(
     *,
     staff_external_id: str,
     programme_type_code: str,
-    session: str | None = None,
-    semester: str | None = None,
+    session: str,
+    semester: str,
 ) -> list[StaffAssignedCourse]:
     client = PortalClient()
     programme_type_code = programme_type_code.strip().upper()
-    session = normalize_session_name(session) if session else None
-    semester = normalize_semester_name(semester) if semester else None
+    session = normalize_session_name(session)
+    semester = normalize_semester_name(semester)
 
     cache_key = course_sync_cache_key(
         "staff",
         staff_external_id,
         programme_type_code,
-        session or "",
-        semester or "",
+        session,
+        semester,
     )
 
     # 1️⃣ Fetch RAW portal data (cached)

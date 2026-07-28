@@ -64,7 +64,7 @@ class SynchronizationServiceTests(TestCase):
         UpstreamSynchronizationClient().faculties()
 
         request_get.assert_called_once_with(
-            'https://portal.example.edu/api/v1/attendance/faculties/all',
+            'https://portal.example.edu/api/attendance/faculties/all',
             headers={'Identity': 'identity', 'Secret': 'secret'},
             params=None,
             timeout=30,

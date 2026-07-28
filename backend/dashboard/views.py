@@ -171,6 +171,20 @@ class InstructorDashboardView(APIView):
                 required=True,
                 description="Programme type code, for example UG (required)"
             ),
+            OpenApiParameter(
+                name="session",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Academic session, for example 2025/2026 (required)"
+            ),
+            OpenApiParameter(
+                name="semester",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Semester, for example First Semester (required)"
+            ),
         ],
         responses={
             200: OpenApiResponse(
@@ -205,10 +219,9 @@ class InstructorDashboardView(APIView):
 
         if not programme_type_code:
             return Response({"detail": "programme_type_code is required"}, status=400)
-        if bool(session) != bool(semester):
-            return Response({"detail": "session and semester must be supplied together"}, status=400)
-        if session and semester:
-            session, semester = resolve_academic_period(session, semester)
+        if not session or not semester:
+            return Response({"detail": "session and semester are required"}, status=400)
+        session, semester = resolve_academic_period(session, semester)
 
         get_or_sync_staff_registered_courses(
             staff_external_id=user.external_id,
@@ -337,6 +350,29 @@ class InstructorDetailDashboardView(APIView):
     @extend_schema(
         tags=["Staff - Dashboard"],
         operation_id="get_instructor_detail_dashboard",
+        parameters=[
+            OpenApiParameter(
+                name="programme_type_code",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Programme type code, for example UG (required)"
+            ),
+            OpenApiParameter(
+                name="session",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Academic session, for example 2025/2026 (required)"
+            ),
+            OpenApiParameter(
+                name="semester",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Semester, for example First Semester (required)"
+            ),
+        ],
         responses={
             200: OpenApiResponse(
                 description="Instructor Detail Dashboard summary data",
@@ -369,10 +405,9 @@ class InstructorDetailDashboardView(APIView):
 
         if not programme_type_code:
             return Response({"detail": "programme_type_code is required"}, status=400)
-        if bool(session) != bool(semester):
-            return Response({"detail": "session and semester must be supplied together"}, status=400)
-        if session and semester:
-            session, semester = resolve_academic_period(session, semester)
+        if not session or not semester:
+            return Response({"detail": "session and semester are required"}, status=400)
+        session, semester = resolve_academic_period(session, semester)
         
         get_or_sync_staff_registered_courses(
             staff_external_id=external_id,

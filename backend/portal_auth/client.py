@@ -108,13 +108,13 @@ class PortalClient:
         *,
         staff_external_id: str,
         programme_type_code: str,
-        session: str | None = None,
-        semester: str | None = None,
+        session: str,
+        semester: str,
     ) -> list:
         params = {
             "userId": staff_external_id,
             "programmeTypeCode": programme_type_code,
+            "session": session,
+            "semester": semester,
         }
-        if session and semester:
-            params.update({"session": session, "semester": semester})
         return self._get_lms_data("/staff/courses", params)

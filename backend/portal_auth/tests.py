@@ -243,6 +243,8 @@ class PortalLMSClientTests(TestCase):
         courses = PortalClient().get_staff_assigned_courses(
             staff_external_id="SS0001",
             programme_type_code="UG",
+            session="2025/2026",
+            semester="First Semester",
         )
 
         self.assertEqual(courses[0]["id"], 42)
@@ -253,7 +255,12 @@ class PortalLMSClientTests(TestCase):
                 "Secret": "external-secret",
                 "Accept": "application/json",
             },
-            params={"userId": "SS0001", "programmeTypeCode": "UG"},
+            params={
+                "userId": "SS0001",
+                "programmeTypeCode": "UG",
+                "session": "2025/2026",
+                "semester": "First Semester",
+            },
             timeout=10,
         )
 
@@ -267,6 +274,8 @@ class PortalLMSClientTests(TestCase):
             PortalClient().get_staff_assigned_courses(
                 staff_external_id="SS0001",
                 programme_type_code="UG",
+                session="2025/2026",
+                semester="First Semester",
             )
 
         self.assertEqual(raised.exception.status_code, 502)
