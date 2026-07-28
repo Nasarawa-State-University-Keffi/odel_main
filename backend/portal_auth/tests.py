@@ -2,10 +2,12 @@ from unittest.mock import Mock, patch
 
 from django.test import TestCase, override_settings
 import jwt
+import requests
 from rest_framework.test import APIClient
 
 from .models import PortalUser
 from .client import PortalClient
+from .exceptions import PortalLMSUnavailable
 from .oidc import OIDC_SESSION_KEY, sync_user_from_claims
 from .services import get_or_sync_student_registered_courses
 from courses.models import CourseCache, StudentRegisteredCourse
@@ -229,6 +231,47 @@ class PortalLMSClientTests(TestCase):
             timeout=10,
         )
 
+    @patch("portal_auth.client.requests.get")
+    def test_staff_courses_use_external_credentials_and_expected_route(self, get):
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "data": [{"id": 42, "courseCode": "CSC401", "title": "Software Engineering"}]
+        }
+        get.return_value = response
+
+        courses = PortalClient().get_staff_assigned_courses(
+            staff_external_id="SS0001",
+            programme_type_code="UG",
+        )
+
+        self.assertEqual(courses[0]["id"], 42)
+        get.assert_called_once_with(
+            "https://portal.example.edu.ng/api/lms/staff/courses",
+            headers={
+                "Identity": "lms-client",
+                "Secret": "external-secret",
+                "Accept": "application/json",
+            },
+            params={"userId": "SS0001", "programmeTypeCode": "UG"},
+            timeout=10,
+        )
+
+    @patch("portal_auth.client.requests.get")
+    def test_upstream_http_error_becomes_bad_gateway_exception(self, get):
+        response = Mock(status_code=404)
+        response.raise_for_status.side_effect = requests.HTTPError(response=response)
+        get.return_value = response
+
+        with self.assertRaises(PortalLMSUnavailable) as raised:
+            PortalClient().get_staff_assigned_courses(
+                staff_external_id="SS0001",
+                programme_type_code="UG",
+            )
+
+        self.assertEqual(raised.exception.status_code, 502)
+        self.assertNotIn("SS0001", str(raised.exception.detail))
+
     @patch("portal_auth.services.PortalClient.get_student_registered_courses")
     def test_student_course_sync_uses_names_and_removes_stale_enrollments(self, get_courses):
         stale_course = CourseCache.objects.create(
@@ -256,3 +299,15 @@ class PortalLMSClientTests(TestCase):
         self.assertEqual(enrollments[0].session, "2025/2026")
         self.assertEqual(enrollments[0].semester, "First Semester")
         self.assertFalse(StudentRegisteredCourse.objects.filter(course=stale_course).exists())
+
+
+class HealthCheckTests(TestCase):
+    @override_settings(
+        SECURE_SSL_REDIRECT=True,
+        SECURE_REDIRECT_EXEMPT=[r'^health/$'],
+    )
+    def test_health_check_is_not_redirected_in_production(self):
+        response = APIClient().get('/health/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ok'})

@@ -30,7 +30,7 @@ class FilteredListView(generics.ListAPIView):
     filter_fields = ()
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         for query_name, model_field in self.filter_fields:
             value = self.request.query_params.get(query_name)
             if value:

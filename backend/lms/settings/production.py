@@ -76,6 +76,7 @@ SESSION_COOKIE_AGE = 86400  # 24 hours
 
 # Security Settings - MUST be enabled in production
 SECURE_SSL_REDIRECT = True
+SECURE_REDIRECT_EXEMPT = [r'^health/$']
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True

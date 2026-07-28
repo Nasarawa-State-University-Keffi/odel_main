@@ -107,6 +107,39 @@ class SynchronizationApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item['code'] for item in response.data['data']], ['ENG'])
 
+    def test_all_read_endpoints_clone_their_class_level_querysets(self):
+        programme_type = ProgrammeType.objects.create(
+            up_stream_id=1, name='Undergraduate', code='UG'
+        )
+        faculty = Faculty.objects.create(up_stream_id=10, name='Science', code='SCI')
+        department = Department.objects.create(
+            up_stream_id=20, name='Computer Science', code='CS', faculty=faculty
+        )
+        Programme.objects.create(
+            up_stream_id=100,
+            name='B.Sc. Computer Science',
+            code='BSC-CS',
+            department=department,
+            programme_type=programme_type,
+        )
+        self.client.force_authenticate(self.student)
+
+        endpoints = (
+            '/api/program-type/',
+            '/api/faculty/all',
+            '/api/faculty/search?query=science',
+            f'/api/department/all?faculty={faculty.id}',
+            '/api/department/search?query=computer',
+            f'/api/programme/?programme_type={programme_type.id}',
+            '/api/programme/search?query=B.Sc.',
+        )
+
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.client.get(endpoint)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(len(response.data['data']), 1)
+
 
 class OidcProgrammeSynchronizationTests(TestCase):
     def test_oidc_links_student_to_synced_programme_by_code(self):

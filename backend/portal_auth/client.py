@@ -3,6 +3,8 @@ from django.conf import settings
 import logging
 from urllib.parse import quote
 
+from .exceptions import PortalLMSUnavailable
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,14 +44,27 @@ class PortalClient:
             )
             response.raise_for_status()
         except requests.Timeout as exc:
-            raise RuntimeError("Portal LMS API request timed out") from exc
+            logger.warning("Portal LMS request timed out for path %s", path)
+            raise PortalLMSUnavailable("The portal LMS service timed out.") from exc
         except requests.RequestException as exc:
-            raise RuntimeError("Portal LMS API request failed") from exc
+            upstream_status = exc.response.status_code if exc.response is not None else None
+            logger.warning(
+                "Portal LMS request failed for path %s with status %s",
+                path,
+                upstream_status,
+            )
+            raise PortalLMSUnavailable() from exc
 
-        payload = response.json()
+        try:
+            payload = response.json()
+        except requests.JSONDecodeError as exc:
+            logger.warning("Portal LMS returned invalid JSON for path %s", path)
+            raise PortalLMSUnavailable("The portal LMS service returned an invalid response.") from exc
+
         data = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(data, list):
-            raise RuntimeError("Invalid portal LMS API response: missing data list")
+            logger.warning("Portal LMS response for path %s did not contain a data list", path)
+            raise PortalLMSUnavailable("The portal LMS service returned an invalid response.")
         return data
 
     def get_current_user(self) -> dict:
