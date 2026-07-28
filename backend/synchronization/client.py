@@ -12,35 +12,35 @@ class UpstreamSynchronizationClient:
         self.private_key = settings.PORTAL_SYNC_PRIVATE_KEY
         if not all((self.base_url, self.public_key, self.private_key)):
             raise ImproperlyConfigured(
-                'PORTAL_SYNC_BASE_URL, PORTAL_SYNC_PUBLIC_KEY, and '
-                'PORTAL_SYNC_PRIVATE_KEY must be configured'
+                "PORTAL_SYNC_BASE_URL, PORTAL_SYNC_PUBLIC_KEY, and "
+                "PORTAL_SYNC_PRIVATE_KEY must be configured"
             )
 
     def get(self, path, params=None):
-        url = urljoin(f'{self.base_url.rstrip("/")}/', path.lstrip('/'))
+        url = urljoin(f"{self.base_url.rstrip('/')}/", path.lstrip("/"))
         response = requests.get(
             url,
-            headers={'Identity': self.public_key, 'Secret': self.private_key},
+            headers={"Identity": self.public_key, "Secret": self.private_key},
             params=params,
             timeout=30,
         )
         response.raise_for_status()
         data = response.json()
         if not isinstance(data, list):
-            raise ValueError(f'Expected an array from {path}')
+            raise ValueError(f"Expected an array from {path}")
         return data
 
     def programme_types(self):
-        return self.get('/api/v1/attendance/programme_types/all')
+        return self.get("/api/attendance/programme_types/all")
 
     def faculties(self):
-        return self.get('/api/v1/attendance/faculties/all')
+        return self.get("/api/attendance/faculties/all")
 
     def departments(self):
-        return self.get('/api/v1/attendance/departments/all')
+        return self.get("/api/attendance/departments/all")
 
     def programmes(self, programme_type_code):
         return self.get(
-            '/api/v1/attendance/programmes/all',
-            params={'programme_type': programme_type_code},
+            "/api/attendance/programmes/all",
+            params={"programme_type": programme_type_code},
         )
