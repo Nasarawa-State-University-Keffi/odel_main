@@ -10,7 +10,7 @@ export const navItems = {
     admin: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { name: "All Courses", href: "/courses", icon: BookOpen },
-        { name: "Content", href: "/admin/dashboard/academic-setup", icon: BookOpen },
+        { name: "Academic Setup", href: "/admin/dashboard/academic-setup", icon: BookOpen },
         { name: "Assignments", href: "/admin/dashboard/assignments", icon: FileText },
         { name: "Quizzes", href: "/quizzes", icon: ClipboardCheck },
         { name: "My Grades", href: "/grades", icon: GraduationCap },

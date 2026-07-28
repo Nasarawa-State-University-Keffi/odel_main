@@ -35,6 +35,8 @@ export const endpoint = {
     semester: '/semesters/',
     session: '/sessions/',
 
+    programme_type: "/program-type/",
+
     admin: {
         storage: {
             content: {

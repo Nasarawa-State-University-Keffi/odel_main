@@ -10,7 +10,7 @@ export const useStaffDashboard = () => {
     const fetchStaffData = async (external_id: string) => {
         startTransition(async () => {
             try {
-                const response = await repository.get(`${endpoint.staff.dashboard.staff}/${external_id}/?programme_type_code=UG`)
+                const response = await repository.get(`${endpoint.staff.dashboard.staff}/${external_id}/?programme_type_code=ODEL&session=2023/2024&semester=First`)
                 console.log("response returned", response)
                 return response.data;
             } catch (error) {

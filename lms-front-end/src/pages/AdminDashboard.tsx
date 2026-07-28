@@ -16,17 +16,24 @@ import {
 import { useAuth } from "@/service/useAuth";
 import { useStaffDashboard } from "@/service/useStaffDashboard";
 import { useEffect } from "react";
+import { useProgrammeType } from "@/service/useProgrammeType";
+import { useAdminDashboard } from "@/service/useAdminDashboard";
 
 const AdminDashboard = () => {
   const { user, isLoading } = useUserContext();
   const { handleLogout, isPending } = useAuth()
+  const {fetchProgrammeType, isPending: isProgrammeTypePending} = useProgrammeType()
   const {fetchStaffData, isPending: isStaffPending} = useStaffDashboard()
+  const {syncAll} = useAdminDashboard()
 
   useEffect(() => {
   if(user?.external_id){
-    fetchStaffData(user.external_id)
+    //syncAll()
+   //fetchProgrammeType()
+   fetchStaffData(user.external_id)
   }
   }, [user])
+
 
   if (isLoading) {
     return (
