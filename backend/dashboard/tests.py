@@ -56,14 +56,23 @@ class InstructorDashboardErrorTests(TestCase):
 
         for endpoint in endpoints:
             with self.subTest(endpoint=endpoint):
-                response = self.client.get(
-                    endpoint,
-                    {'programme_type_code': 'UG'},
-                )
+                with self.assertLogs('dashboard.views', level='WARNING') as logs:
+                    response = self.client.get(
+                        endpoint,
+                        {'programme_type_code': 'UG'},
+                    )
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(
                     str(response.data['detail']),
                     'session and semester are required',
+                )
+                self.assertIn(
+                    "missing_params=['session', 'semester']",
+                    logs.output[0],
+                )
+                self.assertIn(
+                    "query_params={'programme_type_code': ['UG']}",
+                    logs.output[0],
                 )
 
         sync_courses.assert_not_called()

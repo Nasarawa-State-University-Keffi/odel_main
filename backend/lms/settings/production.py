@@ -126,12 +126,12 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'WARNING',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
         'file': {
-            'level': 'WARNING',
+            'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': '/app/logs/django.log',
             'maxBytes': 1024 * 1024 * 15,  # 15MB
@@ -150,6 +150,16 @@ LOGGING = {
             'propagate': False,
         },
         'courses': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'dashboard': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'portal_auth': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': False,

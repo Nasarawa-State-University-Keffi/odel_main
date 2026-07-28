@@ -1,3 +1,5 @@
+import logging
+
 from .client import PortalClient
 from .models import PortalUser
 from .utils import fetch_from_portal
@@ -6,6 +8,8 @@ from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCo
 from django.db import transaction
 import hashlib
 import re
+
+logger = logging.getLogger(__name__)
 
 STAFF_ROLES = {"ADMIN", "SUPER_ADMIN", "STAFF"}
 
@@ -142,7 +146,6 @@ def get_or_sync_student_registered_courses(
         ),
         ttl=300,
     )
-
     enrollments = []
 
     # 2️⃣ Sync DB safely
@@ -199,6 +202,14 @@ def get_or_sync_staff_registered_courses(
     session = normalize_session_name(session)
     semester = normalize_semester_name(semester)
 
+    logger.info(
+        "Staff course synchronization starting staff_external_id=%r "
+        "programme_type_code=%r session=%r semester=%r",
+        staff_external_id,
+        programme_type_code,
+        session,
+        semester,
+    )
     cache_key = course_sync_cache_key(
         "staff",
         staff_external_id,
@@ -217,6 +228,15 @@ def get_or_sync_staff_registered_courses(
             semester=semester,
         ),
         ttl=300,
+    )
+    logger.info(
+        "Staff course data fetched staff_external_id=%r "
+        "programme_type_code=%r session=%r semester=%r raw_course_count=%d",
+        staff_external_id,
+        programme_type_code,
+        session,
+        semester,
+        len(raw_courses),
     )
 
     assignments = []
@@ -248,6 +268,17 @@ def get_or_sync_staff_registered_courses(
         )
         if current_course_ids:
             stale_assignments = stale_assignments.exclude(course_id__in=current_course_ids)
-        stale_assignments.delete()
+        stale_deleted_count, _ = stale_assignments.delete()
 
+    logger.info(
+        "Staff course synchronization completed staff_external_id=%r "
+        "programme_type_code=%r session=%r semester=%r assignment_count=%d "
+        "stale_record_count=%d",
+        staff_external_id,
+        programme_type_code,
+        session,
+        semester,
+        len(assignments),
+        stale_deleted_count,
+    )
     return assignments

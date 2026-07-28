@@ -1,3 +1,5 @@
+import logging
+
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -21,10 +23,20 @@ from portal_auth.permissions import IsPortalStudent, IsPortalStaff
 
 from drf_spectacular.utils import OpenApiParameter
 
+logger = logging.getLogger(__name__)
+
 
 def resolve_academic_period(session_name, semester_name):
     normalized_session = normalize_session_name(session_name)
     normalized_semester = normalize_semester_name(semester_name)
+    logger.info(
+        "Resolving academic period session=%r normalized_session=%r "
+        "semester=%r normalized_semester=%r",
+        session_name,
+        normalized_session,
+        semester_name,
+        normalized_semester,
+    )
     session = AcademicSession.objects.filter(name__iexact=normalized_session).first()
     semester = Semester.objects.filter(name__iexact=normalized_semester).first()
 
@@ -34,8 +46,19 @@ def resolve_academic_period(session_name, semester_name):
     if not semester:
         errors['semester'] = 'Unknown semester'
     if errors:
+        logger.warning(
+            "Academic period validation failed session=%r semester=%r errors=%s",
+            normalized_session,
+            normalized_semester,
+            errors,
+        )
         raise ValidationError(errors)
 
+    logger.info(
+        "Academic period resolved session=%r semester=%r",
+        session.name,
+        semester.name,
+    )
     return session.name, semester.name
 
 class StudentDashboardView(APIView):
@@ -217,17 +240,55 @@ class InstructorDashboardView(APIView):
         semester = request.query_params.get("semester")
         user = request.user
 
+        logger.info(
+            "Instructor dashboard request received staff_external_id=%r "
+            "query_params=%s",
+            user.external_id,
+            dict(request.query_params.lists()),
+        )
         if not programme_type_code:
+            logger.warning(
+                "Instructor dashboard request rejected staff_external_id=%r "
+                "reason=missing_programme_type_code query_params=%s",
+                user.external_id,
+                dict(request.query_params.lists()),
+            )
             return Response({"detail": "programme_type_code is required"}, status=400)
         if not session or not semester:
+            missing_params = [
+                name
+                for name, value in (("session", session), ("semester", semester))
+                if not value
+            ]
+            logger.warning(
+                "Instructor dashboard request rejected staff_external_id=%r "
+                "reason=missing_academic_period missing_params=%s query_params=%s",
+                user.external_id,
+                missing_params,
+                dict(request.query_params.lists()),
+            )
             return Response({"detail": "session and semester are required"}, status=400)
         session, semester = resolve_academic_period(session, semester)
 
-        get_or_sync_staff_registered_courses(
+        logger.info(
+            "Starting instructor course synchronization staff_external_id=%r "
+            "programme_type_code=%r session=%r semester=%r",
+            user.external_id,
+            programme_type_code,
+            session,
+            semester,
+        )
+        assignments = get_or_sync_staff_registered_courses(
             staff_external_id=user.external_id,
             programme_type_code=programme_type_code,
             session=session,
             semester=semester,
+        )
+        logger.info(
+            "Instructor course synchronization completed staff_external_id=%r "
+            "course_count=%d",
+            user.external_id,
+            len(assignments),
         )
 
         course_assigned = StaffAssignedCourse.objects.filter(
@@ -250,6 +311,18 @@ class InstructorDashboardView(APIView):
             "total_quizzes": QuizSummarySerializer(total_quizzes, many=True).data,
             "total_quizzes_count": total_quizzes.count(),
         }
+        logger.info(
+            "Instructor dashboard response ready staff_external_id=%r "
+            "programme_type_code=%r session=%r semester=%r course_count=%d "
+            "assignment_count=%d quiz_count=%d",
+            user.external_id,
+            programme_type_code.upper(),
+            session,
+            semester,
+            data["total_courses_count"],
+            data["total_assignments_count"],
+            data["total_quizzes_count"],
+        )
         return Response(status=200, data=data)
 
 from rest_framework.views import APIView
@@ -403,17 +476,56 @@ class InstructorDetailDashboardView(APIView):
         session = request.query_params.get("session")
         semester = request.query_params.get("semester")
 
+        logger.info(
+            "Instructor detail dashboard request received requester_external_id=%r "
+            "target_external_id=%r query_params=%s",
+            request.user.external_id,
+            external_id,
+            dict(request.query_params.lists()),
+        )
         if not programme_type_code:
+            logger.warning(
+                "Instructor detail dashboard request rejected target_external_id=%r "
+                "reason=missing_programme_type_code query_params=%s",
+                external_id,
+                dict(request.query_params.lists()),
+            )
             return Response({"detail": "programme_type_code is required"}, status=400)
         if not session or not semester:
+            missing_params = [
+                name
+                for name, value in (("session", session), ("semester", semester))
+                if not value
+            ]
+            logger.warning(
+                "Instructor detail dashboard request rejected target_external_id=%r "
+                "reason=missing_academic_period missing_params=%s query_params=%s",
+                external_id,
+                missing_params,
+                dict(request.query_params.lists()),
+            )
             return Response({"detail": "session and semester are required"}, status=400)
         session, semester = resolve_academic_period(session, semester)
-        
-        get_or_sync_staff_registered_courses(
+
+        logger.info(
+            "Starting instructor detail course synchronization target_external_id=%r "
+            "programme_type_code=%r session=%r semester=%r",
+            external_id,
+            programme_type_code,
+            session,
+            semester,
+        )
+        assignments = get_or_sync_staff_registered_courses(
             staff_external_id=external_id,
             programme_type_code=programme_type_code,
             session=session,
             semester=semester,
+        )
+        logger.info(
+            "Instructor detail course synchronization completed "
+            "target_external_id=%r course_count=%d",
+            external_id,
+            len(assignments),
         )
 
         course_assigned = StaffAssignedCourse.objects.filter(
@@ -434,4 +546,16 @@ class InstructorDetailDashboardView(APIView):
             "total_quizzes": QuizSummarySerializer(total_quizzes, many=True).data,
             "total_quizzes_count": total_quizzes.count(),
         }
+        logger.info(
+            "Instructor detail dashboard response ready target_external_id=%r "
+            "programme_type_code=%r session=%r semester=%r course_count=%d "
+            "assignment_count=%d quiz_count=%d",
+            external_id,
+            programme_type_code.upper(),
+            session,
+            semester,
+            data["total_courses_count"],
+            data["total_assignments_count"],
+            data["total_quizzes_count"],
+        )
         return Response(status=200, data=data)

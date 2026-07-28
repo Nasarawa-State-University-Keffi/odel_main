@@ -8,6 +8,20 @@ from .exceptions import PortalLMSUnavailable
 logger = logging.getLogger(__name__)
 
 
+def _response_body_for_log(response, limit: int = 2000) -> str:
+    if response is None:
+        return "<no response>"
+    try:
+        body = response.text
+    except Exception:
+        return "<unavailable>"
+    if not isinstance(body, str):
+        return "<unavailable>"
+    if len(body) > limit:
+        return f"{body[:limit]}... <truncated {len(body) - limit} characters>"
+    return body
+
+
 class PortalClient:
     def __init__(self, token: str | None = None):
         self.token = token
@@ -35,6 +49,12 @@ class PortalClient:
 
     def _get_lms_data(self, path: str, params: dict) -> list:
         url = f"{self._lms_base_url()}{path}"
+        prepared_url = requests.Request("GET", url, params=params).prepare().url
+        logger.info(
+            "Portal LMS request starting method=GET url=%s params=%s timeout_seconds=10",
+            prepared_url,
+            params,
+        )
         try:
             response = requests.get(
                 url,
@@ -44,27 +64,67 @@ class PortalClient:
             )
             response.raise_for_status()
         except requests.Timeout as exc:
-            logger.warning("Portal LMS request timed out for path %s", path)
+            logger.warning(
+                "Portal LMS request timed out method=GET url=%s params=%s "
+                "timeout_seconds=10 error=%s",
+                prepared_url,
+                params,
+                exc,
+            )
             raise PortalLMSUnavailable("The portal LMS service timed out.") from exc
         except requests.RequestException as exc:
-            upstream_status = exc.response.status_code if exc.response is not None else None
+            upstream_response = exc.response
+            upstream_status = (
+                upstream_response.status_code
+                if upstream_response is not None
+                else None
+            )
             logger.warning(
-                "Portal LMS request failed for path %s with status %s",
-                path,
+                "Portal LMS request failed method=GET url=%s params=%s status=%s "
+                "response_body=%r error=%s",
+                prepared_url,
+                params,
                 upstream_status,
+                _response_body_for_log(upstream_response),
+                exc,
             )
             raise PortalLMSUnavailable() from exc
 
+        logger.info(
+            "Portal LMS request completed method=GET url=%s status=%s",
+            prepared_url,
+            response.status_code,
+        )
         try:
             payload = response.json()
         except requests.JSONDecodeError as exc:
-            logger.warning("Portal LMS returned invalid JSON for path %s", path)
+            logger.warning(
+                "Portal LMS returned invalid JSON method=GET url=%s status=%s "
+                "response_body=%r error=%s",
+                prepared_url,
+                response.status_code,
+                _response_body_for_log(response),
+                exc,
+            )
             raise PortalLMSUnavailable("The portal LMS service returned an invalid response.") from exc
 
         data = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(data, list):
-            logger.warning("Portal LMS response for path %s did not contain a data list", path)
+            logger.warning(
+                "Portal LMS response did not contain a data list method=GET url=%s "
+                "status=%s payload_type=%s response_body=%r",
+                prepared_url,
+                response.status_code,
+                type(payload).__name__,
+                _response_body_for_log(response),
+            )
             raise PortalLMSUnavailable("The portal LMS service returned an invalid response.")
+        logger.info(
+            "Portal LMS response parsed method=GET url=%s status=%s data_count=%d",
+            prepared_url,
+            response.status_code,
+            len(data),
+        )
         return data
 
     def get_current_user(self) -> dict:

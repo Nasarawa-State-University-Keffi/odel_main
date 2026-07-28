@@ -267,19 +267,27 @@ class PortalLMSClientTests(TestCase):
     @patch("portal_auth.client.requests.get")
     def test_upstream_http_error_becomes_bad_gateway_exception(self, get):
         response = Mock(status_code=404)
+        response.text = '{"detail":"Staff courses route not found"}'
         response.raise_for_status.side_effect = requests.HTTPError(response=response)
         get.return_value = response
 
-        with self.assertRaises(PortalLMSUnavailable) as raised:
-            PortalClient().get_staff_assigned_courses(
-                staff_external_id="SS0001",
-                programme_type_code="UG",
-                session="2025/2026",
-                semester="First Semester",
-            )
+        with self.assertLogs("portal_auth.client", level="WARNING") as logs:
+            with self.assertRaises(PortalLMSUnavailable) as raised:
+                PortalClient().get_staff_assigned_courses(
+                    staff_external_id="SS0001",
+                    programme_type_code="UG",
+                    session="2025/2026",
+                    semester="First Semester",
+                )
 
         self.assertEqual(raised.exception.status_code, 502)
         self.assertNotIn("SS0001", str(raised.exception.detail))
+        self.assertIn("userId=SS0001", logs.output[0])
+        self.assertIn("programmeTypeCode=UG", logs.output[0])
+        self.assertIn("session=2025%2F2026", logs.output[0])
+        self.assertIn("semester=First+Semester", logs.output[0])
+        self.assertIn("status=404", logs.output[0])
+        self.assertIn("Staff courses route not found", logs.output[0])
 
     @patch("portal_auth.services.PortalClient.get_student_registered_courses")
     def test_student_course_sync_uses_names_and_removes_stale_enrollments(self, get_courses):
