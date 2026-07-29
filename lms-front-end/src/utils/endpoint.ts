@@ -25,9 +25,16 @@ export const endpoint = {
     staff: {
         dashboard: {
             staff: '/dashboard/instructors',
-            accessment: {
-                assignment: "/staff/assessment/assignments/",
-                submissions: "/staff/assessment/submissions/"
+            assessment: {
+                assignment: {
+                    assignment: "/staff/assessment/assignments/",
+                    submissions: "/staff/assessment/submissions/"
+                },
+
+                quiz: {
+                    quizzes: "/staff/assessment/quizzes/",
+                    submissions: "/staff/assessment/quiz-submissions/"
+                }
             }
         }
     },
@@ -46,3 +53,4 @@ export const endpoint = {
     }
 
 }
+

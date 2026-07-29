@@ -5,15 +5,17 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "react-toastify"; // Assuming you use this based on package.json
 
-import { useStaffAccessment } from "@/service/useStaffAssessment";
+import { useStaffAccessment } from "@/service/useStaffAssignment";
 import { CreateAssignmentSchema, type CreateAssignmentPayload } from "@/types/assignment.types";
 import { AnimateIn } from "@/components/ui/animate-in";
-import { useCourse } from "@/service/useCourse";
+import { useStaffDashboard } from "@/service/useStaffDashboard";
+import { useUserContext } from "@/context/UserProvider";
 
 const CreateAssignment = () => {
     const navigate = useNavigate();
     const { createAssignment, isPending } = useStaffAccessment();
-    const { fetchCourseList } = useCourse();
+    const { fetchStaffData, isPending: pendingStaff, dashboardData } = useStaffDashboard()
+    const { user } = useUserContext()
 
     const {
         register,
@@ -39,14 +41,16 @@ const CreateAssignment = () => {
 
             await createAssignment(formattedData);
             toast.success("Assignment created successfully!");
-            navigate("/assignments"); // Adjust to your routing structure
+            navigate("/assignments");
         } catch (error: any) {
             toast.error(error || "An error occurred while creating the assignment.");
         }
     };
 
     useEffect(() => {
-        fetchCourseList();
+        if (user) {
+            fetchStaffData(user.external_id)
+        }
     }, []);
 
     return (
@@ -94,14 +98,40 @@ const CreateAssignment = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-text-main mb-1">Course ID *</label>
-                                    {/* Ideally, this would be a Select component fetching courses */}
-                                    <input
-                                        type="number"
-                                        {...register("course", { valueAsNumber: true })}
-                                        className="w-full px-4 py-2 bg-bg-base border border-border-subtle rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow"
-                                        placeholder="Enter Course ID"
-                                    />
+                                    <label className="block text-sm font-medium text-text-main mb-1">Course *</label>
+                                    <div className="relative">
+                                        <select
+                                            defaultValue=""
+                                            {...register("course", { valueAsNumber: true })}
+                                            disabled={pendingStaff}
+                                            className="w-full px-4 py-2 bg-bg-base border border-border-subtle rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <option value="" disabled>
+                                                {pendingStaff ? "Loading courses..." : "Select a course"}
+                                            </option>
+
+                                            {/* Safely map over the courses, checking for data wrapper if present */}
+                                            {(dashboardData?.total_courses || []).map((course: any) => (
+                                                <option
+                                                    key={course.course_external_id}
+                                                    value={course.course_external_id}
+                                                >
+                                                    {course.course_code} - {course.course_title}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        {/* Optional: Add a custom dropdown arrow if you want to hide the default browser one */}
+                                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-text-muted">
+                                            {pendingStaff ? (
+                                                <Loader2 size={16} className="animate-spin" />
+                                            ) : (
+                                                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd" />
+                                                </svg>
+                                            )}
+                                        </div>
+                                    </div>
                                     {errors.course && <p className="text-red-500 text-xs mt-1">{errors.course.message}</p>}
                                 </div>
                             </div>

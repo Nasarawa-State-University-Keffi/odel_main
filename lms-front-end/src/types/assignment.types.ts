@@ -1,59 +1,59 @@
 import { z } from "zod";
 
 export const CourseSchema = z.object({
-    course_external_id: z.number(),
-    course_title: z.string(),
-    course_code: z.string(),
-    department_name: z.string(),
-    updated_at: z.string().datetime(),
+  course_external_id: z.number(),
+  course_title: z.string(),
+  course_code: z.string(),
+  department_name: z.string(),
+  updated_at: z.string().datetime(),
 });
 
 export const ContentFileSchema = z.object({
-    id: z.string().uuid(),
-    title: z.string(),
-    content_type: z.string(),
-    url: z.string().url().or(z.string()),
-    created_at: z.string().datetime(),
+  id: z.string().uuid(),
+  title: z.string(),
+  content_type: z.string(),
+  url: z.string().url().or(z.string()),
+  created_at: z.string().datetime(),
 });
 
 export const AssignmentSchema = z.object({
-    id: z.string().uuid(),
-    course: CourseSchema,
-    content_files: z.array(ContentFileSchema),
-    title: z.string(),
-    description: z.string(),
-    open_at: z.string().datetime(),
-    due_at: z.string().datetime(),
-    close_at: z.string().datetime(),
-    max_attempts: z.number(),
-    allow_late_submission: z.boolean(),
-    is_published: z.boolean(),
-    max_marks: z.string(),
-    created_at: z.string().datetime(),
-    created_by: z.number(),
+  id: z.string().uuid(),
+  course: CourseSchema,
+  content_files: z.array(ContentFileSchema),
+  title: z.string(),
+  description: z.string(),
+  open_at: z.string().datetime(),
+  due_at: z.string().datetime(),
+  close_at: z.string().datetime(),
+  max_attempts: z.number(),
+  allow_late_submission: z.boolean(),
+  is_published: z.boolean(),
+  max_marks: z.string(),
+  created_at: z.string().datetime(),
+  created_by: z.number(),
 });
 
 export const PaginatedAssignmentSchema = z.object({
-    count: z.number(),
-    next: z.string().nullable(),
-    previous: z.string().nullable(),
-    results: z.array(AssignmentSchema),
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(AssignmentSchema),
 });
 
 
 // Add this below your existing schemas
 
 export const CreateAssignmentSchema = z.object({
-    title: z.string().min(3, "Title must be at least 3 characters"),
-    description: z.string().optional(),
-    open_at: z.string().min(1, "Open date is required"),
-    due_at: z.string().min(1, "Due date is required"),
-    close_at: z.string().min(1, "Close date is required"),
-    max_attempts: z.number().int().positive("Must be at least 1 attempt"),
-    allow_late_submission: z.boolean(),
-    is_published: z.boolean(),
-    max_marks: z.string().min(1, "Max marks is required"),
-    course: z.number().int().positive("Please select a valid course"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().optional(),
+  open_at: z.string().min(1, "Open date is required"),
+  due_at: z.string().min(1, "Due date is required"),
+  close_at: z.string().min(1, "Close date is required"),
+  max_attempts: z.number().int().positive("Must be at least 1 attempt"),
+  allow_late_submission: z.boolean(),
+  is_published: z.boolean(),
+  max_marks: z.string().min(1, "Max marks is required"),
+  course: z.number().int().positive("Please select a valid course"),
 });
 
 export const SubmissionFileSchema = z.object({
@@ -97,6 +97,18 @@ export interface SubmissionQueryParams {
   ordering?: string;
 }
 
+export interface UpdateAssignmentPayload {
+  title?: string;
+  description?: string;
+  open_at?: string;
+  due_at?: string;
+  close_at?: string;
+  max_attempts?: number;
+  allow_late_submission?: boolean;
+  is_published?: boolean;
+  max_marks?: string | number;
+  course?: number;
+}
 
 
 

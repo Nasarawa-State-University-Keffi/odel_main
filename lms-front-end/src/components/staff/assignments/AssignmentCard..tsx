@@ -1,19 +1,27 @@
 import React from "react";
-import { Calendar, Clock, FileText, MoreVertical, Edit, Trash, Users } from "lucide-react";
+import { Calendar, Clock, FileText, MoreVertical, Edit, Trash, Users, Loader2, Trash2 } from "lucide-react";
 import type { Assignment } from "@/types/assignment.types";
+import { useNavigate } from "react-router-dom";
 
 interface Props {
   assignment: Assignment;
+  onDelete?: (id: string) => void;
+  deletingId?: string | null;
 }
 
-export const AssignmentCard: React.FC<Props> = ({ assignment }) => {
+
+
+export const AssignmentCard: React.FC<Props> = ({ assignment, onDelete, deletingId }) => {
   const isPublished = assignment.is_published;
+  const navigate = useNavigate()
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short", day: "numeric", year: "numeric"
     });
   };
+
+  const isDeleting = deletingId === assignment.id;
 
   return (
     <div className="flex flex-col justify-between bg-surface border border-border-subtle rounded-xl p-5 shadow-sm hover:shadow-md hover:border-primary-300 transition-all duration-300 group">
@@ -57,12 +65,27 @@ export const AssignmentCard: React.FC<Props> = ({ assignment }) => {
           <Users size={14} /> Submissions
         </button>
         <div className="flex gap-1">
-          <button className="p-2 text-text-muted hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit">
+          <button className="p-2 text-text-muted hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit" onClick={() => navigate(`/staff/dashboard/assignments/edit/${assignment.id}`)}>
             <Edit size={16} />
           </button>
-          <button className="p-2 text-text-muted hover:text-destructive hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-            <Trash size={16} />
-          </button>
+          <div className={`relative transition-all duration-200 ${isDeleting ? "opacity-50 pointer-events-none scale-95" : ""}`}>
+            {/* Loading Overlay when this specific card is deleting */}
+            {isDeleting && (
+                <div className="absolute inset-0 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-sm rounded-2xl z-10 flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="w-6 h-6 animate-spin text-red-500" />
+                    <span className="text-xs font-semibold text-red-600 dark:text-red-400">Deleting...</span>
+                </div>
+            )}
+
+            {/* Card Content... */}
+            <button
+                disabled={isDeleting}
+                onClick={() => onDelete?.(assignment.id)}
+                className="p-2 text-zinc-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+            >
+                <Trash2 size={16} />
+            </button>
+        </div>
         </div>
       </div>
     </div>

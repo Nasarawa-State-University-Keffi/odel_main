@@ -11,6 +11,9 @@ import StaffDashboard from "./StaffDashboard";
 import StaffAssignmentPage from "./StaffAssignmentPage";
 import CreateAssignment from "./CreateAssignment";
 import StaffAssessmentSubmissionsPage from "./StaffAssessmentSubmissionsPage";
+import EditAssignmentPage from "./EditAssignmentPage";
+import StaffQuizPage from "./StaffQuizPage";
+import CreateQuizPage from "./CreateQuizPage";
 
 const Presentation = () => {
     return (
@@ -46,7 +49,10 @@ const Presentation = () => {
                     <Route index element={<AdminDashboard />} />
                     <Route path="assignments" element={<StaffAssignmentPage />} />
                     <Route path="assignments/create" element={<CreateAssignment />} />
+                    <Route path="assignments/edit/:id" element={<EditAssignmentPage />} />
                     <Route path="assessment-submissions/submissions" element={<StaffAssessmentSubmissionsPage />} />
+                    <Route path="quizzes" element={<StaffQuizPage />} />
+                    <Route path="quizzes/create" element={<CreateQuizPage />} />
                     <Route path="courses" element={<Courses />} />
                     <Route path="courses/:id" element={<CourseDetail />} />
                     <Route path="dashboard" element={<StaffDashboard />} />

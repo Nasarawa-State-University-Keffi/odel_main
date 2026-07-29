@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, AlertCircle, FileText, CheckCircle, Clock, ChevronRight, FileDown } from "lucide-react";
-import { useStaffAccessment } from "@/service/useStaffAssessment";
+import { useStaffAccessment } from "@/service/useStaffAssignment";
 import { AnimateIn } from "@/components/ui/animate-in";
 import { SubmissionEmptyState, SubmissionLoadingState } from "@/components/staff/submissions/SubmissionStates";
 import type { Submission } from "@/types/assignment.types";

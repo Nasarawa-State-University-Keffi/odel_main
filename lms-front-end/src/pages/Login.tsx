@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GraduationCap, Loader2, ChevronRight, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,12 @@ const Login = () => {
     setIsLoading(true);
     handleSignin({ username: "", password: "" });
   };
+
+  useEffect(() => {
+    return () => {
+      setIsLoading(false)
+    }
+  }, [])
 
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2 bg-white dark:bg-zinc-950">

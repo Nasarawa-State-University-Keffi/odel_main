@@ -32,7 +32,7 @@ const AdminDashboard = () => {
    //fetchProgrammeType()
    fetchStaffData(user.external_id)
   }
-  }, [user])
+  }, [])
 
 
   if (isLoading) {
