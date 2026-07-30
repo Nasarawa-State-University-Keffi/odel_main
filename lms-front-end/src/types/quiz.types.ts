@@ -39,6 +39,37 @@ export interface CreateQuizPayload {
     course_id: string;
 }
 
+// Add this to quiz.types.ts
+export interface UpdateQuizPayload {
+    name?: string;
+    description?: string;
+    time_open?: string;
+    time_close?: string;
+    time_limit?: number;
+    max_grade?: string;
+    shuffle_questions?: boolean;
+    max_attempts?: number;
+    show_feedback?: boolean;
+    course_id?: string;
+}
+
+export interface CreateQuestionSlotPayload {
+    quiz: string;       // Quiz UUID
+    question: string;   // Question UUID
+    order: number;      // Sequence order (e.g., 1, 2, 3)
+    max_mark: string;   // e.g. "10.0" or "5"
+}
+
+export interface QuizQuestionSlot {
+    id: string;
+    quiz: string;
+    question: string;
+    question_name: string;
+    question_type: string;
+    order: number;
+    max_mark: string;
+}
+
 export type Quiz = z.infer<typeof QuizSchema>;
 export type PaginatedQuizzes = z.infer<typeof PaginatedQuizzesSchema>;
 

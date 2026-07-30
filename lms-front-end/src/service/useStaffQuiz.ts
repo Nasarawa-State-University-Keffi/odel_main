@@ -1,7 +1,7 @@
 import BaseRepository from "@/repository/base.repository";
 import { endpoint } from "@/utils/endpoint";
 import { useState, useTransition } from "react";
-import type { CreateQuizPayload, PaginatedQuizzes, QuizQueryParams } from "@/types/quiz.types";
+import type { CreateQuestionSlotPayload, CreateQuizPayload, PaginatedQuizzes, Quiz, QuizQueryParams, QuizQuestionSlot, UpdateQuizPayload } from "@/types/quiz.types";
 
 export const useStaffQuiz = () => {
     const [isPending, startTransition] = useTransition();
@@ -54,11 +54,74 @@ export const useStaffQuiz = () => {
         });
     };
 
+
+    const fetchQuizById = async (id: string) => {
+        return new Promise<Quiz>((resolve, reject) => {
+            startTransition(async () => {
+                try {
+                    let baseUrl = endpoint.staff.dashboard.assessment.quiz.quizzes;
+                    const url = `${baseUrl}${id}/`;
+
+                    const response = await repository.get(url);
+                    resolve(response.data as Quiz);
+                } catch (err: any) {
+                    reject(err?.response?.data?.message || "Failed to fetch quiz details.");
+                }
+            });
+        });
+    };
+
+    const updateQuiz = async (
+        id: string,
+        payload: UpdateQuizPayload,
+        options: { isFullReplacement?: boolean } = {}
+    ) => {
+        return new Promise((resolve, reject) => {
+            startTransition(async () => {
+                try {
+                    let baseUrl = endpoint.staff.dashboard.assessment.quiz.quizzes;
+                    const url = `${baseUrl}${id}/`;
+
+                    const response = options.isFullReplacement
+                        ? await repository.put(url, payload)
+                        : await repository.patch(url, payload);
+
+                    resolve(response.data);
+                } catch (err: any) {
+                    reject(err?.response?.data?.message || "Failed to update quiz.");
+                }
+            });
+        });
+    };
+
+
+const addQuestionSlot = async (payload: CreateQuestionSlotPayload) => {
+    return new Promise<QuizQuestionSlot>((resolve, reject) => {
+        startTransition(async () => {
+            try {
+                const url = endpoint?.staff?.dashboard?.assessment.quiz.questions;
+                const response = await repository.post(url, payload);
+                resolve(response.data as QuizQuestionSlot);
+            } catch (err: any) {
+                const errorMessage = 
+                    err?.response?.data?.message || 
+                    err?.response?.data?.detail || 
+                    (typeof err?.response?.data === "object" ? JSON.stringify(err.response.data) : null) ||
+                    "Failed to add question to quiz.";
+                reject(errorMessage);
+            }
+        });
+    });
+};
+
     return {
         data,
         error,
         isPending,
         fetchQuizzes,
         createQuiz,
+        fetchQuizById,
+        updateQuiz,
+        addQuestionSlot
     };
 };

@@ -30,10 +30,10 @@ export const QuizCard = ({ quiz }: { quiz: Quiz }) => {
                         <MoreVertical size={18} />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem onClick={() => navigate(`/staff/dashboard/quizzes/${quiz.id}`)} className="cursor-pointer gap-2">
+                        <DropdownMenuItem onClick={() => navigate(`/staff/dashboard/quizzes/view/${quiz.id}`)} className="cursor-pointer gap-2">
                             <Eye size={16} className="text-zinc-500" /> View
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/staff/dashboard/quizzes/${quiz.id}/edit`)} className="cursor-pointer gap-2">
+                        <DropdownMenuItem onClick={() => navigate(`/staff/dashboard/quizzes/edit/${quiz.id}`)} className="cursor-pointer gap-2">
                             <Edit size={16} className="text-blue-500" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem className="cursor-pointer gap-2 text-red-600 focus:bg-red-50 focus:text-red-700">

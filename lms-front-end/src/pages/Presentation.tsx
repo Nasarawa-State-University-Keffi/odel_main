@@ -14,6 +14,9 @@ import StaffAssessmentSubmissionsPage from "./StaffAssessmentSubmissionsPage";
 import EditAssignmentPage from "./EditAssignmentPage";
 import StaffQuizPage from "./StaffQuizPage";
 import CreateQuizPage from "./CreateQuizPage";
+import EditQuizPage from "./EditQuizPage";
+import ViewQuizPage from "./ViewQuizPage";
+import AddQuestionPage from "./AddQuestionPage";
 
 const Presentation = () => {
     return (
@@ -53,6 +56,9 @@ const Presentation = () => {
                     <Route path="assessment-submissions/submissions" element={<StaffAssessmentSubmissionsPage />} />
                     <Route path="quizzes" element={<StaffQuizPage />} />
                     <Route path="quizzes/create" element={<CreateQuizPage />} />
+                    <Route path="quizzes/edit/:id" element={<EditQuizPage />} />
+                    <Route path="quizzes/view/:id" element={<ViewQuizPage />} />
+                    <Route path="quizzes/questions/create/:id" element={<AddQuestionPage />} />
                     <Route path="courses" element={<Courses />} />
                     <Route path="courses/:id" element={<CourseDetail />} />
                     <Route path="dashboard" element={<StaffDashboard />} />

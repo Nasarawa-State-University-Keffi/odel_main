@@ -33,7 +33,8 @@ export const endpoint = {
 
                 quiz: {
                     quizzes: "/staff/assessment/quizzes/",
-                    submissions: "/staff/assessment/quiz-submissions/"
+                    submissions: "/staff/assessment/quiz-submissions/",
+                    questions: "/staff/assessment/quizzes/questions/"
                 }
             }
         }
