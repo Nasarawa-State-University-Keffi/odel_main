@@ -17,6 +17,9 @@ import CreateQuizPage from "./CreateQuizPage";
 import EditQuizPage from "./EditQuizPage";
 import ViewQuizPage from "./ViewQuizPage";
 import AddQuestionPage from "./AddQuestionPage";
+import QuestionBankCategoriesPage from "./QuestionBankCategoriesPage";
+import CreateQuestionBankCategoryPage from "./CreateQuestionBankCategoryPage";
+import EditQuestionBankCategoryPage from "./EditQuestionBankCategoryPage";
 
 const Presentation = () => {
     return (
@@ -62,6 +65,10 @@ const Presentation = () => {
                     <Route path="courses" element={<Courses />} />
                     <Route path="courses/:id" element={<CourseDetail />} />
                     <Route path="dashboard" element={<StaffDashboard />} />
+
+                    <Route path="question-bank/categories" element={<QuestionBankCategoriesPage />} />
+                    <Route path="question-bank/categories/create" element={<CreateQuestionBankCategoryPage />} />
+                    <Route path="question-bank/categories/edit/:id" element={<EditQuestionBankCategoryPage />} />
                 </Route>
             </Routes>
         </div>

@@ -38,6 +38,22 @@ export const navItems = {
                 }
             ]
         },
+         {
+            name: "Question Bank", href: "/staff/dashboard/assessments", icon: FileText, children: [
+                {
+                    name: "Categories",
+                    href: "/staff/dashboard/question-bank/categories",
+                },
+                {
+                    name: "Submissions",
+                    href: "/staff/dashboard/assessment-submissions/submissions",
+                },
+                {
+                    name: "Quizzes",
+                    href: "/staff/dashboard/quizzes",
+                }
+            ]
+        },
     ],
     student: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },

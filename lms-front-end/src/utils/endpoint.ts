@@ -35,8 +35,16 @@ export const endpoint = {
                     quizzes: "/staff/assessment/quizzes/",
                     submissions: "/staff/assessment/quiz-submissions/",
                     questions: "/staff/assessment/quizzes/questions/"
+                },
+
+                question_bank: {
+                    categories: {
+                        base: "/staff/assessment/question-bank/categories/"
+                    }
                 }
-            }
+            },
+
+
         }
     },
 
