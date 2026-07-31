@@ -2,7 +2,7 @@ from django.db import models
 
 
 class PortalUser(models.Model):
-    external_id = models.CharField(max_length=50, unique=True, db_index=True)
+    external_id = models.CharField(max_length=255, unique=True, db_index=True)
     full_name = models.CharField(max_length=255)
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)

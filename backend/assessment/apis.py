@@ -7,6 +7,7 @@ import csv
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.db.models import Prefetch
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import status, generics
@@ -14,11 +15,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.exceptions import ValidationError
 
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from courses.models import StudentRegisteredCourse, StaffAssignedCourse
+from courses.services import resolve_academic_period
 from portal_auth.models import PortalUser
+from portal_auth.services import get_or_sync_student_registered_courses
 
 
 from .models import (
@@ -42,19 +46,75 @@ from .permissions import IsInstructorOrReadOnly, IsPortalStudent
 # QUERYSET MIXINS
 # ==========================================
 
+ACADEMIC_PERIOD_PARAMETERS = [
+    OpenApiParameter(
+        name='session',
+        type=str,
+        location=OpenApiParameter.QUERY,
+        required=True,
+        description='Academic session, for example 2025/2026.',
+    ),
+    OpenApiParameter(
+        name='semester',
+        type=str,
+        location=OpenApiParameter.QUERY,
+        required=True,
+        description='Semester, for example First Semester.',
+    ),
+]
+
+
+def get_required_academic_period(request, *, source='query'):
+    params = request.query_params if source == 'query' else request.data
+    session = params.get('session')
+    semester = params.get('semester')
+    if not session or not semester:
+        raise ValidationError({'detail': 'session and semester are required'})
+    return resolve_academic_period(session, semester)
+
+
+def get_student_registered_course_ids(request, *, source='query'):
+    session, semester = get_required_academic_period(request, source=source)
+    cache_key = (request.user.external_id, session, semester)
+    if getattr(request, '_registered_course_period', None) == cache_key:
+        return request._registered_course_ids
+
+    enrollments = get_or_sync_student_registered_courses(
+        student_external_id=request.user.external_id,
+        session=session,
+        semester=semester,
+    )
+    course_ids = [enrollment.course_id for enrollment in enrollments]
+    request._registered_course_period = cache_key
+    request._registered_course_ids = course_ids
+    return course_ids
+
 class StudentQuerySetMixin:
     def get_queryset(self):
         student_id = self.request.user.external_id
-        registered_courses = StudentRegisteredCourse.objects.filter(
-            student_external_id=student_id
-        ).values_list('course', flat=True)
-        
         serializer_class = self.get_serializer_class()
-        model = serializer_class.Meta.model          
+        model = serializer_class.Meta.model
+
         if model == Assignment:
-            return Assignment.objects.filter(course__in=registered_courses, is_published=True).select_related("course")
+            registered_courses = get_student_registered_course_ids(self.request)
+            queryset = Assignment.objects.filter(
+                course_id__in=registered_courses,
+                is_published=True,
+            ).select_related('course', 'created_by').prefetch_related(
+                Prefetch(
+                    'contents',
+                    queryset=AssignmentContent.objects.filter(is_published=True),
+                    to_attr='student_visible_contents',
+                )
+            )
+            course_id = self.request.query_params.get('course')
+            if course_id:
+                queryset = queryset.filter(course__course_external_id=course_id)
+            return queryset
         elif model == AssignmentSubmission:
-            queryset = AssignmentSubmission.objects.filter(student_external_id=student_id).select_related('assignment')
+            queryset = AssignmentSubmission.objects.filter(
+                student_external_id=student_id
+            ).select_related('assignment', 'student_external')
             assignment_id = self.request.query_params.get('assignment')
             if assignment_id:
                 queryset = queryset.filter(assignment_id=assignment_id)
@@ -63,7 +123,8 @@ class StudentQuerySetMixin:
                 queryset = queryset.filter(status=submission_status)
             return queryset
         elif model == Quiz:
-            queryset = Quiz.objects.filter(course__in=registered_courses).select_related("course")
+            registered_courses = get_student_registered_course_ids(self.request)
+            queryset = Quiz.objects.filter(course_id__in=registered_courses).select_related("course")
             course_id = self.request.query_params.get('course')
             if course_id:
                 queryset = queryset.filter(course__course_external_id=course_id)
@@ -91,7 +152,9 @@ class StaffQuerySetMixin:
         if model == Assignment:
             return Assignment.objects.filter(course__in=assigned_courses).select_related("course")
         elif model == AssignmentSubmission:
-            queryset = AssignmentSubmission.objects.filter(assignment__course__in=assigned_courses).select_related('assignment')
+            queryset = AssignmentSubmission.objects.filter(
+                assignment__course__in=assigned_courses
+            ).select_related('assignment', 'student_external')
             assignment_id = self.request.query_params.get('assignment')
             if assignment_id:
                 queryset = queryset.filter(assignment_id=assignment_id)
@@ -143,14 +206,14 @@ class StaffQuerySetMixin:
             return queryset
         return model.objects.none()
 
-@extend_schema(tags=['Student - Assignments'])
+@extend_schema(tags=['Student - Assignments'], parameters=ACADEMIC_PERIOD_PARAMETERS)
 class StudentAssignmentListView(StudentQuerySetMixin, generics.ListAPIView):
     """Student read-only list access to assignments in their courses"""
     serializer_class = AssignmentReadSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 
-@extend_schema(tags=['Student - Assignments'])
+@extend_schema(tags=['Student - Assignments'], parameters=ACADEMIC_PERIOD_PARAMETERS)
 class StudentAssignmentDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
     """Student read-only detail access to an assignment"""
     serializer_class = AssignmentReadSerializer
@@ -190,9 +253,11 @@ class StudentSubmissionCreateView(APIView):
                 'type': 'object',
                 'properties': {
                     'assignment_id': {'type': 'string', 'format': 'uuid'},
+                    'session': {'type': 'string'},
+                    'semester': {'type': 'string'},
                     'files': {'type': 'array', 'items': {'type': 'string', 'format': 'binary'}}
                 },
-                'required': ['assignment_id']
+                'required': ['assignment_id', 'session', 'semester']
             }
         },
         responses={201: AssignmentSubmissionSerializer},
@@ -203,8 +268,15 @@ class StudentSubmissionCreateView(APIView):
         if not assignment_id:
             return Response({'error': 'assignment_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        assignment = get_object_or_404(Assignment, id=assignment_id)
         student_id = request.user.external_id
+        registered_course_ids = get_student_registered_course_ids(request, source='data')
+        assignment = get_object_or_404(
+            Assignment.objects.filter(
+                course_id__in=registered_course_ids,
+                is_published=True,
+            ),
+            id=assignment_id,
+        )
 
         try:
             with transaction.atomic():
@@ -252,13 +324,29 @@ class StudentSubmissionSubmitView(APIView):
         tags=['Student - Assignments']
     )
     def post(self, request, pk=None):
-        submission = get_object_or_404(AssignmentSubmission, id=pk)
+        serializer = SubmitAssignmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        submission = get_object_or_404(
+            AssignmentSubmission.objects.select_related('assignment'),
+            id=pk,
+        )
         
         # Verify student owns this submission
         if submission.student_external_id != request.user.external_id:
             return Response(
                 {'error': 'You can only submit your own assignments'},
                 status=status.HTTP_403_FORBIDDEN
+            )
+
+        registered_course_ids = get_student_registered_course_ids(request, source='data')
+        if (
+            submission.assignment.course_id not in registered_course_ids
+            or not submission.assignment.is_published
+        ):
+            return Response(
+                {'error': 'You are not registered for this assignment'},
+                status=status.HTTP_403_FORBIDDEN,
             )
         
         try:
@@ -390,14 +478,14 @@ class StaffSubmissionGradeView(APIView):
 # STUDENT - QUIZ APIs
 # ==========================================
 
-@extend_schema(tags=['Student - Quizzes'])
+@extend_schema(tags=['Student - Quizzes'], parameters=ACADEMIC_PERIOD_PARAMETERS)
 class StudentQuizListView(StudentQuerySetMixin, generics.ListAPIView):
     """List available quizzes (students)"""
     serializer_class = QuizSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 
-@extend_schema(tags=['Student - Quizzes'])
+@extend_schema(tags=['Student - Quizzes'], parameters=ACADEMIC_PERIOD_PARAMETERS)
 class StudentQuizDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
     """View quiz details (students)"""
     serializer_class = QuizDetailSerializer
@@ -415,7 +503,13 @@ class StudentQuizStartView(APIView):
         tags=['Student - Quizzes']
     )
     def post(self, request, pk=None):
-        quiz = get_object_or_404(Quiz, id=pk)
+        serializer = StartQuizSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        registered_course_ids = get_student_registered_course_ids(request, source='data')
+        quiz = get_object_or_404(
+            Quiz.objects.filter(course_id__in=registered_course_ids),
+            id=pk,
+        )
         user_external_id = request.user.external_id
         
         try:
@@ -834,4 +928,3 @@ class StaffQuizExportView(APIView):
                 ])
                 
         return response
-

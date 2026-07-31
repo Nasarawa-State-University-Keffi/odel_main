@@ -173,7 +173,13 @@ class AssignmentSubmission(models.Model):
         related_name='submissions'
     )
 
-    student_external_id = models.CharField(max_length=255, db_index=True)
+    student_external = models.ForeignKey(
+        PortalUser,
+        to_field='external_id',
+        db_column='student_external_id',
+        on_delete=models.PROTECT,
+        related_name='assignment_submissions',
+    )
 
     attempt_number = models.PositiveIntegerField()
     status = models.CharField(
@@ -194,11 +200,11 @@ class AssignmentSubmission(models.Model):
     class Meta:
         unique_together = (
             'assignment',
-            'student_external_id',
+            'student_external',
             'attempt_number',
         )
         indexes = [
-            models.Index(fields=['assignment', 'student_external_id']),
+            models.Index(fields=['assignment', 'student_external']),
         ]
 
     def __str__(self):

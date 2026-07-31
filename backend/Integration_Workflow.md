@@ -18,7 +18,54 @@ Authentication is **not** handled by this API directly. Tokens must be obtained 
 
 ## 2. Student Workflow: Learning & Assessments
 
-### 2.1 Course Content
+All student routes require an authenticated portal user whose roles include `STUDENT`.
+
+### 2.1 Registered Courses
+
+Use the student dashboard endpoint to synchronize and fetch the authenticated student's courses for one academic period:
+
+```http
+GET /api/dashboard/students/?session=2025%2F2026&semester=First%20Semester
+Authorization: Bearer <portal_token>
+```
+
+Both `session` and `semester` are required. The response is not paginated and has this shape:
+
+```json
+{
+  "user": {
+    "full_name": "Student One",
+    "email": "student@example.edu.ng",
+    "level": "400",
+    "roles": ["STUDENT"],
+    "profile_picture": null
+  },
+  "courses": [
+    {
+      "course_external_id": 101,
+      "course_code": "CSC401",
+      "course_title": "Software Engineering"
+    }
+  ],
+  "course_count": 1,
+  "pending_quizzes": [],
+  "upcoming_assignments": []
+}
+```
+
+The LMS refreshes the student's registrations from the portal before producing this response. `GET /api/courses/` must not be used as a "my courses" endpoint because it returns the global course cache.
+
+The portal integration used internally is:
+
+```http
+GET {PORTAL_SYNC_BASE_URL}/api/lms/students/{encoded_student_external_id}/courses
+    ?session=2025/2026
+    &semester=First Semester
+```
+
+This upstream request uses the configured LMS `Identity` and `Secret` headers; frontend clients should call the LMS dashboard endpoint instead of calling it directly.
+
+### 2.2 Course Content
 For a student to study materials:
 1.  **View All Course Content:** `GET /api/content/content/course/<course_id>/`
     - `<course_id>` can be the UUID or the `course_external_id`.
@@ -27,20 +74,31 @@ For a student to study materials:
 3.  **Log Access (Optional/Analytics):** `POST /api/content/content/<uuid:pk>/log_access/`
     - **Body:** `{ "action": "view" }` (or `"download"`)
 
-### 2.2 Assignments Flow
-1.  **List Assignments:** `GET /api/student/assessment/assignments/`
-2.  **Create Submission:** `POST /api/student/assessment/submissions/create/`
+### 2.3 Assignments Flow
+1.  **List Assignments:** `GET /api/student/assessment/assignments/?session=2025%2F2026&semester=First%20Semester`
+    - `session` and `semester` are required.
+    - Results contain only published assignments from courses registered in that academic period.
+    - Only published assignment content files are returned to students.
+2.  **Assignment Detail:** `GET /api/student/assessment/assignments/<uuid:pk>/?session=2025%2F2026&semester=First%20Semester`
+    - Returns `404 Not Found` when the assignment is unpublished or outside the student's registrations for the selected period.
+3.  **Create Submission:** `POST /api/student/assessment/submissions/create/`
     - **Content-Type:** `multipart/form-data`
-    - **Body:** `assignment_id` (UUID), `files` (Array of binaries).
-3.  **Submit (Finalize):** `POST /api/student/assessment/submissions/<uuid:pk>/submit/`
-    - **Body:** `{ "confirm": true }`
+    - **Body:** `assignment_id` (UUID), `session`, `semester`, and optional `files` (array of binaries).
+    - Enrollment, publication status, opening time, deadline, hard close time, and maximum attempts are enforced server-side.
+4.  **Submit (Finalize):** `POST /api/student/assessment/submissions/<uuid:pk>/submit/`
+    - **Body:** `{ "confirm": true, "session": "2025/2026", "semester": "First Semester" }`
+    - Ownership, current-period enrollment, publication status, and submission deadlines are checked again before finalization.
 
-### 2.3 Quizzes Flow (Moodle-style)
-1.  **Start Quiz Attempt:** `POST /api/student/assessment/quizzes/<uuid:pk>/start/`
-2.  **Submit Question Responses:** `POST /api/student/assessment/quizzes/<uuid:pk>/attempts/<uuid:attempt_id>/submit/`
+### 2.4 Quizzes Flow (Moodle-style)
+1.  **List Quizzes:** `GET /api/student/assessment/quizzes/?session=2025%2F2026&semester=First%20Semester`
+2.  **Quiz Detail:** `GET /api/student/assessment/quizzes/<uuid:pk>/?session=2025%2F2026&semester=First%20Semester`
+3.  **Start Quiz Attempt:** `POST /api/student/assessment/quizzes/<uuid:pk>/start/`
+    - **Body:** `{ "session": "2025/2026", "semester": "First Semester" }`
+    - The user identity always comes from the authenticated portal token; clients cannot start attempts for another external ID.
+4.  **Submit Question Responses:** `POST /api/student/assessment/quizzes/<uuid:pk>/attempts/<uuid:attempt_id>/submit/`
     - **Body:** `{ "question_id": "...", "response": { ... } }`
     - *Note: Supports interactive grading/feedback per question.*
-3.  **Finish Quiz:** `POST /api/student/assessment/quizzes/<uuid:pk>/attempts/<uuid:attempt_id>/finish/`
+5.  **Finish Quiz:** `POST /api/student/assessment/quizzes/<uuid:pk>/attempts/<uuid:attempt_id>/finish/`
 
 ---
 
@@ -126,15 +184,20 @@ GET /api/staff/assessment/quizzes/<uuid:pk>/export/
 
 Retrieve real-time metrics for the user's dashboard.
 
-- **Student Dashboard:** `GET /api/dashboard/students/`
-- **Instructor Dashboard:** `GET /api/dashboard/instructors/`
+- **Student Dashboard:** `GET /api/dashboard/students/?session=<session>&semester=<semester>`
+- **Staff View of a Student:** `GET /api/dashboard/students/<external_id>/?session=<session>&semester=<semester>`
+- **Instructor Dashboard:** `GET /api/dashboard/instructors/?programme_type_code=<code>&session=<session>&semester=<semester>`
+
+The student dashboard is the student-scoped course API. The `<external_id>` variant is staff-only.
 
 ---
 
 ## 5. Course Management
 
-- **List All Courses:** `GET /api/courses/` (Cached from Portal)
-- **View Specific Course Detail:** `GET /api/courses/<uuid:pk>/`
+- **List All Courses:** `GET /api/courses/` (global cache, not student-scoped)
+- **View Specific Course Detail:** `GET /api/courses/<int:pk>/`
+
+Student registrations are stored per `(student, course, session, semester)`. Registrations and assignment submissions have database-enforced foreign keys to the portal user identified by `external_id`; legacy orphan identifiers are backfilled as inactive placeholder portal users during migration.
 
 ---
 
@@ -179,6 +242,6 @@ Check for `error` or specific field validation keys in the response body during 
 
 ---
 
-## 7. Technical References
+## 8. Technical References
 - **API Docs:** `/api/docs/` (Swagger)
 - **Settings:** `portal_auth/authentication.py` for token handling logic.

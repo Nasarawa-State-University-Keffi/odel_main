@@ -4,18 +4,16 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 
-from courses.models import AcademicSession, CourseCache, Semester, StaffAssignedCourse, StudentRegisteredCourse
+from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
+from courses.services import resolve_academic_period
 from assessment.models import Assignment, Quiz
 from portal_auth.services import (
     get_or_sync_staff_registered_courses,
     get_or_sync_student_registered_courses,
-    normalize_semester_name,
-    normalize_session_name,
 )
 from .serializers import CourseSummarySerializer, QuizSummarySerializer, AssignmentSummarySerializer
 from portal_auth.permissions import IsPortalStudent, IsPortalStaff
@@ -26,45 +24,10 @@ from drf_spectacular.utils import OpenApiParameter
 logger = logging.getLogger(__name__)
 
 
-def resolve_academic_period(session_name, semester_name):
-    normalized_session = normalize_session_name(session_name)
-    normalized_semester = normalize_semester_name(semester_name)
-    logger.info(
-        "Resolving academic period session=%r normalized_session=%r "
-        "semester=%r normalized_semester=%r",
-        session_name,
-        normalized_session,
-        semester_name,
-        normalized_semester,
-    )
-    session = AcademicSession.objects.filter(name__iexact=normalized_session).first()
-    semester = Semester.objects.filter(name__iexact=normalized_semester).first()
-
-    errors = {}
-    if not session:
-        errors['session'] = 'Unknown academic session'
-    if not semester:
-        errors['semester'] = 'Unknown semester'
-    if errors:
-        logger.warning(
-            "Academic period validation failed session=%r semester=%r errors=%s",
-            normalized_session,
-            normalized_semester,
-            errors,
-        )
-        raise ValidationError(errors)
-
-    logger.info(
-        "Academic period resolved session=%r semester=%r",
-        session.name,
-        semester.name,
-    )
-    return session.name, semester.name
-
 class StudentDashboardView(APIView):
     """
     endpoint for retrieving student dashboard data for summary.
-    GET /api/dashboard/student/
+    GET /api/dashboard/students/
     """
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
@@ -96,16 +59,26 @@ class StudentDashboardView(APIView):
                     OpenApiExample(
                         'Example Response',
                         value={
-                            "total_courses": [
-                                {"id": 1, "name": "Math 101"},
-                                {"id": 2, "name": "Physics 201"}
+                            "user": {
+                                "full_name": "Student One",
+                                "email": "student@example.edu.ng",
+                                "level": "400",
+                                "roles": ["STUDENT"],
+                                "profile_picture": None,
+                            },
+                            "courses": [
+                                {
+                                    "course_external_id": 101,
+                                    "course_code": "MTH101",
+                                    "course_title": "Mathematics I",
+                                }
                             ],
-                            "total_courses_count": 2,
+                            "course_count": 1,
                             "pending_quizzes": [
-                                {"id": 10, "title": "Quiz 1", "due_date": "2025-12-30T12:00:00Z"}
+                                {"id": "550e8400-e29b-41d4-a716-446655440000", "name": "Quiz 1", "time_close": "2026-12-30T12:00:00Z"}
                             ],
                             "upcoming_assignments": [
-                                {"id": 5, "title": "Assignment 1", "due_date": "2025-12-29T23:59:59Z"}
+                                {"id": "550e8400-e29b-41d4-a716-446655440001", "title": "Assignment 1", "due_at": "2026-12-29T23:59:59Z"}
                             ]
                         },
                     )
@@ -353,7 +326,11 @@ class StudentDetailDashboardView(APIView):
                         'Example Response',
                         value={
                             "courses": [
-                                {"id": 1, "name": "Math 101"}
+                                {
+                                    "course_external_id": 101,
+                                    "course_code": "MTH101",
+                                    "course_title": "Mathematics I",
+                                }
                             ],
                             "course_count": 1,
                             "pending_quizzes": [
@@ -397,11 +374,12 @@ class StudentDetailDashboardView(APIView):
         now = timezone.now()
         pending_quizzes = Quiz.objects.filter(
             course_id__in=course_ids,
-            end_time__gt=now
+            time_close__gt=now,
         )
         upcoming_assignments = Assignment.objects.filter(
             course_id__in=course_ids,
-            due_date__gt=now
+            due_at__gt=now,
+            is_published=True,
         )
 
         data = {

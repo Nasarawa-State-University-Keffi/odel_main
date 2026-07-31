@@ -7,6 +7,7 @@ import uuid
 from decimal import Decimal
 from django.db.models import Sum
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from courses.models import CourseCache, StaffAssignedCourse
 from courses.serializers import CourseCacheSerializer
@@ -103,9 +104,16 @@ class StartAssignmentSubmissionSerializer(serializers.Serializer):
 
 class SubmitAssignmentSerializer(serializers.Serializer):
     confirm = serializers.BooleanField(
-        default=True,
+        required=True,
         help_text="Confirm submission"
     )
+    session = serializers.CharField(max_length=50)
+    semester = serializers.CharField(max_length=100)
+
+    def validate_confirm(self, value):
+        if not value:
+            raise serializers.ValidationError("Submission must be confirmed")
+        return value
 
 
 class AssignmentWriteSerializer(serializers.ModelSerializer, CourseSlugValidationMixin):
@@ -137,11 +145,18 @@ class AssignmentContentSerializer(serializers.ModelSerializer):
 
 class AssignmentReadSerializer(serializers.ModelSerializer):
     course = CourseCacheSerializer(read_only=True)
-    content_files = AssignmentContentSerializer(
-        many=True,
-        read_only=True,
-        source="contents"
-    )
+    content_files = serializers.SerializerMethodField()
+
+    @extend_schema_field(AssignmentContentSerializer(many=True))
+    def get_content_files(self, obj):
+        request = self.context.get('request')
+        if request and getattr(request.user, 'is_staff', False):
+            contents = obj.contents.all()
+        elif hasattr(obj, 'student_visible_contents'):
+            contents = obj.student_visible_contents
+        else:
+            contents = obj.contents.filter(is_published=True)
+        return AssignmentContentSerializer(contents, many=True).data
 
     class Meta:
         model = Assignment
@@ -158,15 +173,20 @@ class AssignmentSubmissionFileSerializer(serializers.ModelSerializer):
 
 
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
+    student_external_id = serializers.CharField(
+        source='student_external.external_id',
+        read_only=True,
+    )
     files = AssignmentSubmissionFileSerializer(many=True, read_only=True)
 
     class Meta:
         model = AssignmentSubmission
-        fields = '__all__'
-        read_only_fields = (
-            'attempt_number', 'status', 'submitted_at', 
-            'graded_at', 'created_at',
+        fields = (
+            'id', 'assignment', 'student_external_id', 'attempt_number',
+            'status', 'submitted_at', 'graded_at', 'marks', 'created_at',
+            'files',
         )
+        read_only_fields = fields
 
 
 class AssignmentContentUploadSerializer(serializers.Serializer):
@@ -489,7 +509,8 @@ class QuizAttemptDetailSerializer(serializers.ModelSerializer):
 
 class StartQuizSerializer(serializers.Serializer):
     """Request serializer for starting a quiz"""
-    user_external_id = serializers.CharField(max_length=255)
+    session = serializers.CharField(max_length=50)
+    semester = serializers.CharField(max_length=100)
 
 
 class SubmitResponseSerializer(serializers.Serializer):

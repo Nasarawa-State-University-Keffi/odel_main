@@ -45,7 +45,7 @@ class AssignmentSubmissionFileInline(admin.TabularInline):
 class AssignmentSubmissionAdmin(admin.ModelAdmin):
     list_display = ('id', 'assignment', 'student_external_id', 'attempt_number', 'status', 'submitted_at', 'graded_at')
     list_filter = ('assignment', 'status', 'submitted_at', 'graded_at')
-    search_fields = ('student_external_id',)
+    search_fields = ('student_external__external_id',)
     date_hierarchy = 'created_at'
     inlines = [AssignmentSubmissionFileInline]
     readonly_fields = ('attempt_number', 'created_at')
@@ -399,4 +399,3 @@ class GradeAdmin(admin.ModelAdmin):
             f"Successfully recalculated percentages for {count} grades."
         )
     recalculate_percentages.short_description = "Recalculate percentages"
-

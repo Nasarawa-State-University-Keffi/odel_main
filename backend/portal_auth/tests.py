@@ -291,6 +291,11 @@ class PortalLMSClientTests(TestCase):
 
     @patch("portal_auth.services.PortalClient.get_student_registered_courses")
     def test_student_course_sync_uses_names_and_removes_stale_enrollments(self, get_courses):
+        PortalUser.objects.create(
+            external_id="student001",
+            full_name="Student One",
+            roles=["STUDENT"],
+        )
         stale_course = CourseCache.objects.create(
             course_external_id=1,
             course_code="OLD101",

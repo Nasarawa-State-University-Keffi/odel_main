@@ -50,6 +50,10 @@ class StaffRegisteredCourseSerializer(serializers.ModelSerializer):
         fields = ['staff_external_id', 'course', 'programme_type_code', 'role', 'created_at']
 
 class StudentRegisteredCourseSerializer(serializers.ModelSerializer):
+    student_external_id = serializers.CharField(
+        source='student_external.external_id',
+        read_only=True,
+    )
     course = CourseCacheSerializer(read_only=True)
 
     class Meta:

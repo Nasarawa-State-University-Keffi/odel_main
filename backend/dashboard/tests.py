@@ -1,9 +1,16 @@
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from courses.models import AcademicSession, Semester
+from assessment.models import Assignment, Quiz
+from courses.models import (
+    AcademicSession,
+    CourseCache,
+    Semester,
+    StudentRegisteredCourse,
+)
 from portal_auth.exceptions import PortalLMSUnavailable
 from portal_auth.models import PortalUser
 
@@ -76,3 +83,49 @@ class InstructorDashboardErrorTests(TestCase):
                 )
 
         sync_courses.assert_not_called()
+
+    @patch('dashboard.views.get_or_sync_student_registered_courses')
+    def test_staff_can_fetch_student_dashboard_with_current_model_fields(self, sync_courses):
+        student = PortalUser.objects.create(
+            external_id='ST0001',
+            full_name='Student User',
+            roles=['STUDENT'],
+        )
+        course = CourseCache.objects.create(
+            course_external_id=101,
+            course_code='CSC101',
+            course_title='Computer Science',
+        )
+        enrollment = StudentRegisteredCourse.objects.create(
+            student_external_id=student.external_id,
+            course=course,
+            session='2025/2026',
+            semester='First Semester',
+        )
+        sync_courses.return_value = [enrollment]
+        Quiz.objects.create(
+            course=course,
+            name='Upcoming quiz',
+            time_close=timezone.now() + timezone.timedelta(days=1),
+        )
+        Assignment.objects.create(
+            course=course,
+            title='Upcoming assignment',
+            open_at=timezone.now() - timezone.timedelta(hours=1),
+            due_at=timezone.now() + timezone.timedelta(days=1),
+            is_published=True,
+            created_by=self.staff,
+        )
+
+        response = self.client.get(
+            f'/api/dashboard/students/{student.external_id}/',
+            {'session': '2025/2026', 'semester': 'First Semester'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['course_count'], 1)
+        self.assertEqual(response.data['pending_quizzes'][0]['name'], 'Upcoming quiz')
+        self.assertEqual(
+            response.data['upcoming_assignments'][0]['title'],
+            'Upcoming assignment',
+        )

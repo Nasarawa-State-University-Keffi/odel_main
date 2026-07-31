@@ -30,5 +30,5 @@ class StaffRegisteredCourseAdmin(admin.ModelAdmin):
 @admin.register(StudentRegisteredCourse)
 class StudentRegisteredCourseAdmin(admin.ModelAdmin):
     list_display = ('student_external_id', 'course', 'session', 'semester')
-    search_fields = ('student_external_id', 'course__course_title')
+    search_fields = ('student_external__external_id', 'course__course_title')
     list_filter = ('session', 'semester')

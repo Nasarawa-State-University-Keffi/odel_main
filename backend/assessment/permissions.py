@@ -3,6 +3,8 @@ Permission classes for assessment app.
 """
 from rest_framework import permissions
 
+from portal_auth.permissions import IsPortalStudent as PortalStudentPermission
+
 
 class IsInstructorOrReadOnly(permissions.BasePermission):
     """
@@ -18,10 +20,9 @@ class IsInstructorOrReadOnly(permissions.BasePermission):
         return request.user and request.user.is_staff
 
 
-class IsPortalStudent(permissions.BasePermission):
+class IsPortalStudent(PortalStudentPermission):
     """
     Custom permission to allow students (authenticated portal users)
     access to their own assignments and quizzes.
     """
-    def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated
+    pass

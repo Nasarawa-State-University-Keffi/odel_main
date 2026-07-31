@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models.functions import Lower
 
+from portal_auth.models import PortalUser
+
 
 class AcademicSession(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -55,14 +57,20 @@ class CourseCache(models.Model):
         return f"{self.course_code} - {self.course_title}"
     
 class StudentRegisteredCourse(models.Model):
-    student_external_id = models.CharField(max_length=255, db_index=True)
+    student_external = models.ForeignKey(
+        PortalUser,
+        to_field='external_id',
+        db_column='student_external_id',
+        on_delete=models.PROTECT,
+        related_name='registered_courses',
+    )
     course = models.ForeignKey(CourseCache, on_delete=models.CASCADE,
                                 related_name='student_enrollments', db_index=True)
     session = models.CharField(max_length=50, db_index=True)
     semester = models.CharField(max_length=100, db_index=True)
 
     class Meta:
-        unique_together = ('student_external_id', 'course', 'session', 'semester')
+        unique_together = ('student_external', 'course', 'session', 'semester')
         ordering = ['-course__course_title']
         
 

@@ -257,6 +257,17 @@ Once running, access interactive API documentation:
 - **Swagger UI**: http://localhost:8000/api/docs/
 - **ReDoc**: http://localhost:8000/api/redoc/
 - **OpenAPI Schema**: http://localhost:8000/api/schema/
+- **Frontend integration contract**: [`Integration_Workflow.md`](Integration_Workflow.md)
+
+Key student endpoints require a portal bearer token with the `STUDENT` role and an explicit academic period:
+
+```http
+GET /api/dashboard/students/?session=2025%2F2026&semester=First%20Semester
+GET /api/student/assessment/assignments/?session=2025%2F2026&semester=First%20Semester
+GET /api/student/assessment/quizzes/?session=2025%2F2026&semester=First%20Semester
+```
+
+The dashboard route is the student-scoped course API. `GET /api/courses/` returns the global cached course catalog.
 
 ## Settings Architecture
 

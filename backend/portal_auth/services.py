@@ -146,6 +146,14 @@ def get_or_sync_student_registered_courses(
         ),
         ttl=300,
     )
+    student, _ = PortalUser.objects.get_or_create(
+        external_id=student_external_id,
+        defaults={
+            "full_name": student_external_id,
+            "roles": ["STUDENT"],
+            "is_active": False,
+        },
+    )
     enrollments = []
 
     # 2️⃣ Sync DB safely
@@ -166,7 +174,7 @@ def get_or_sync_student_registered_courses(
             )
 
             enrollment, _ = StudentRegisteredCourse.objects.get_or_create(
-                student_external_id=student_external_id,
+                student_external=student,
                 course=course_obj,
                 session=session,
                 semester=semester,

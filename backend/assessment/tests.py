@@ -13,13 +13,20 @@ CORRECTED VERSION - All tests should pass
 """
 import uuid
 from decimal import Decimal
+from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from portal_auth.models import PortalUser
-from courses.models import CourseCache, StudentRegisteredCourse, StaffAssignedCourse
+from courses.models import (
+    AcademicSession,
+    CourseCache,
+    Semester,
+    StudentRegisteredCourse,
+    StaffAssignedCourse,
+)
 from .models import (
     QuestionCategory, Question, QuestionAnswer,
     Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
@@ -464,8 +471,11 @@ class QuizAPITests(APITestCase):
         )
         self.student = PortalUser.objects.create(
             external_id='student_1',
-            full_name='Student One'
+            full_name='Student One',
+            roles=['STUDENT'],
         )
+        AcademicSession.objects.create(name='2025/2026')
+        Semester.objects.create(name='First Semester')
         
         # Create test data
         self.course = CourseCache.objects.create(
@@ -480,12 +490,18 @@ class QuizAPITests(APITestCase):
             course=self.course,
             role='instructor'
         )
-        StudentRegisteredCourse.objects.create(
+        self.student_enrollment = StudentRegisteredCourse.objects.create(
             student_external_id=self.student.external_id,
             course=self.course,
             session='2025/2026',
             semester='First Semester'
         )
+        sync_patcher = patch(
+            'assessment.apis.get_or_sync_student_registered_courses',
+            return_value=[self.student_enrollment],
+        )
+        sync_patcher.start()
+        self.addCleanup(sync_patcher.stop)
         
         self.category = QuestionCategory.objects.create(
             course=self.course,
@@ -527,7 +543,10 @@ class QuizAPITests(APITestCase):
     def test_list_quizzes(self):
         """Test listing quizzes"""
         self.client.force_authenticate(user=self.student)
-        response = self.client.get('/api/student/assessment/quizzes/')
+        response = self.client.get(
+            '/api/student/assessment/quizzes/',
+            {'session': '2025/2026', 'semester': 'First Semester'},
+        )
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
@@ -554,7 +573,7 @@ class QuizAPITests(APITestCase):
         """Test starting a quiz attempt via API"""
         self.client.force_authenticate(user=self.student)
         
-        data = {'user_external_id': self.student.external_id}
+        data = {'session': '2025/2026', 'semester': 'First Semester'}
         response = self.client.post(
             f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
             data,
@@ -572,7 +591,7 @@ class QuizAPITests(APITestCase):
         # Start attempt
         start_response = self.client.post(
             f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
-            {'user_external_id': self.student.external_id},
+            {'session': '2025/2026', 'semester': 'First Semester'},
             format='json'
         )
         attempt_id = start_response.data['id']
@@ -600,7 +619,7 @@ class QuizAPITests(APITestCase):
         # Start attempt
         start_response = self.client.post(
             f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
-            {'user_external_id': self.student.external_id},
+            {'session': '2025/2026', 'semester': 'First Semester'},
             format='json'
         )
         attempt_id = start_response.data['id']

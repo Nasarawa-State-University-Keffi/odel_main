@@ -17,15 +17,29 @@ def get_next_attempt(assignment, student_external_id):
     return 1 if not last else last.attempt_number + 1
 
 
-@transaction.atomic
-def create_submission(assignment, student_external_id):
-    now = timezone.now()
+def validate_assignment_submission_window(assignment, now=None):
+    """Validate publication and the open, due, and hard-close boundaries."""
+    now = now or timezone.now()
+
+    if not assignment.is_published:
+        raise ValueError("Assignment is not published")
 
     if now < assignment.open_at:
         raise ValueError("Assignment not yet open")
 
+    if assignment.close_at and now > assignment.close_at:
+        raise ValueError("Assignment submission closed")
+
     if now > assignment.due_at and not assignment.allow_late_submission:
         raise ValueError("Assignment submission closed")
+
+
+@transaction.atomic
+def create_submission(assignment, student_external_id):
+    # Serializing attempts per assignment prevents two concurrent requests from
+    # choosing the same attempt number for the same student.
+    assignment = Assignment.objects.select_for_update().get(pk=assignment.pk)
+    validate_assignment_submission_window(assignment)
 
     attempt = get_next_attempt(assignment, student_external_id)
 
@@ -43,6 +57,8 @@ def create_submission(assignment, student_external_id):
 def submit_submission(submission):
     if submission.status != 'draft':
         raise ValueError("Submission already submitted")
+
+    validate_assignment_submission_window(submission.assignment)
 
     submission.status = 'submitted'
     submission.submitted_at = timezone.now()
