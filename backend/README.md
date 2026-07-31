@@ -259,7 +259,7 @@ Once running, access interactive API documentation:
 - **OpenAPI Schema**: http://localhost:8000/api/schema/
 - **Frontend integration contract**: [`Integration_Workflow.md`](Integration_Workflow.md)
 
-Key student endpoints require a portal bearer token with the `STUDENT` role and an explicit academic period:
+Key student endpoints require a portal bearer token with the `PORTAL_STUDENTS` role (or normalized `STUDENT` alias) and an explicit academic period:
 
 ```http
 GET /api/dashboard/students/?session=2025%2F2026&semester=First%20Semester

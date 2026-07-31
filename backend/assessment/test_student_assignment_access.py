@@ -22,7 +22,7 @@ class StudentAssignmentAccessTests(TestCase):
         self.student = PortalUser.objects.create(
             external_id='student-1',
             full_name='Student One',
-            roles=['STUDENT'],
+            roles=['PORTAL_STUDENTS'],
         )
         self.non_student = PortalUser.objects.create(
             external_id='staff-1',

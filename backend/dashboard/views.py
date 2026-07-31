@@ -63,7 +63,7 @@ class StudentDashboardView(APIView):
                                 "full_name": "Student One",
                                 "email": "student@example.edu.ng",
                                 "level": "400",
-                                "roles": ["STUDENT"],
+                                "roles": ["PORTAL_STUDENTS"],
                                 "profile_picture": None,
                             },
                             "courses": [

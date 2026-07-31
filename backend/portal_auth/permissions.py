@@ -25,5 +25,5 @@ class IsPortalStudent(BasePermission):
             for role in getattr(request.user, "roles", [])
         }
         return bool(
-            request.user and "STUDENT" in roles
+            request.user and roles & {"STUDENT", "PORTAL_STUDENTS"}
         )

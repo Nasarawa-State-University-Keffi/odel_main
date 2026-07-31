@@ -18,7 +18,7 @@ Authentication is **not** handled by this API directly. Tokens must be obtained 
 
 ## 2. Student Workflow: Learning & Assessments
 
-All student routes require an authenticated portal user whose roles include `STUDENT`.
+All student routes require an authenticated portal user whose roles include the portal role `PORTAL_STUDENTS`. The normalized OIDC alias `STUDENT` is also accepted.
 
 ### 2.1 Registered Courses
 
@@ -37,7 +37,7 @@ Both `session` and `semester` are required. The response is not paginated and ha
     "full_name": "Student One",
     "email": "student@example.edu.ng",
     "level": "400",
-    "roles": ["STUDENT"],
+    "roles": ["PORTAL_STUDENTS"],
     "profile_picture": null
   },
   "courses": [
