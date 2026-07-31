@@ -3,9 +3,10 @@ import type { Semester, Session } from "@/types/academic.types";
 import { endpoint } from "@/utils/endpoint";
 import { useState, useTransition } from "react"
 
-export const useAcademicSetup = (academicType: 'semesters' | 'sessions') => {
+export const useAcademicSetup = (academicType: 'semesters' | 'sessions' = "semesters") => {
     const [semester, setSemester] = useState<Semester[] | null>(null);
     const [session, setSession] = useState<Session[] | null>(null);
+    const [error, setError] = useState<unknown>(null)
 
     const [isPending, startTransition] = useTransition();
     const repository = new BaseRepository();
@@ -16,10 +17,10 @@ export const useAcademicSetup = (academicType: 'semesters' | 'sessions') => {
                 const response = await repository.get(endpoint.semester);
                 if (response.success) {
                     setSemester(response.data as Semester[]);
+                    console.log("semesters: ", response.data)
                 }
-                return response;
             } catch (error) {
-                return error;
+                setError(error)
             }
         })
     }
@@ -29,11 +30,11 @@ export const useAcademicSetup = (academicType: 'semesters' | 'sessions') => {
             try {
                 const response = await repository.get(endpoint.session);
                 if (response.success) {
+                    console.log("sessions: ", response.data)
                     setSession(response.data as Session[]);
                 }
-                return response;
             } catch (error) {
-                return error;
+                setError(error)
             }
         })
     }
@@ -58,7 +59,7 @@ export const useAcademicSetup = (academicType: 'semesters' | 'sessions') => {
         } catch (error) {
             throw error;
         }
-        
+
     };
 
     const deleteItem = async (id: number) => {
@@ -85,6 +86,7 @@ export const useAcademicSetup = (academicType: 'semesters' | 'sessions') => {
         semester,
         setSemester,
         session,
-        setSession
+        setSession,
+        error
     }
 }

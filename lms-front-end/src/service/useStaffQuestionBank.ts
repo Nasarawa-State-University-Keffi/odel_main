@@ -1,6 +1,6 @@
-// src/service/useStaffQuestionBank.ts
+
 import { useState, useCallback, useTransition } from "react";
-import type { PaginatedCategories, CategoryQueryParams, CreateCategoryPayload, QuestionBankCategory } from "@/types/questionBank.types";
+import type { PaginatedCategories, CategoryQueryParams, CreateCategoryPayload, QuestionBankCategory, PaginatedQuestionsResponse, QuestionPayload, QuestionItem } from "@/types/questionBank.types";
 import BaseRepository from "@/repository/base.repository";
 import { endpoint } from "@/utils/endpoint";
 
@@ -104,6 +104,72 @@ export const useStaffQuestionBank = () => {
         }
     };
 
+    const fetchQuestions = async (params?: { page?: number; search?: string; category?: string }): Promise<PaginatedQuestionsResponse> => {
+        setIsLoading(true);
+        try {
+            const queryParams = new URLSearchParams();
+            if (params?.page) queryParams.append("page", String(params.page));
+            if (params?.search) queryParams.append("search", params.search);
+            if (params?.category) queryParams.append("category", params.category);
+
+            const response = await repository.get(`${endpoint.staff.dashboard.assessment.question_bank.questions.base}?${queryParams.toString()}`);
+            return response.data as PaginatedQuestionsResponse;
+        } catch (err: any) {
+            throw err.response?.data || "Failed to fetch questions";
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchQuestionById = async (id: string): Promise<QuestionItem> => {
+        setIsLoading(true);
+        try {
+            const response = await repository.get(`${endpoint.staff.dashboard.assessment.question_bank.questions.base}${id}/`);
+            return response.data as QuestionItem;
+        } catch (err: any) {
+            throw err.response?.data || "Failed to fetch question";
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const createQuestion = async (payload: any): Promise<any> => {
+        setIsLoading(true);
+        try {
+            const response = await repository.post(endpoint.staff.dashboard.assessment.question_bank.questions.base, payload);
+            return response.data;
+        } catch (err: any) {
+            throw err.response?.data || "Failed to create question";
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const updateQuestion = async (id: string, payload: QuestionPayload) => {
+        setIsLoading(true);
+        try {
+            const response = await repository.put(endpoint.staff.dashboard.assessment.question_bank.questions.base + id, payload);
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data || "Failed to update question.";
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // 6. Delete question (DELETE)
+    const deleteQuestion = async (id: string) => {
+        setIsLoading(true);
+        try {
+            const response = await repository.delete(endpoint.staff.dashboard.assessment.question_bank.questions.base + id);
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data || "Failed to delete question.";
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
 
     return {
@@ -112,7 +178,12 @@ export const useStaffQuestionBank = () => {
         deleteCategory,
         fetchCategoryById,
         updateCategory,
+        fetchQuestions,
+        createQuestion,
         isLoading: isLoading || isPending,
+        updateQuestion,
+        deleteQuestion,
+        fetchQuestionById,
         error
     };
 };

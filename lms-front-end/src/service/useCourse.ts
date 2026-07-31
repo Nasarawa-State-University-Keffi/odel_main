@@ -8,7 +8,9 @@ export const useCourse = () => {
     const [isPending, startTransition] = useTransition();
     const [coursesData, setCoursesData] = useState<PaginatedCourses | null>(null);
     const [courseDetail, setCourseDetail] = useState<Course | null>(null);
+    const [error, setError] = useState<unknown>(null)
     const repository = new BaseRepository();
+
 
     const fetchCourses = (params?: { url?: string, search?: string }) => {
         startTransition(async () => {
@@ -23,10 +25,9 @@ export const useCourse = () => {
 
                 const response = await repository.get(targetUrl);
                 setCoursesData(response.data as PaginatedCourses);
-                return response.data;
             } catch (error) {
                 console.error("Failed to fetch courses:", error);
-                return error;
+                setError(error)
             }
         });
     };
@@ -36,10 +37,10 @@ export const useCourse = () => {
             try {
                 const response = await repository.get(`${endpoint.student.courses.list}${courseId}/`);
                 setCourseDetail(response.data as Course);
-                return response.data;
+
             } catch (error) {
                 console.error("Failed to fetch course details:", error);
-                return error;
+                setError(error)
             }
         });
     };
@@ -49,10 +50,9 @@ export const useCourse = () => {
             try {
                 const response = await repository.get(endpoint.courses.list);
                 setCoursesData(response.data as PaginatedCourses);
-                return response.data;
             } catch (error) {
                 console.error("Failed to fetch course list:", error);
-                return error;
+                setError(error)
             }
         });
     };
@@ -64,5 +64,6 @@ export const useCourse = () => {
         fetchCourseDetail,
         courseDetail,
         fetchCourseList,
+        error
     };
 };

@@ -95,24 +95,26 @@ export const useStaffQuiz = () => {
     };
 
 
-const addQuestionSlot = async (payload: CreateQuestionSlotPayload) => {
-    return new Promise<QuizQuestionSlot>((resolve, reject) => {
-        startTransition(async () => {
-            try {
-                const url = endpoint?.staff?.dashboard?.assessment.quiz.questions;
-                const response = await repository.post(url, payload);
-                resolve(response.data as QuizQuestionSlot);
-            } catch (err: any) {
-                const errorMessage = 
-                    err?.response?.data?.message || 
-                    err?.response?.data?.detail || 
-                    (typeof err?.response?.data === "object" ? JSON.stringify(err.response.data) : null) ||
-                    "Failed to add question to quiz.";
-                reject(errorMessage);
-            }
+    const addQuestionSlot = async (payload: CreateQuestionSlotPayload) => {
+        return new Promise<QuizQuestionSlot>((resolve, reject) => {
+            startTransition(async () => {
+                try {
+                    const url = endpoint?.staff?.dashboard?.assessment.quiz.questions;
+                    const response = await repository.post(url, payload);
+                    resolve(response.data as QuizQuestionSlot);
+                } catch (err: any) {
+                    const errorMessage =
+                        err?.response?.data?.message ||
+                        err?.response?.data?.detail ||
+                        (typeof err?.response?.data === "object" ? JSON.stringify(err.response.data) : null) ||
+                        "Failed to add question to quiz.";
+                    reject(errorMessage);
+                }
+            });
         });
-    });
-};
+    };
+
+  
 
     return {
         data,
@@ -122,6 +124,6 @@ const addQuestionSlot = async (payload: CreateQuestionSlotPayload) => {
         createQuiz,
         fetchQuizById,
         updateQuiz,
-        addQuestionSlot
+        addQuestionSlot,
     };
 };

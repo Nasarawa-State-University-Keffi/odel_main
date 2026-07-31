@@ -119,7 +119,7 @@ export const EditQuestionBankCategoryPage: React.FC = () => {
             <div className="flex items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
                 <button
                     type="button"
-                    onClick={() => navigate("/staff/dashboard/question-bank")}
+                    onClick={() => navigate(-1)}
                     className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
                 >
                     <ArrowLeft size={20} />

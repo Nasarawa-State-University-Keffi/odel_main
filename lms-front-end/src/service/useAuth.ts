@@ -1,4 +1,4 @@
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import BaseRepository from "@/repository/base.repository";
 import type { SigninFormData } from "@/types/auth.types";
 import { endpoint } from "@/utils/endpoint";
@@ -17,14 +17,15 @@ export const useAuth = () => {
     const [isPending, startTransition] = useTransition();
     const repository = new BaseRepository();
     const navigate = useNavigate();
+    const [error, setError] = useState<unknown>(null)
 
 
-    const handleSignin = (data: SigninFormData) => {
+    const handleSignin = async (data: SigninFormData) => {
         startTransition(async () => {
             try {
                 window.location.href = import.meta.env.VITE_API_BASE_URL + `/api${endpoint.auth.signin}`;
             } catch (error) {
-                return error;
+                setError(error)
             }
         });
     };
@@ -37,9 +38,8 @@ export const useAuth = () => {
                     setGlobalCsrfToken("")
                     navigate("/", { replace: true })
                 }
-                return response;
             } catch (error) {
-                return error;
+                setError(error)
             }
         });
     };
@@ -49,6 +49,7 @@ export const useAuth = () => {
         handleSignin,
         handleLogout,
         isPending,
+        error
     }
 }
 

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-    ArrowLeft, Loader2, AlertCircle, FolderPlus, 
-    Type, AlignLeft, Hash, BookOpen 
+import {
+    ArrowLeft, Loader2, AlertCircle, FolderPlus,
+    Type, AlignLeft, Hash, BookOpen
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useStaffQuestionBank } from "@/service/useStaffQuestionBank";
-import { useStaffDashboard } from "@/service/useStaffDashboard"; // Imported your hook
+import { useStaffDashboard } from "@/service/useStaffDashboard";
 import { AnimateIn } from "@/components/ui/animate-in";
 import type { CreateCategoryPayload } from "@/types/questionBank.types";
 
@@ -23,10 +23,10 @@ import { useUserContext } from "@/context/UserProvider";
 export const CreateQuestionBankCategoryPage: React.FC = () => {
     const navigate = useNavigate();
     const { createCategory, isLoading: isCreating } = useStaffQuestionBank();
-    
+
     // Fetch courses from dashboard hook
     const { dashboardData, fetchStaffData } = useStaffDashboard();
-    const {user} = useUserContext()
+    const { user } = useUserContext();
 
     const [formData, setFormData] = useState<CreateCategoryPayload>({
         course_id: "",
@@ -34,15 +34,15 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
         description: "",
         level: "100",
     });
-    
+
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // Ensure dashboard data is loaded
     useEffect(() => {
-        if (!dashboardData && user) {
+        if (user) {
             fetchStaffData(user.external_id);
         }
-    }, [dashboardData]);
+    }, [user]);
 
     // Native input handler
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -67,18 +67,23 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
         try {
             await createCategory(formData);
             toast.success("Category created successfully!");
-            navigate("/staff/dashboard/question-bank");
+            navigate("/staff/dashboard/question-bank/categories");
         } catch (err: any) {
             setErrorMessage(typeof err === "string" ? err : "An error occurred while creating the category.");
         }
     };
 
+    // Find the currently selected course for immediate trigger display
+    const selectedCourse = dashboardData?.total_courses?.find(
+        (c) => String(c.course_external_id) === String(formData.course_id)
+    );
+
     return (
         <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
-            
+
             {/* Page Header */}
             <div className="flex items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
-                <button 
+                <button
                     type="button"
                     onClick={() => navigate("/staff/dashboard/question-bank")}
                     className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
@@ -97,8 +102,8 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
 
             {/* Main Form Container */}
             <AnimateIn direction="up">
-                <form 
-                    onSubmit={handleSubmit} 
+                <form
+                    onSubmit={handleSubmit}
                     className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-sm p-6 sm:p-8 flex flex-col gap-6"
                 >
                     {/* Error Alert */}
@@ -119,17 +124,24 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
                                 <BookOpen size={16} className="text-emerald-500" />
                                 Course <span className="text-red-500">*</span>
                             </label>
-                            <Select 
-                                value={formData.course_id} 
+                            <Select
+                                key={`course-select-${formData.course_id}`}
+                                value={formData.course_id}
                                 onValueChange={(val) => handleSelectChange("course_id", val)}
                             >
                                 <SelectTrigger className="w-full h-12 rounded-xl bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-sm focus:ring-emerald-500/50">
-                                    <SelectValue placeholder="Select a course..." />
+                                    {selectedCourse ? (
+                                        <div className="truncate text-left">
+                                            <span className="font-semibold">{selectedCourse.course_code}</span> - {selectedCourse.course_title}
+                                        </div>
+                                    ) : (
+                                        <SelectValue placeholder="Select a course..." />
+                                    )}
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
                                     {dashboardData?.total_courses?.map((course) => (
-                                        <SelectItem 
-                                            key={course.course_external_id} 
+                                        <SelectItem
+                                            key={course.course_external_id}
                                             value={String(course.course_external_id)}
                                             className="focus:bg-emerald-50 focus:text-emerald-900 dark:focus:bg-emerald-500/10 dark:focus:text-emerald-300 cursor-pointer"
                                         >
@@ -151,8 +163,9 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
                                 <Hash size={16} className="text-emerald-500" />
                                 Academic Level <span className="text-red-500">*</span>
                             </label>
-                            <Select 
-                                value={formData.level} 
+                            <Select
+                                key={`level-select-${formData.level}`}
+                                value={formData.level}
                                 onValueChange={(val) => handleSelectChange("level", val)}
                             >
                                 <SelectTrigger className="w-full h-12 rounded-xl bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-sm focus:ring-emerald-500/50">
@@ -160,8 +173,8 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
                                     {["100", "200", "300", "400", "500", "600"].map((lvl) => (
-                                        <SelectItem 
-                                            key={lvl} 
+                                        <SelectItem
+                                            key={lvl}
                                             value={lvl}
                                             className="focus:bg-emerald-50 focus:text-emerald-900 dark:focus:bg-emerald-500/10 dark:focus:text-emerald-300 cursor-pointer"
                                         >

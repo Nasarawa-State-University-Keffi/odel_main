@@ -15,11 +15,25 @@ export const endpoint = {
 
     student: {
         dashboard: {
-            student: '/dashboard/students/?semester_id=19&session_id=17',
+            student: '/dashboard/students/?session=2024%2F2025&semester=First',
+            // /dashboard/students/?semester_id=19&session_id=17
+            assessment: {
+                assignment: {
+                    base: "/student/assessment/assignments/",
+                    submissions: "/student/assessment/submissions/"
+                },
+
+                quiz: {
+                    quizzes: "/student/assessment/quizzes/",
+                    submissions: "/student/assessment/quiz-submissions/",
+                    questions: "/student/assessment/quizzes/questions/"
+                },
+            },
         },
         courses: {
             list: '/courses/courses/',
-        }
+        },
+
     },
 
     staff: {
@@ -40,6 +54,9 @@ export const endpoint = {
                 question_bank: {
                     categories: {
                         base: "/staff/assessment/question-bank/categories/"
+                    },
+                    questions: {
+                        base: "/staff/assessment/question-bank/questions/"
                     }
                 }
             },

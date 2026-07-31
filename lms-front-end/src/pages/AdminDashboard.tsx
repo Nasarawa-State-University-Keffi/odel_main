@@ -22,16 +22,16 @@ import { useAdminDashboard } from "@/service/useAdminDashboard";
 const AdminDashboard = () => {
   const { user, isLoading } = useUserContext();
   const { handleLogout, isPending } = useAuth()
-  const {fetchProgrammeType, isPending: isProgrammeTypePending} = useProgrammeType()
-  const {fetchStaffData, isPending: isStaffPending} = useStaffDashboard()
-  const {syncAll} = useAdminDashboard()
+  // const {fetchProgrammeType, isPending: isProgrammeTypePending} = useProgrammeType()
+  const { fetchStaffData, isPending: isStaffPending } = useStaffDashboard()
+  const { syncAll } = useAdminDashboard()
 
   useEffect(() => {
-  if(user?.external_id){
-    //syncAll()
-   //fetchProgrammeType()
-   fetchStaffData(user.external_id)
-  }
+    if (user?.external_id) {
+      //syncAll()
+      //fetchProgrammeType()
+      fetchStaffData(user.external_id)
+    }
   }, [])
 
 

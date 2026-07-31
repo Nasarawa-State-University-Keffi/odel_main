@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import Login from "./Login";
 import ApplicationLayout from "./ApplicationLayout";
-import StudentDashboard from "./StudentDashboard";
+import ProfilePage from "./ProfilePage";
 import Courses from "./Course";
 import CourseDetail from "./CourseDetail";
 import CentralDashboard from "./CentralDashboard";
@@ -20,6 +20,13 @@ import AddQuestionPage from "./AddQuestionPage";
 import QuestionBankCategoriesPage from "./QuestionBankCategoriesPage";
 import CreateQuestionBankCategoryPage from "./CreateQuestionBankCategoryPage";
 import EditQuestionBankCategoryPage from "./EditQuestionBankCategoryPage";
+import ViewQuestionBankCategoryPage from "./ViewQuestionBankCategoryPage";
+import StaffQuestionListPage from "./StaffQuestionListPage";
+import StaffCreateQuestionPage from "./StaffCreateQuestionPage";
+import StaffEditQuestionPage from "./StaffEditQuestionPage";
+import StudentDashboardPage from "./StudentDashboardPage";
+import StudentAssignmentPage from "./StudentAssignmentPage";
+import StudentAssignmentDetailPage from "./StudentAssignmentDetailPage";
 
 const Presentation = () => {
     return (
@@ -29,11 +36,18 @@ const Presentation = () => {
                 <Route path="/dashboard" element={<CentralDashboard />} />
 
                 <Route path="/student" element={<ApplicationLayout />} >
-                    <Route index element={<StudentDashboard />} />
+                    <Route index element={<StudentDashboardPage />} />
                     <Route path="courses" element={<Courses />} />
                     <Route path="courses/:id" element={<CourseDetail />} />
-                    <Route path="dashboard" element={<StudentDashboard />} />
+                    <Route path="dashboard" element={<StudentDashboardPage />} />
+                    <Route path="assignments" element={<StudentAssignmentPage />} />
+                    <Route path="assignments/:id" element={<StudentAssignmentDetailPage/>} />
+
                 </Route>
+                <Route path="/profile" element={<ApplicationLayout />} >
+                    <Route index element={<ProfilePage />} />
+                </Route>
+
 
                 /**
                 * Admin Dashboard
@@ -69,6 +83,10 @@ const Presentation = () => {
                     <Route path="question-bank/categories" element={<QuestionBankCategoriesPage />} />
                     <Route path="question-bank/categories/create" element={<CreateQuestionBankCategoryPage />} />
                     <Route path="question-bank/categories/edit/:id" element={<EditQuestionBankCategoryPage />} />
+                    <Route path="question-bank/categories/view/:id" element={<ViewQuestionBankCategoryPage />} />
+                    <Route path="question-bank/questions" element={<StaffQuestionListPage />} />
+                    <Route path="question-bank/questions/create" element={<StaffCreateQuestionPage />} />
+                    <Route path="question-bank/questions/edit/:id" element={<StaffEditQuestionPage />} />
                 </Route>
             </Routes>
         </div>

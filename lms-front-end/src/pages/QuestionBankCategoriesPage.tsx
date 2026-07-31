@@ -95,7 +95,7 @@ export const QuestionBankCategoriesPage = () => {
                     </p>
                 </div>
                 <button
-                    onClick={() => navigate("/staff/dashboard/question-bank/create")}
+                    onClick={() => navigate("/staff/dashboard/question-bank/categories/create")}
                     className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md shadow-emerald-500/20 whitespace-nowrap"
                 >
                     <Plus size={18} />
@@ -152,7 +152,7 @@ export const QuestionBankCategoriesPage = () => {
                     </p>
                     {!searchQuery && (
                         <button
-                            onClick={() => navigate("/staff/dashboard/question-bank/create")}
+                            onClick={() => navigate("/staff/dashboard/question-bank/categories/create")}
                             className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 px-6 py-3 rounded-xl font-semibold text-sm transition-all"
                         >
                             <Plus size={18} /> Create Category
@@ -166,7 +166,7 @@ export const QuestionBankCategoriesPage = () => {
                         {categories.map((category, idx) => (
                             <AnimateIn key={category.id} direction="up" delay={idx * 0.05}>
                                 <div
-                                    onClick={() => navigate(`/staff/dashboard/question-bank/${category.id}`)}
+                                    onClick={() => navigate(`/staff/dashboard/question-bank/categories/view/${category.id}`)}
                                     className="group bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 hover:shadow-lg hover:border-emerald-500/30 transition-all cursor-pointer flex flex-col h-full relative overflow-hidden"
                                 >
                                     <div className="flex justify-between items-start mb-4">

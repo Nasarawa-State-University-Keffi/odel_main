@@ -9,17 +9,13 @@ import {
 export const navItems = {
     admin: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-        { name: "All Courses", href: "/courses", icon: BookOpen },
         { name: "Academic Setup", href: "/admin/dashboard/academic-setup", icon: BookOpen },
-        { name: "Assignments", href: "/admin/dashboard/assignments", icon: FileText },
-        { name: "Quizzes", href: "/quizzes", icon: ClipboardCheck },
-        { name: "My Grades", href: "/grades", icon: GraduationCap },
     ],
     staff: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { name: "All Courses", href: "/courses", icon: BookOpen },
         { name: "Content", href: "/admin/dashboard/academic-setup", icon: BookOpen },
-       // { name: "Assignments", href: "/staff/dashboard/assignments", icon: FileText },
+        // { name: "Assignments", href: "/staff/dashboard/assignments", icon: FileText },
         { name: "Quizzes", href: "/quizzes", icon: ClipboardCheck },
         { name: "My Grades", href: "/grades", icon: GraduationCap },
         {
@@ -38,28 +34,28 @@ export const navItems = {
                 }
             ]
         },
-         {
+        {
             name: "Question Bank", href: "/staff/dashboard/assessments", icon: FileText, children: [
                 {
                     name: "Categories",
                     href: "/staff/dashboard/question-bank/categories",
                 },
                 {
-                    name: "Submissions",
-                    href: "/staff/dashboard/assessment-submissions/submissions",
+                    name: "Questions",
+                    href: "/staff/dashboard/question-bank/questions",
                 },
-                {
-                    name: "Quizzes",
-                    href: "/staff/dashboard/quizzes",
-                }
+                // {
+                //     name: "New Questions",
+                //     href: "/staff/dashboard/question-bank/questions/create",
+                // },
             ]
         },
     ],
     student: [
-        { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
         { name: "All Courses", href: "/courses", icon: BookOpen },
         { name: "Content", href: "/admin/dashboard/academic-setup", icon: BookOpen },
-        { name: "Assignments", href: "/assignments", icon: FileText },
+        { name: "Assignments", href: "/student/assignments", icon: FileText },
         { name: "Quizzes", href: "/quizzes", icon: ClipboardCheck },
         { name: "My Grades", href: "/grades", icon: GraduationCap },
     ]

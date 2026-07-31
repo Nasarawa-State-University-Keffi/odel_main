@@ -35,7 +35,6 @@ export const useStaffAccessment = () => {
 
                     const queryString = queryParams.toString();
                     if (queryString) {
-                        url = `${url}${url.endsWith('/') ? '' : '/'}`;
                         url = `${url}?${queryString}`;
                     }
                 }

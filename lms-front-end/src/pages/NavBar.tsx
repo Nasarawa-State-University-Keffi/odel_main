@@ -7,19 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup, // Add this
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { navItems } from "@/data";
 
 // Extract type from your navItems structure
 type NavItemType = typeof navItems[keyof typeof navItems][number];
 
 interface NavBarProps {
-    targetNav: NavItemType[];
+    targetNav: any;
 }
 
-const MobileNavItem = ({ item, currentPath }: { item: NavItemType; currentPath: string }) => {
+const MobileNavItem = ({ item, currentPath }: { item: any; currentPath: string }) => {
     const [isOpen, setIsOpen] = useState(currentPath.includes(item.href));
-    const hasChildren = item.children && item.children.length > 0;
+    const hasChildren = item?.children && item.children.length > 0;
     const isActive = currentPath === item.href || (hasChildren && currentPath.includes(item.href));
 
     if (hasChildren) {
@@ -45,15 +53,15 @@ const MobileNavItem = ({ item, currentPath }: { item: NavItemType; currentPath: 
                         }`}
                 >
                     <div className="overflow-hidden flex flex-col space-y-1 pl-4">
-                        {item.children?.map((child) => {
+                        {item.children?.map((child: any) => {
                             const isChildActive = currentPath === child.href;
                             return (
                                 <Link
                                     key={child.name}
                                     to={child.href}
                                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors border-l-2 ${isChildActive
-                                            ? "border-emerald-500 bg-zinc-900/50 text-white font-medium"
-                                            : "border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+                                        ? "border-emerald-500 bg-zinc-900/50 text-white font-medium"
+                                        : "border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
                                         }`}
                                 >
                                     <Circle className={`w-1.5 h-1.5 ${isChildActive ? "fill-emerald-500 text-emerald-500" : "fill-transparent"}`} />
@@ -88,7 +96,7 @@ const NavBar = ({ targetNav }: NavBarProps) => {
         if (location.pathname.includes(item.href)) {
             currentPage = item.name;
             if (item.children) {
-                const activeChild = item.children.find(c => location.pathname.includes(c.href));
+                const activeChild = item.children.find((c: any) => location.pathname.includes(c.href));
                 if (activeChild) currentPage = activeChild.name;
             }
         }
@@ -116,7 +124,7 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                             </SheetTitle>
                         </SheetHeader>
                         <div className="flex flex-col py-6 px-4 space-y-1.5 overflow-y-auto max-h-[calc(100vh-4rem)] custom-scrollbar">
-                            {targetNav.map((item) => (
+                            {targetNav.map((item: any) => (
                                 <MobileNavItem key={item.name} item={item} currentPath={location.pathname} />
                             ))}
                         </div>
@@ -159,16 +167,27 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 mt-1" align="end">
-                        <DropdownMenuLabel className="font-normal p-3">
-                            <div className="flex flex-col space-y-1.5">
-                                <p className="text-sm font-semibold leading-none text-zinc-900 dark:text-zinc-100">Richard Dauda</p>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-none font-medium">NSUK/2026/001</p>
-                            </div>
-                        </DropdownMenuLabel>
+                        {/* Wrap DropdownMenuLabel inside DropdownMenuGroup */}
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel className="font-normal p-3">
+                                <div className="flex flex-col space-y-1.5">
+                                    <p className="text-sm font-semibold leading-none text-zinc-900 dark:text-zinc-100">Richard Dauda</p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-none font-medium">NSUK/2026/001</p>
+                                </div>
+                            </DropdownMenuLabel>
+                        </DropdownMenuGroup>
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem className="cursor-pointer">
+                                <Link to="/profile">Profile</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+                        </DropdownMenuGroup>
+
                         <DropdownMenuSeparator />
+
                         <DropdownMenuItem className="text-red-600 dark:text-red-500 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50 cursor-pointer">
                             Log out
                         </DropdownMenuItem>

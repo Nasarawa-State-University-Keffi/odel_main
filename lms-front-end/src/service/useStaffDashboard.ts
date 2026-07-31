@@ -8,6 +8,7 @@ export const useStaffDashboard = () => {
     const [dashboardData, setDashboardData] = useState<StaffDashboard | null>(null)
     const [isPending, startTransition] = useTransition()
     const repository = new BaseRepository()
+    const [error, setError] = useState<unknown>(null)
 
 
     const fetchStaffData = async (external_id: string) => {
@@ -17,9 +18,8 @@ export const useStaffDashboard = () => {
                 if (response.success) {
                     setDashboardData(response.data as StaffDashboard)
                 }
-                return response.data;
             } catch (error) {
-                return error;
+                setError(error)
             }
         })
     }
@@ -27,6 +27,7 @@ export const useStaffDashboard = () => {
     return {
         fetchStaffData,
         dashboardData,
-        isPending
+        isPending,
+        error
     }
 }
