@@ -20,7 +20,11 @@ export const endpoint = {
             assessment: {
                 assignment: {
                     base: "/student/assessment/assignments/",
-                    submissions: "/student/assessment/submissions/"
+                    submissions: {
+                        base: "/student/assessment/submissions/",
+                        create: "/student/assessment/submissions/create/"
+
+                    }
                 },
 
                 quiz: {
@@ -42,7 +46,11 @@ export const endpoint = {
             assessment: {
                 assignment: {
                     assignment: "/staff/assessment/assignments/",
-                    submissions: "/staff/assessment/submissions/"
+                    submissions: "/staff/assessment/submissions/",
+
+                    submission: {
+                        base: "/staff/assessment/submissions/"
+                    }
                 },
 
                 quiz: {

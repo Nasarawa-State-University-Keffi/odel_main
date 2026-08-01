@@ -21,6 +21,10 @@ class BaseRepository {
     delete<T>(endpoint: string, params?: unknown) {
         return client.delete<T>(endpoint, params);
     }
+
+    upload <T> (endpoint: string, params: FormData) {
+        return client.upload<T>(endpoint, params)
+    }
 }
 
 export default BaseRepository;

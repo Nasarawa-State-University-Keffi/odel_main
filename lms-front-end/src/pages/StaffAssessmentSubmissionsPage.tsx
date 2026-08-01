@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { Search, AlertCircle, FileText, CheckCircle, Clock, ChevronRight, FileDown } from "lucide-react";
-import { useStaffAccessment } from "@/service/useStaffAssignment";
 import { AnimateIn } from "@/components/ui/animate-in";
 import { SubmissionEmptyState, SubmissionLoadingState } from "@/components/staff/submissions/SubmissionStates";
 import type { Submission } from "@/types/assignment.types";
+import { useStaffSubmission } from "@/service/useStaffSubmission";
+import { useNavigate } from "react-router-dom";
 
 const StaffAssessmentSubmissionsPage = () => {
-  const { fetchSubmissions, isPending, submissionsData, submissionsError } = useStaffAccessment();
+  const { fetchSubmissions, isPending, submissionsData, submissionsError } = useStaffSubmission();
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate()
 
   // Debounced search effect
   useEffect(() => {
@@ -62,7 +64,7 @@ const StaffAssessmentSubmissionsPage = () => {
           Score: {submission.marks ? `${submission.marks} pts` : "—"}
         </div>
       </div>
-      <button className="w-full flex items-center justify-center gap-2 bg-primary-50 hover:bg-primary-100 text-primary-600 px-4 py-2 rounded-md transition-colors text-sm font-medium">
+      <button onClick={() => navigate(`/staff/dashboard/assessment-submissions/submissions/${submission.id}`)} className="w-full flex items-center justify-center gap-2 bg-primary-50 hover:bg-primary-100 text-primary-600 px-4 py-2 rounded-md transition-colors text-sm font-medium">
         Review Submission <ChevronRight size={16} />
       </button>
     </div>
@@ -143,7 +145,7 @@ const StaffAssessmentSubmissionsPage = () => {
                           <td className="px-6 py-4 text-text-muted">{formatDate(sub.submitted_at)}</td>
                           <td className="px-6 py-4 font-medium">{sub.marks ? sub.marks : "—"}</td>
                           <td className="px-6 py-4 text-right">
-                            <button className="text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1 transition-colors">
+                            <button onClick={() => navigate(`/staff/dashboard/assessment-submissions/submissions/${sub.id}`)} className="text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1 transition-colors">
                               Review <ChevronRight size={16} />
                             </button>
                           </td>

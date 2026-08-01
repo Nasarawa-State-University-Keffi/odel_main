@@ -27,6 +27,8 @@ import StaffEditQuestionPage from "./StaffEditQuestionPage";
 import StudentDashboardPage from "./StudentDashboardPage";
 import StudentAssignmentPage from "./StudentAssignmentPage";
 import StudentAssignmentDetailPage from "./StudentAssignmentDetailPage";
+import AssignmentSubmissionPage from "./AssignmentSubmission";
+import StaffAssignmentSubmissionReviewPage from "./StaffAssignmentSubmissionReviewPage";
 
 const Presentation = () => {
     return (
@@ -41,7 +43,8 @@ const Presentation = () => {
                     <Route path="courses/:id" element={<CourseDetail />} />
                     <Route path="dashboard" element={<StudentDashboardPage />} />
                     <Route path="assignments" element={<StudentAssignmentPage />} />
-                    <Route path="assignments/:id" element={<StudentAssignmentDetailPage/>} />
+                    <Route path="assignments/:id" element={<StudentAssignmentDetailPage />} />
+                    <Route path="assignments/:id/submit" element={<AssignmentSubmissionPage />} />
 
                 </Route>
                 <Route path="/profile" element={<ApplicationLayout />} >
@@ -71,6 +74,7 @@ const Presentation = () => {
                     <Route path="assignments/create" element={<CreateAssignment />} />
                     <Route path="assignments/edit/:id" element={<EditAssignmentPage />} />
                     <Route path="assessment-submissions/submissions" element={<StaffAssessmentSubmissionsPage />} />
+                    <Route path="assessment-submissions/submissions/:id" element={<StaffAssignmentSubmissionReviewPage />} />
                     <Route path="quizzes" element={<StaffQuizPage />} />
                     <Route path="quizzes/create" element={<CreateQuizPage />} />
                     <Route path="quizzes/edit/:id" element={<EditQuizPage />} />

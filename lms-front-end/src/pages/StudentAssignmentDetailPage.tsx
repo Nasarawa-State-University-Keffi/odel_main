@@ -224,6 +224,7 @@ export const StudentAssignmentDetailPage = () => {
                         {/* CTA ACTION */}
                         <AnimateIn direction="up" delay={0.4}>
                             <button 
+                                onClick={() => navigate(`/student/assignments/${assignment.id}/submit`)}
                                 disabled={status.closed}
                                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white py-4 font-bold text-sm transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:bg-slate-400 dark:disabled:bg-slate-700"
                             >
