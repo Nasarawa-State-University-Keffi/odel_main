@@ -75,7 +75,7 @@ class ApiClient {
                 if (status === 401 || status === 403) {
                     // Prevent redirect loops if they are already on the login page
                     if (window.location.pathname !== "/") {
-                        window.location.href = "/";
+                        window.location.href = "/login";
                     }
                 }
 
@@ -203,7 +203,7 @@ export const logout = async (): Promise<void> => {
         console.error("Logout request failed", error);
     } finally {
         setGlobalCsrfToken("");
-        //window.location.href = "/";
+        window.location.href = "/login";
     }
 };
 

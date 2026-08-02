@@ -29,12 +29,14 @@ import StudentAssignmentPage from "./StudentAssignmentPage";
 import StudentAssignmentDetailPage from "./StudentAssignmentDetailPage";
 import AssignmentSubmissionPage from "./AssignmentSubmission";
 import StaffAssignmentSubmissionReviewPage from "./StaffAssignmentSubmissionReviewPage";
+import { LearningContentPage } from "./LearningContentPage";
+import { StaffContentUploadPage } from "./StaffContentUploadPage";
 
 const Presentation = () => {
     return (
         <div>
             <Routes>
-                <Route path="/" element={<Login />} />
+                <Route path="/login" element={<Login />} />
                 <Route path="/dashboard" element={<CentralDashboard />} />
 
                 <Route path="/student" element={<ApplicationLayout />} >
@@ -47,8 +49,15 @@ const Presentation = () => {
                     <Route path="assignments/:id/submit" element={<AssignmentSubmissionPage />} />
 
                 </Route>
+
+                {/* Profile */}
                 <Route path="/profile" element={<ApplicationLayout />} >
                     <Route index element={<ProfilePage />} />
+                    <Route path="learning-content" element={<LearningContentPage />} />
+                </Route>
+
+                <Route path="/learning-content" element={<ApplicationLayout />} >
+                    <Route index element={<LearningContentPage />} />
                 </Route>
 
 
@@ -91,6 +100,9 @@ const Presentation = () => {
                     <Route path="question-bank/questions" element={<StaffQuestionListPage />} />
                     <Route path="question-bank/questions/create" element={<StaffCreateQuestionPage />} />
                     <Route path="question-bank/questions/edit/:id" element={<StaffEditQuestionPage />} />
+
+                    {/* Content */}
+                    <Route path="content/upload" element={<StaffContentUploadPage />} />
                 </Route>
             </Routes>
         </div>

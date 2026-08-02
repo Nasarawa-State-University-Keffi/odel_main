@@ -127,7 +127,7 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
                             <Select
                                 key={`course-select-${formData.course_id}`}
                                 value={formData.course_id}
-                                onValueChange={(val) => handleSelectChange("course_id", val)}
+                                onValueChange={(val: string | null) => handleSelectChange("course_id", val || '')}
                             >
                                 <SelectTrigger className="w-full h-12 rounded-xl bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-sm focus:ring-emerald-500/50">
                                     {selectedCourse ? (
@@ -166,7 +166,7 @@ export const CreateQuestionBankCategoryPage: React.FC = () => {
                             <Select
                                 key={`level-select-${formData.level}`}
                                 value={formData.level}
-                                onValueChange={(val) => handleSelectChange("level", val)}
+                                onValueChange={(val: string | null) => handleSelectChange("level", val || '')}
                             >
                                 <SelectTrigger className="w-full h-12 rounded-xl bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-sm focus:ring-emerald-500/50">
                                     <SelectValue placeholder="Select level..." />

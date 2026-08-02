@@ -1,4 +1,5 @@
 export const endpoint = {
+
     auth: {
         signin: '/auth/login',
         logout: '/auth/logout',
@@ -7,6 +8,10 @@ export const endpoint = {
 
     courses: {
         list: "/courses/",
+    },
+
+    content: {
+        base: "/content/"
     },
 
     sync: {
@@ -53,6 +58,8 @@ export const endpoint = {
                     }
                 },
 
+
+
                 quiz: {
                     quizzes: "/staff/assessment/quizzes/",
                     submissions: "/staff/assessment/quiz-submissions/",
@@ -69,8 +76,15 @@ export const endpoint = {
                 }
             },
 
+            content: {
+                upload: {
+                    file: "/content/upload/",
+                    youtube: "/content/add-youtube/"
+                }
+            }
 
-        }
+        },
+
     },
 
     semester: '/semesters/',

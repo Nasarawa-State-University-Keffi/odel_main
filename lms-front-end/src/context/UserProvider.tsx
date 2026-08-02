@@ -47,7 +47,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 
     useEffect(() => {
-        const isDashboardRoute = location.pathname.includes('dashboard') || location.pathname.includes('student');
+        //const isDashboardRoute = !location.pathname.includes('dashboard') || location.pathname.includes('student');
+        const isDashboardRoute = !location.pathname.includes('login')
         if (isDashboardRoute && (!hasFetched.current)) {
             (async () => {
                 await fetchMyData();
