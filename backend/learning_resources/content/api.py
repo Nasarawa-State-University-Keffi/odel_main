@@ -29,8 +29,7 @@ from .services import (
     upload_youtube_video,
     delete_learning_content,
     get_course_contents,
-    log_content_access,
-    update_storage_settings
+    log_content_access
 )
 from courses.models import CourseCache
 
@@ -322,11 +321,32 @@ class LearningContentStatsAPIView(views.APIView):
 @extend_schema(tags=['Admin - Storage Settings'])
 class StorageSettingsListCreateAPIView(generics.ListCreateAPIView):
     """
-    List or create storage settings.
+    List, create, or upsert storage settings.
     """
     queryset = StorageSettings.objects.all()
     serializer_class = StorageSettingsSerializer
     permission_classes = [IsAdminUser]
+
+    @extend_schema(
+        summary="Create or update storage settings",
+        request=StorageSettingsSerializer,
+        responses={200: StorageSettingsSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        """Update a storage backend selected by its natural ``backend`` key."""
+        backend = request.data.get('backend')
+        if not backend:
+            return Response(
+                {'backend': ['This field is required.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        instance = StorageSettings.objects.filter(backend=backend).first()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @extend_schema(tags=['Admin - Storage Settings'])

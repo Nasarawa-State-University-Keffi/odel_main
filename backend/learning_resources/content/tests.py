@@ -374,6 +374,53 @@ class StorageBackendTestCase(TestCase):
         self.assertEqual(str(settings), 'Amazon S3 (Inactive)')
 
 
+class StorageSettingsAPITestCase(APITestCase):
+    """Test cases for the admin storage-settings API."""
+
+    def setUp(self):
+        self.admin_user = PortalUser.objects.create(
+            external_id='storage-admin',
+            full_name='Storage Admin',
+            is_staff=True
+        )
+        self.client.force_authenticate(user=self.admin_user)
+
+    def test_put_collection_updates_existing_backend(self):
+        local = StorageSettings.objects.create(backend='local', is_active=True)
+        s3 = StorageSettings.objects.create(backend='s3', is_active=False)
+
+        response = self.client.put(
+            '/api/content/storage-settings/',
+            {'backend': 's3', 'is_active': True},
+            format='json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], s3.id)
+        self.assertEqual(response.data['backend'], 's3')
+        self.assertTrue(response.data['is_active'])
+
+        local.refresh_from_db()
+        s3.refresh_from_db()
+        self.assertFalse(local.is_active)
+        self.assertTrue(s3.is_active)
+
+    def test_put_collection_creates_missing_backend(self):
+        response = self.client.put(
+            '/api/content/storage-settings/',
+            {'backend': 'cloudinary', 'is_active': True},
+            format='json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            StorageSettings.objects.filter(
+                backend='cloudinary',
+                is_active=True
+            ).exists()
+        )
+
+
 class ContentAccessLogTestCase(APITestCase):
     """Test cases for content access logging."""
 
