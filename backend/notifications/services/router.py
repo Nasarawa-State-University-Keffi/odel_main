@@ -1,6 +1,5 @@
 from typing import Optional, Dict, Type, Any
 from django.core.cache import cache
-from django.conf import settings
 
 from .base import BaseEmailService, NotificationException
 from .smtp_service import SMTPEmailService
@@ -17,6 +16,8 @@ EMAIL_SERVICES: Dict[str, Type[BaseEmailService]] = {
     'brevo': BrevoEmailService,
 }
 
+EMAIL_SERVICE_CACHE_PREFIX = 'email_service_instance'
+
 
 def get_active_configuration() -> Optional[Any]:
     """
@@ -30,7 +31,27 @@ def get_active_configuration() -> Optional[Any]:
         return None
 
 
-def get_email_service(backend: Optional[str] = None) -> BaseEmailService:
+def clear_email_service_cache(backend: Optional[str] = None):
+    """Invalidate cached service instances after configuration changes."""
+    keys = [EMAIL_SERVICE_CACHE_PREFIX]
+    if backend:
+        keys.append(f'{EMAIL_SERVICE_CACHE_PREFIX}:{backend.lower()}')
+    else:
+        keys.extend(f'{EMAIL_SERVICE_CACHE_PREFIX}:{name}' for name in EMAIL_SERVICES)
+    cache.delete_many(keys)
+
+
+def _configuration_fingerprint(config_obj):
+    if config_obj is None:
+        return 'environment'
+    updated_at = getattr(config_obj, 'updated_at', None)
+    return f'{config_obj.id}:{updated_at.isoformat() if updated_at else "unsaved"}'
+
+
+def get_email_service(
+    backend: Optional[str] = None,
+    configuration: Optional[Any] = None,
+) -> BaseEmailService:
     """
     Get email service instance based on configuration.
     Selection priority:
@@ -38,7 +59,16 @@ def get_email_service(backend: Optional[str] = None) -> BaseEmailService:
     2. Database-backed active EmailConfiguration
     3. ENV/Settings fallback (defaulting to 'smtp')
     """
-    config_obj = None
+    config_obj = configuration
+
+    if config_obj is not None:
+        configured_backend = config_obj.backend_choice.lower()
+        if backend is not None and backend.lower() != configured_backend:
+            raise NotificationException(
+                f"Email backend '{backend}' does not match configuration backend "
+                f"'{configured_backend}'."
+            )
+        backend = configured_backend
     
     # 1. If no backend is provided, try to get it from the database
     if backend is None:
@@ -50,6 +80,13 @@ def get_email_service(backend: Optional[str] = None) -> BaseEmailService:
             backend = 'smtp'
     
     backend = backend.lower()
+
+    # Explicit backend requests may still use the active configuration when it
+    # belongs to that backend. Inactive configurations must be passed directly.
+    if config_obj is None:
+        active_config = get_active_configuration()
+        if active_config and active_config.backend_choice.lower() == backend:
+            config_obj = active_config
     
     if backend not in EMAIL_SERVICES:
         supported = ', '.join(EMAIL_SERVICES.keys())
@@ -58,51 +95,39 @@ def get_email_service(backend: Optional[str] = None) -> BaseEmailService:
             f"Supported backends: {supported}"
         )
     
-    # Use cache to avoid repeated DB hits and re-initialization
-    cache_key = f'email_service_instance'
-    # We include the backend in the logic but cache the *active* instance
-    service = cache.get(cache_key)
-    
-    # If we have a cached service but it's not the backend we want (unlikely if we only cache the active one)
-    # or if we are requesting a specific one, we might need to recreate.
-    # For now, let's just re-initialize if not cached or if explicit backend doesn't match active config
-    
-    if service is None or (config_obj and backend != config_obj.backend_choice):
-        try:
-            service_class = EMAIL_SERVICES[backend]
-            
-            # Prepare initialization arguments
-            init_kwargs = {}
-            from os import environ
+    cache_key = f'{EMAIL_SERVICE_CACHE_PREFIX}:{backend}'
+    fingerprint = _configuration_fingerprint(config_obj)
+    cached = cache.get(cache_key)
+    if isinstance(cached, dict) and cached.get('fingerprint') == fingerprint:
+        return cached['service']
 
-            # Determine API key from Environment Variables ONLY
-            api_key = None
-            if backend == 'resend':
-                api_key = environ.get('RESEND_API_KEY')
-            elif backend == 'brevo':
-                api_key = environ.get('BREVO_API_KEY')
+    try:
+        service_class = EMAIL_SERVICES[backend]
+        init_kwargs = {}
+        from os import environ
 
-            if backend in ['resend', 'brevo']:
-                init_kwargs['api_key'] = api_key
+        if backend == 'resend':
+            init_kwargs['api_key'] = environ.get('RESEND_API_KEY')
+        elif backend == 'brevo':
+            init_kwargs['api_key'] = environ.get('BREVO_API_KEY')
 
-            # Merge with database config (for non-sensitive settings like from_email)
-            if config_obj and backend == config_obj.backend_choice:
-                # We filter out 'api_key' if it accidentally exists in DB config for extra safety
-                db_config = config_obj.config or {}
-                if 'api_key' in db_config:
-                    db_config = db_config.copy()
-                    del db_config['api_key']
-                init_kwargs.update(db_config)
-            
-            service = service_class(**init_kwargs)
-            
-            # Cache the active service for 1 hour
-            cache.set(cache_key, service, 3600)
-            
-        except Exception as e:
-            raise NotificationException(f"Failed to initialize {backend} email service: {str(e)}")
-    
-    return service
+        # Only supported, non-sensitive database settings reach constructors.
+        if config_obj:
+            db_config = config_obj.config or {}
+            if db_config.get('from_email'):
+                init_kwargs['from_email'] = db_config['from_email']
+
+        service = service_class(**init_kwargs)
+        cache.set(
+            cache_key,
+            {'fingerprint': fingerprint, 'service': service},
+            3600,
+        )
+        return service
+    except Exception as exc:
+        raise NotificationException(
+            f'Failed to initialize {backend} email service: {exc}'
+        ) from exc
 
 
 def register_email_service(name: str, service_class: Type[BaseEmailService]):
@@ -117,5 +142,4 @@ def register_email_service(name: str, service_class: Type[BaseEmailService]):
     
     EMAIL_SERVICES[name.lower()] = service_class
     
-    # Clear cache
-    cache.delete('email_service_instance')
+    clear_email_service_cache()

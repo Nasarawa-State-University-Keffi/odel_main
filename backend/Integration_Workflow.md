@@ -201,11 +201,14 @@ Student registrations are stored per `(student, course, session, semester)`. Reg
 
 ---
 
-## 6. Email System Management (Staff Only)
+## 6. Email System Management (Portal Admin Only)
 
-Manage the active email delivery backend and its configuration directly via the API.
+Manage the active email delivery backend, test delivery, and inspect delivery logs.
+All endpoints in this section require an `ADMIN`, `SUPER_ADMIN`, `PORTAL_ADMIN`,
+or `PORTAL_ADMINS` role. Regular staff accounts receive `403 Forbidden`.
 
 - **List All Configurations:** `GET /api/notifications/settings/`
+- **View a Configuration:** `GET /api/notifications/settings/<uuid:pk>/`
 - **Create New Configuration:** `POST /api/notifications/settings/`
   - **Body Example:**
     ```json
@@ -218,7 +221,36 @@ Manage the active email delivery backend and its configuration directly via the 
     }
     ```
 - **Update Configuration:** `PATCH /api/notifications/settings/<uuid:pk>/`
-- **Delete Configuration:** `DELETE /api/notifications/settings/<uuid:pk>/`
+- **Activate Configuration:** `POST /api/notifications/settings/<uuid:pk>/activate/`
+- **Delete Inactive Configuration:** `DELETE /api/notifications/settings/<uuid:pk>/`
+  - The active configuration cannot be deleted. Activate another configuration first.
+- **Send Test Email:** `POST /api/notifications/settings/<uuid:pk>/test/`
+  - **Body Example:**
+    ```json
+    {
+      "recipient": "admin@yourdomain.com",
+      "subject": "LMS email delivery test",
+      "message": "This is a test notification from the LMS."
+    }
+    ```
+
+The `config` object accepts only the non-sensitive `from_email` setting. SMTP,
+Resend, and Brevo credentials must be supplied through environment variables and
+are rejected if submitted through the API.
+
+### Delivery Logs
+
+- **List Logs:** `GET /api/notifications/logs/`
+- **View a Log:** `GET /api/notifications/logs/<uuid:pk>/`
+
+Logs are read-only and use standard page-number pagination. List queries support:
+
+- `status`: `pending`, `sent`, or `failed`
+- `backend`: case-insensitive partial match
+- `recipient`: case-insensitive partial match
+- `date_from` and `date_to`: inclusive `YYYY-MM-DD` creation-date bounds
+- `search`: searches recipient, subject, text body, and error message
+- `ordering`: one of `created_at`, `sent_at`, `recipient`, `status`, or `backend_used`; prefix with `-` for descending order
 
 ---
 

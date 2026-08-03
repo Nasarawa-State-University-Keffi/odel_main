@@ -8,6 +8,9 @@ class ConsoleEmailService(BaseEmailService):
     Useful for development and testing.
     """
 
+    def __init__(self, from_email: Optional[str] = None):
+        self.from_email = from_email
+
     def send_one(
         self,
         recipient: str,
@@ -19,7 +22,7 @@ class ConsoleEmailService(BaseEmailService):
     ) -> bool:
         print("--- SENDING EMAIL (ONE) ---")
         print(f"To: {recipient}")
-        print(f"From: {from_email or 'DEFAULT'}")
+        print(f"From: {from_email or self.from_email or 'DEFAULT'}")
         print(f"Subject: {subject}")
         print(f"Body: {message}")
         if html_message:
@@ -37,7 +40,7 @@ class ConsoleEmailService(BaseEmailService):
         **kwargs: Any
     ) -> int:
         print(f"--- SENDING BULK EMAIL ({len(recipients)} recipients) ---")
-        print(f"From: {from_email or 'DEFAULT'}")
+        print(f"From: {from_email or self.from_email or 'DEFAULT'}")
         print(f"Subject: {subject}")
         print(f"Body: {message}")
         for recipient in recipients:

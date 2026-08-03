@@ -1,6 +1,10 @@
 import uuid
-from django.db import models
+
+from django.db import models, transaction
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
+
+from .config import validate_email_configuration
 
 
 class EmailConfiguration(models.Model):
@@ -26,12 +30,13 @@ class EmailConfiguration(models.Model):
         help_text=_("Only one configuration should be active at a time.")
     )
     
-    # Configuration details (keys, host, etc.) stored in JSON
-    # This allows flexibility for different backend requirements
+    # Flexible non-sensitive configuration. Provider credentials stay in the
+    # process environment and are never accepted through this model.
     config = models.JSONField(
         default=dict,
         blank=True,
-        help_text=_("Configuration parameters like API keys, SMTP host, etc.")
+        validators=[validate_email_configuration],
+        help_text=_("Non-sensitive configuration such as the default sender address.")
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -40,15 +45,33 @@ class EmailConfiguration(models.Model):
     class Meta:
         verbose_name = _("Email Configuration")
         verbose_name_plural = _("Email Configurations")
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_active'],
+                condition=Q(is_active=True),
+                name='notifications_one_active_email_configuration',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.get_backend_choice_display()} ({'Active' if self.is_active else 'Inactive'})"
 
     def save(self, *args, **kwargs):
-        if self.is_active:
-            # Ensure no other configuration is active
-            EmailConfiguration.objects.filter(is_active=True).exclude(id=self.id).update(is_active=False)
-        super().save(*args, **kwargs)
+        with transaction.atomic():
+            if self.is_active:
+                # The database constraint is the final guard; this update preserves
+                # the convenient "activating one deactivates the rest" behavior.
+                EmailConfiguration.objects.filter(is_active=True).exclude(id=self.id).update(is_active=False)
+            super().save(*args, **kwargs)
+
+        from .services.router import clear_email_service_cache
+        clear_email_service_cache()
+
+    def delete(self, *args, **kwargs):
+        result = super().delete(*args, **kwargs)
+        from .services.router import clear_email_service_cache
+        clear_email_service_cache()
+        return result
 
 
 class NotificationLog(models.Model):

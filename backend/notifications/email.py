@@ -1,6 +1,6 @@
 from typing import List, Optional, Any
 from django.utils import timezone
-from .services.router import get_email_service
+from .services.router import get_active_configuration, get_email_service
 
 
 def send_one(
@@ -10,6 +10,7 @@ def send_one(
     html_message: Optional[str] = None,
     from_email: Optional[str] = None,
     backend: Optional[str] = None,
+    configuration: Optional[Any] = None,
     **kwargs: Any
 ) -> bool:
     """
@@ -18,9 +19,14 @@ def send_one(
     """
     from .models import NotificationLog
     
-    # Get service first to know which backend is being used
-    service = get_email_service(backend)
-    backend_name = getattr(service, '__class__', {}).__name__ if service else str(backend)
+    selected_configuration = configuration
+    if selected_configuration is None and backend is None:
+        selected_configuration = get_active_configuration()
+    backend_name = (
+        selected_configuration.backend_choice
+        if selected_configuration is not None
+        else (backend or 'smtp')
+    )
     
     # Create log entry
     log = NotificationLog.objects.create(
@@ -33,6 +39,10 @@ def send_one(
     )
     
     try:
+        service = get_email_service(
+            backend=backend,
+            configuration=selected_configuration,
+        )
         success = service.send_one(
             recipient=recipient,
             subject=subject,

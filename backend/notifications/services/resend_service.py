@@ -40,12 +40,11 @@ class ResendEmailService(BaseEmailService):
         }
 
         try:
-            response = requests.post(self.API_URL, json=payload, headers=headers)
+            response = requests.post(self.API_URL, json=payload, headers=headers, timeout=10)
             response.raise_for_status()
             return True
-        except Exception as e:
-            # Optionally log the error here
-            return False
+        except Exception as exc:
+            raise NotificationException(f'Resend delivery failed: {exc}') from exc
 
     def send_many(
         self,
