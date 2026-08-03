@@ -15,9 +15,7 @@ const Login = () => {
   };
 
   useEffect(() => {
-    return () => {
-      setIsLoading(false)
-    }
+    setIsLoading(false)
   }, [])
 
   return (
@@ -58,9 +56,9 @@ const Login = () => {
 
       {/* RIGHT SIDE: The Login UI */}
       <div className="flex items-center justify-center p-8 lg:p-12 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/5 dark:bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-emerald-500/5 dark:bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="mx-auto w-full max-w-[420px] space-y-8 relative z-10">
+        <div className="mx-auto w-full max-w-105 space-y-8 relative z-10">
 
           {/* Mobile Logo */}
           <div className="flex lg:hidden items-center gap-3 text-2xl font-bold tracking-tight mb-8">

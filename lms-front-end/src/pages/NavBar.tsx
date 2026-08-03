@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Bell, Menu, Search, ChevronDown, Circle } from "lucide-react";
 
@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuGroup, // Add this
+    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -19,8 +19,6 @@ import {
 import { navItems } from "@/data";
 import { useUserContext } from "@/context/UserProvider";
 
-// Extract type from your navItems structure
-type NavItemType = typeof navItems[keyof typeof navItems][number];
 
 interface NavBarProps {
     targetNav: any;
@@ -89,10 +87,9 @@ const MobileNavItem = ({ item, currentPath }: { item: any; currentPath: string }
 };
 
 const NavBar = ({ targetNav }: NavBarProps) => {
-    const {user} = useUserContext()
+    const { user } = useUserContext()
     const location = useLocation();
 
-    // Intelligently find the current page name, checking children as well
     let currentPage = "Dashboard";
     for (const item of targetNav) {
         if (location.pathname.includes(item.href)) {
@@ -116,7 +113,7 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                             <Menu className="h-5 w-5" />
                         </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-[280px] bg-zinc-950 border-zinc-800 text-zinc-300 p-0 shadow-2xl">
+                    <SheetContent side="left" className="w-70 bg-zinc-950 border-zinc-800 text-zinc-300 p-0 shadow-2xl">
                         <SheetHeader className="h-16 flex items-center justify-center border-b border-zinc-800/50 px-6 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-10">
                             <SheetTitle className="text-white text-lg font-heading tracking-tight flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center">
@@ -153,9 +150,9 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                 {/* Notifications */}
                 <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
                     <Bell className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
-                    <Badge className="absolute top-0 right-0 h-4 w-4 flex items-center justify-center p-0 bg-emerald-500 text-white rounded-full text-[9px] font-bold border-2 border-white dark:border-zinc-950">
+                    {/* <Badge className="absolute top-0 right-0 h-4 w-4 flex items-center justify-center p-0 bg-emerald-500 text-white rounded-full text-[9px] font-bold border-2 border-white dark:border-zinc-950">
                         3
-                    </Badge>
+                    </Badge> */}
                 </Button>
 
                 {/* User Profile Dropdown */}

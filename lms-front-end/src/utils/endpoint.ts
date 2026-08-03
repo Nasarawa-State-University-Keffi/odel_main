@@ -99,8 +99,16 @@ export const endpoint = {
                     base: "/content/storage-settings/"
                 }
             }
+        },
+
+        setting: {
+            notification: {
+                base: "/notifications/settings/",
+                log: "/notifications/logs/"
+            }
         }
-    }
+    },
+
 
 }
 

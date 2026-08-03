@@ -6,6 +6,7 @@ import {
     FileText,
     File,
     HardDrive,
+    Bell,
 } from "lucide-react";
 
 export const navItems = {
@@ -14,6 +15,22 @@ export const navItems = {
         { name: "Content", href: "/learning-content", icon: File },
         { name: "Academic Setup", href: "/admin/dashboard/academic-setup", icon: BookOpen },
         { name: "Storage Settings", href: "/admin/dashboard/storage-settings", icon: HardDrive },
+         {
+           name: "Notifications", href: "/admin/dashboard/notifications/settings", icon: Bell, children: [
+                {
+                    name: "Configure",
+                    href: "/admin/dashboard/notifications/settings",
+                },
+                {
+                    name: "Logs",
+                    href: "/admin/dashboard/notifications/logs",
+                },
+                // {
+                //     name: "Quizzes",
+                //     href: "/staff/dashboard/quizzes",
+                // }
+            ]
+        },
     ],
     staff: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },

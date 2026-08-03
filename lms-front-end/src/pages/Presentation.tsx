@@ -36,12 +36,17 @@ const StudentAssignmentDetailPage = lazy(() => import("./StudentAssignmentDetail
 const AssignmentSubmissionPage = lazy(() => import("./AssignmentSubmission"));
 const StaffAssignmentSubmissionReviewPage = lazy(() => import("./StaffAssignmentSubmissionReviewPage"));
 const NotFoundPage = lazy(() => import("./NotFoundPage"));
+const AdminNotificationSettingsPage = lazy(() => import("./AdminNotificationSettingsPage"));
+const AdminCreateNotificationSettingPage = lazy(() => import("./AdminCreateNotificationSettingPage"));
+const AdminNotificationSettingDetailPage = lazy(() => import("./AdminNotificationSettingDetailPage"));
+const AdminNotificationLogsPage = lazy(() => import("./AdminNotificationLogsPage"));
 
 // 2. Lazy load named exports using .then()
 const LearningContentPage = lazy(() => import("./LearningContentPage").then(mod => ({ default: mod.LearningContentPage })));
 const StaffContentUploadPage = lazy(() => import("./StaffContentUploadPage").then(mod => ({ default: mod.StaffContentUploadPage })));
 const AdminStorageSettingsPage = lazy(() => import("./AdminStorageSettingsPage").then(mod => ({ default: mod.AdminStorageSettingsPage })));
 const AdminCreateStorageSettingPage = lazy(() => import("./AdminCreateStorageSettingPage").then(mod => ({ default: mod.AdminCreateStorageSettingPage })));
+
 
 /**
  * 1. Chunk Loading Error Boundary Component
@@ -152,10 +157,12 @@ const Presentation = () => {
                                     <Route path="courses/:id" element={<CourseDetail />} />
                                     <Route path="storage-settings" element={<AdminStorageSettingsPage />} />
                                     <Route path="storage-settings/create" element={<AdminCreateStorageSettingPage />} />
+                                    <Route path="notifications/settings" element={<AdminNotificationSettingsPage />} />
+                                    <Route path="notifications/settings/create" element={<AdminCreateNotificationSettingPage />} />
+                                    <Route path="notifications/settings/:id" element={<AdminNotificationSettingDetailPage />} />
+                                    <Route path="notifications/logs" element={<AdminNotificationLogsPage />} />
                                 </Route>
                             </Route>
-
-
 
                             {/* Staff Dashboard */}
                             <Route element={<ProtectedRoute allowedRoles={[ROLES.STAFF]} />}>
