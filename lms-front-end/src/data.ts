@@ -5,6 +5,7 @@ import {
     ClipboardCheck,
     FileText,
     File,
+    HardDrive,
 } from "lucide-react";
 
 export const navItems = {
@@ -12,6 +13,7 @@ export const navItems = {
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { name: "Content", href: "/learning-content", icon: File },
         { name: "Academic Setup", href: "/admin/dashboard/academic-setup", icon: BookOpen },
+        { name: "Storage Settings", href: "/admin/dashboard/storage-settings", icon: HardDrive },
     ],
     staff: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -59,7 +61,7 @@ export const navItems = {
         // },
     ],
     student: [
-        { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
+        { name: "Dashboard", href: "/student", icon: LayoutDashboard },
         { name: "Content", href: "/learning-content", icon: File},
         { name: "Assignments", href: "/student/assignments", icon: FileText },
     ]

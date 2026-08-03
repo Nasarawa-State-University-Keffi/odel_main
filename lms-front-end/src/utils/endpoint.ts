@@ -95,7 +95,9 @@ export const endpoint = {
     admin: {
         storage: {
             content: {
-                base: "/content/storage-settings/"
+                storage_setting: {
+                    base: "/content/storage-settings/"
+                }
             }
         }
     }

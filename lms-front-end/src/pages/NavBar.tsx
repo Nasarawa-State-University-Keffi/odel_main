@@ -17,6 +17,7 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { navItems } from "@/data";
+import { useUserContext } from "@/context/UserProvider";
 
 // Extract type from your navItems structure
 type NavItemType = typeof navItems[keyof typeof navItems][number];
@@ -88,6 +89,7 @@ const MobileNavItem = ({ item, currentPath }: { item: any; currentPath: string }
 };
 
 const NavBar = ({ targetNav }: NavBarProps) => {
+    const {user} = useUserContext()
     const location = useLocation();
 
     // Intelligently find the current page name, checking children as well
@@ -141,7 +143,7 @@ const NavBar = ({ targetNav }: NavBarProps) => {
 
                 {/* Search Bar */}
                 <div className="relative hidden md:block w-64 lg:w-80">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-zinc-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-zinc-400" />
                     <Input
                         placeholder="Search courses, assignments..."
                         className="pl-10 h-10 bg-zinc-100/50 dark:bg-zinc-900/50 border-zinc-200/80 dark:border-zinc-800/80 shadow-sm rounded-full focus-visible:ring-emerald-500 focus-visible:border-emerald-500 dark:focus-visible:bg-zinc-950 transition-all"
@@ -161,7 +163,7 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                     <DropdownMenuTrigger>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-zinc-200 dark:hover:ring-zinc-800 transition-all p-0">
                             <Avatar className="h-9 w-9 border border-zinc-200 dark:border-zinc-800">
-                                <AvatarImage src="https://github.com/shadcn.png" alt="User" />
+                                <AvatarImage src={user?.profile_picture || ""} alt="User" />
                                 <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">RD</AvatarFallback>
                             </Avatar>
                         </Button>
@@ -171,8 +173,8 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                         <DropdownMenuGroup>
                             <DropdownMenuLabel className="font-normal p-3">
                                 <div className="flex flex-col space-y-1.5">
-                                    <p className="text-sm font-semibold leading-none text-zinc-900 dark:text-zinc-100">Richard Dauda</p>
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-none font-medium">NSUK/2026/001</p>
+                                    {/* <p className="text-sm font-semibold leading-none text-zinc-900 dark:text-zinc-100">{user?.first_name}</p> */}
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-none font-medium">{user?.username}</p>
                                 </div>
                             </DropdownMenuLabel>
                         </DropdownMenuGroup>
@@ -183,14 +185,16 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                             <DropdownMenuItem className="cursor-pointer">
                                 <Link to="/profile">Profile</Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+                            {/* <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem> */}
                         </DropdownMenuGroup>
 
                         <DropdownMenuSeparator />
 
-                        <DropdownMenuItem className="text-red-600 dark:text-red-500 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50 cursor-pointer">
-                            Log out
-                        </DropdownMenuItem>
+                        <Link to="/login">
+                            <DropdownMenuItem className="text-red-600 dark:text-red-500 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50 cursor-pointer">
+                                Log out
+                            </DropdownMenuItem>
+                        </Link>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

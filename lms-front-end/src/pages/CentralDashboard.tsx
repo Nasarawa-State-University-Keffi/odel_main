@@ -35,12 +35,11 @@ const CentralDashboard = () => {
                 navigate("/", { replace: true });
                 return;
             }
-            console.log("this is the user: ", user)
 
             const isAdmin = user.roles?.includes(ROLES.ADMIN);
             const isStaff = user.roles?.includes(ROLES.STAFF);
 
-            let targetRoute = "/student/dashboard";
+            let targetRoute = "/student";
             if (isAdmin) {
                 targetRoute = "/admin/dashboard";
             } else if (isStaff) {

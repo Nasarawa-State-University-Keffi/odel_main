@@ -15,25 +15,36 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/service/useAuth";
 import { useStaffDashboard } from "@/service/useStaffDashboard";
-import { useEffect } from "react";
-import { useProgrammeType } from "@/service/useProgrammeType";
+import { useEffect, useState } from "react";
 import { useAdminDashboard } from "@/service/useAdminDashboard";
 
 const AdminDashboard = () => {
   const { user, isLoading } = useUserContext();
-  const { handleLogout, isPending } = useAuth()
-  // const {fetchProgrammeType, isPending: isProgrammeTypePending} = useProgrammeType()
-  const { fetchStaffData, isPending: isStaffPending } = useStaffDashboard()
-  const { syncAll } = useAdminDashboard()
+  const { handleLogout, isPending } = useAuth();
+  const { fetchStaffData, isPending: isStaffPending } = useStaffDashboard();
+  const { syncAll, isLoading: isLoadingSync } = useAdminDashboard();
+
+  const [showSyncSuccess, setShowSyncSuccess] = useState(false);
 
   useEffect(() => {
     if (user?.external_id) {
-      //syncAll()
-      //fetchProgrammeType()
-      fetchStaffData(user.external_id)
+      syncAll();
+      fetchStaffData(user.external_id);
     }
-  }, [])
+  }, []);
 
+ 
+  const handleManualSync = async () => {
+    try {
+      await syncAll();
+      setShowSyncSuccess(true);
+      setTimeout(() => {
+        setShowSyncSuccess(false);
+      }, 5000);
+    } catch (error) {
+      console.error("Synchronization failed", error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -56,9 +67,9 @@ const AdminDashboard = () => {
 
         {/* TOP BAR / NAVIGATION HEADER */}
         <AnimateIn direction="down" delay={0.1}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 p-5 shadow-sm backdrop-blur-xl">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 p-5 shadow-sm backdrop-blur-xl">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400 ring-1 ring-primary-500/20">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400 ring-1 ring-primary-500/20">
                 <LayoutDashboard className="h-6 w-6" />
               </div>
               <div>
@@ -67,33 +78,74 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              disabled={isPending}
-              className={`group relative flex items-center justify-center gap-2 overflow-hidden rounded-xl border px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${isPending
-                ? "border-red-200/50 bg-red-50/50 text-red-400 cursor-not-allowed dark:border-red-900/10 dark:bg-red-500/5 dark:text-red-500/50"
-                : "border-red-200 bg-red-50 text-red-600 hover:border-transparent hover:bg-red-600 hover:text-white dark:border-red-900/30 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
+            {/* ACTION BUTTONS (Responsive Container) */}
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <button
+                onClick={handleManualSync}
+                disabled={isLoadingSync}
+                className={`group relative flex w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-xl border px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${
+                  isLoadingSync
+                    ? "border-primary-200/50 bg-primary-50/50 text-primary-400 cursor-not-allowed dark:border-primary-900/10 dark:bg-primary-500/5 dark:text-primary-500/50"
+                    : "border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-300 hover:bg-primary-100 dark:border-primary-800/60 dark:bg-primary-900/30 dark:text-primary-300 dark:hover:bg-primary-900/50"
                 }`}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="animate-pulse">Terminating...</span>
-                </>
-              ) : (
-                <>
-                  <LogOut className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                  <span>Terminate Session</span>
-                </>
-              )}
+              >
+                {isLoadingSync ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span className="animate-pulse">Syncing...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 transition-transform duration-500 group-hover:rotate-180" />
+                    <span>Synchronize</span>
+                  </>
+                )}
+                {/* Subtle loading sweep */}
+                {isLoadingSync && (
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-linear-to-r from-transparent via-white/20 to-transparent" />
+                )}
+              </button>
 
-              {/* Subtle background loading sweep effect */}
-              {isPending && (
-                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-linear-to-r from-transparent via-white/20 to-transparent" />
-              )}
-            </button>
+              {/* Terminate Session Button */}
+              <button
+                onClick={handleLogout}
+                disabled={isPending}
+                className={`group relative flex w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-xl border px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${
+                  isPending
+                    ? "border-red-200/50 bg-red-50/50 text-red-400 cursor-not-allowed dark:border-red-900/10 dark:bg-red-500/5 dark:text-red-500/50"
+                    : "border-red-200 bg-red-50 text-red-600 hover:border-transparent hover:bg-red-600 hover:text-white dark:border-red-900/30 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
+                }`}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="animate-pulse">Terminating...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                    <span>Terminate</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </AnimateIn>
+
+        {/* BEAUTIFUL SUCCESS MESSAGE BANNER */}
+        {showSyncSuccess && (
+          <AnimateIn direction="down" delay={0}>
+            <div className="flex items-center gap-4 rounded-2xl border border-emerald-200/60 bg-emerald-50/80 px-6 py-4 text-emerald-800 shadow-sm backdrop-blur-md dark:border-emerald-900/50 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold">Synchronization Complete</h4>
+                <p className="text-xs font-medium opacity-90">All central directories, external endpoints, and user metrics have been successfully updated.</p>
+              </div>
+            </div>
+          </AnimateIn>
+        )}
 
         {/* HERO WELCOME BANNER */}
         <AnimateIn direction="up" delay={0.2}>
@@ -121,7 +173,6 @@ const AdminDashboard = () => {
 
         {/* PROFILE METRICS GRID */}
         <div className="grid gap-6 md:grid-cols-3">
-
           {/* Main Account Identity Card */}
           <AnimateIn direction="up" delay={0.3} className="md:col-span-2">
             <div className="h-full rounded-3xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 shadow-sm">
@@ -228,7 +279,7 @@ const AdminDashboard = () => {
               <span>Session Initialized Securely</span>
             </div>
             <div className="flex items-center gap-2.5 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700/50">
-              <RefreshCw className="h-3.5 w-3.5 text-teal-500" />
+              <RefreshCw className={`h-3.5 w-3.5 text-teal-500 ${isLoadingSync ? "animate-spin" : ""}`} />
               <span>Central Directory Sync: <strong className="text-slate-700 dark:text-slate-300">{formattedSyncTime}</strong></span>
             </div>
           </div>

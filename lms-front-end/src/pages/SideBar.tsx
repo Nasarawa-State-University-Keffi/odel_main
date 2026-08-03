@@ -5,7 +5,8 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  Circle
+  Circle,
+  User2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
@@ -159,18 +160,19 @@ const SideBar: React.FC<{ navItems: NavItemType[] }> = ({ navItems }) => {
       {/* Bottom Settings/Logout Section */}
       <div className="p-4 border-t border-zinc-900/50 space-y-1.5 shrink-0 bg-zinc-950">
         <Link
-          to="/settings"
+          to="/profile"
           className="flex items-center gap-4 px-3 py-3 rounded-xl text-sm font-semibold text-zinc-400 hover:bg-zinc-900 hover:text-white transition-all duration-200 group"
         >
-          <Settings className="w-5 h-5 text-zinc-500 group-hover:text-zinc-300 group-hover:rotate-45 transition-transform duration-300" />
-          Settings
+          <User2 className="w-5 h-5 text-zinc-500 group-hover:text-zinc-300 transition-transform duration-300" />
+          Profile
         </Link>
-        <button
+        <Link
+          to="/login"
           className="w-full flex items-center gap-4 px-3 py-3 rounded-xl text-sm font-semibold text-red-500/80 hover:bg-red-500/10 hover:text-red-500 transition-all duration-200 group"
         >
           <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           Sign Out
-        </button>
+        </Link>
       </div>
     </aside>
   );
