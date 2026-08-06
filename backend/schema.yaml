@@ -1,0 +1,6505 @@
+openapi: 3.0.3
+info:
+  title: LMS Service API
+  version: 1.0.0
+  description: Learning Management System with classroom management, assessment tools,
+    and student portal synchronization
+paths:
+  /api/auth/login:
+    get:
+      operationId: api_auth_login_retrieve
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /api/auth/login/:
+    get:
+      operationId: api_auth_login_retrieve_2
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /api/auth/logout:
+    post:
+      operationId: api_auth_logout_create
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/auth/logout/:
+    post:
+      operationId: api_auth_logout_create_2
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/auth/me:
+    get:
+      operationId: api_auth_me_retrieve
+      description: Returns details of the currently authenticated user.
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalUser'
+          description: ''
+  /api/auth/me/:
+    get:
+      operationId: api_auth_me_retrieve_2
+      description: Returns details of the currently authenticated user.
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalUser'
+          description: ''
+  /api/auth/oidc/callback:
+    get:
+      operationId: api_auth_oidc_callback_retrieve
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /api/auth/oidc/callback/:
+    get:
+      operationId: api_auth_oidc_callback_retrieve_2
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /api/content/:
+    get:
+      operationId: api_content_list
+      description: List learning content with filtering.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Global - Content
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLearningContentList'
+          description: ''
+  /api/content/{id}/:
+    get:
+      operationId: api_content_retrieve
+      description: Retrieve or delete specific learning content.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Global - Content
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningContent'
+          description: ''
+    delete:
+      operationId: api_content_destroy
+      description: Retrieve or delete specific learning content.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Global - Content
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/content/{id}/log-access/:
+    post:
+      operationId: api_content_log_access_create
+      description: Log content access.
+      summary: Log content access
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Global - Content
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                  - view
+                  - download
+              required:
+              - action
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Access logged successfully
+  /api/content/add-youtube/:
+    post:
+      operationId: api_content_add_youtube_create
+      description: Add a reference to an existing YouTube video (no file upload).
+      summary: Add YouTube video reference
+      tags:
+      - Staff - Content Upload
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/YouTubeVideoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/YouTubeVideoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/YouTubeVideoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningContent'
+          description: ''
+  /api/content/content-logs/:
+    get:
+      operationId: api_content_content_logs_list
+      description: List content access logs.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Admin - Content Logs
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedContentAccessLogList'
+          description: ''
+  /api/content/course/{course_id}/:
+    get:
+      operationId: api_content_course_list
+      description: |-
+        List content for a specific course (filtered by UUID or external_id).
+        Used by students to view course materials.
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: string
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Student - Content
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLearningContentList'
+          description: ''
+  /api/content/statistics/:
+    get:
+      operationId: api_content_statistics_retrieve
+      description: Get content statistics.
+      summary: Get content statistics
+      parameters:
+      - in: query
+        name: course_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter statistics by course ID
+      tags:
+      - Staff - Content Stats
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentStatistics'
+          description: ''
+  /api/content/storage-settings/:
+    get:
+      operationId: api_content_storage_settings_list
+      description: List, create, or upsert storage settings.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Admin - Storage Settings
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStorageSettingsList'
+          description: ''
+    post:
+      operationId: api_content_storage_settings_create
+      description: List, create, or upsert storage settings.
+      tags:
+      - Admin - Storage Settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageSettings'
+          description: ''
+    put:
+      operationId: api_content_storage_settings_update
+      description: Update a storage backend selected by its natural ``backend`` key.
+      summary: Create or update storage settings
+      tags:
+      - Admin - Storage Settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageSettings'
+          description: ''
+  /api/content/storage-settings/{id}/:
+    get:
+      operationId: api_content_storage_settings_retrieve
+      description: Manage specific storage settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Admin - Storage Settings
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageSettings'
+          description: ''
+    put:
+      operationId: api_content_storage_settings_update_2
+      description: Manage specific storage settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Admin - Storage Settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StorageSettingsRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageSettings'
+          description: ''
+    patch:
+      operationId: api_content_storage_settings_partial_update
+      description: Manage specific storage settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Admin - Storage Settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageSettingsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageSettingsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageSettingsRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageSettings'
+          description: ''
+    delete:
+      operationId: api_content_storage_settings_destroy
+      description: Manage specific storage settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Admin - Storage Settings
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/content/storage-settings/active/:
+    get:
+      operationId: api_content_storage_settings_active_retrieve
+      description: Get active storage settings.
+      summary: Get active storage backend
+      tags:
+      - Admin - Storage Settings
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageSettings'
+          description: ''
+  /api/content/storage-settings/backends/:
+    get:
+      operationId: api_content_storage_settings_backends_retrieve
+      description: Get list of available storage backends.
+      summary: List available storage backends
+      tags:
+      - Admin - Storage Settings
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: List of available backends
+  /api/content/upload/:
+    post:
+      operationId: api_content_upload_create
+      description: Upload any file including videos (MP4, AVI, MOV), PDFs, documents,
+        etc.
+      summary: Upload learning content file
+      tags:
+      - Staff - Content Upload
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LearningContentUploadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LearningContentUploadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningContent'
+          description: ''
+  /api/courses/:
+    get:
+      operationId: api_courses_list
+      description: Retrieve a list of all courses cached from the student portal
+      summary: List all courses
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Global - Courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCourseCacheList'
+          description: ''
+  /api/courses/{id}/:
+    get:
+      operationId: api_courses_retrieve
+      description: Retrieve detailed information about a specific course
+      summary: Get course details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this course cache.
+        required: true
+      tags:
+      - Global - Courses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseCache'
+          description: ''
+  /api/dashboard/instructors/:
+    get:
+      operationId: get_instructor_dashboard
+      description: Returns a summary of the instructor's dashboard including courses,
+        assignments, and quizzes.
+      summary: Instructor Dashboard Summary
+      parameters:
+      - in: query
+        name: programme_type_code
+        schema:
+          type: string
+        description: Programme type code, for example UG (required)
+        required: true
+      - in: query
+        name: semester
+        schema:
+          type: string
+        description: Semester, for example First Semester (required)
+        required: true
+      - in: query
+        name: session
+        schema:
+          type: string
+        description: Academic session, for example 2025/2026 (required)
+        required: true
+      tags:
+      - Staff - Dashboard
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Dashboard summary data
+  /api/dashboard/instructors/{external_id}/:
+    get:
+      operationId: get_instructor_detail_dashboard
+      description: |-
+        Endpoint for retrieving a specific instructor's dashboard data.
+        GET /api/dashboard/instructors/<external_id>/
+      parameters:
+      - in: path
+        name: external_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: programme_type_code
+        schema:
+          type: string
+        description: Programme type code, for example UG (required)
+        required: true
+      - in: query
+        name: semester
+        schema:
+          type: string
+        description: Semester, for example First Semester (required)
+        required: true
+      - in: query
+        name: session
+        schema:
+          type: string
+        description: Academic session, for example 2025/2026 (required)
+        required: true
+      tags:
+      - Staff - Dashboard
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Instructor Detail Dashboard summary data
+  /api/dashboard/students/:
+    get:
+      operationId: get_student_dashboard
+      description: Returns a summary of the student's dashboard including courses,
+        pending quizzes, and upcoming assignments.
+      summary: Student Dashboard Summary
+      parameters:
+      - in: query
+        name: semester
+        schema:
+          type: string
+        description: Semester name, for example First Semester (required)
+        required: true
+      - in: query
+        name: session
+        schema:
+          type: string
+        description: Session name, for example 2025/2026 (required)
+        required: true
+      tags:
+      - Student - Dashboard
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Dashboard summary data
+  /api/dashboard/students/{external_id}/:
+    get:
+      operationId: get_student_detail_dashboard
+      description: |-
+        Endpoint for retrieving a specific student's dashboard data.
+        GET /api/dashboard/students/<external_id>/
+      parameters:
+      - in: path
+        name: external_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Staff - Dashboard
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Student Detail Dashboard summary data
+  /api/department/all:
+    get:
+      operationId: api_department_all_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+          description: ''
+  /api/department/search:
+    get:
+      operationId: api_department_search_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+          description: ''
+  /api/faculty/all:
+    get:
+      operationId: api_faculty_all_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Faculty'
+          description: ''
+  /api/faculty/search:
+    get:
+      operationId: api_faculty_search_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Faculty'
+          description: ''
+  /api/notifications/in-app/:
+    get:
+      operationId: api_notifications_in_app_list
+      description: Retrieve all in-app notifications for the authenticated user, optionally
+        filtered by read status.
+      summary: List user notifications
+      parameters:
+      - in: query
+        name: is_read
+        schema:
+          type: boolean
+        description: Filter notifications by read status (true/false).
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Notifications - In-App
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInAppNotificationList'
+          description: ''
+  /api/notifications/in-app/{id}/:
+    get:
+      operationId: api_notifications_in_app_retrieve
+      description: Retrieve detailed info for a specific in-app notification by UUID.
+      summary: Get single notification
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this In-App Notification.
+        required: true
+      tags:
+      - Notifications - In-App
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InAppNotification'
+          description: ''
+  /api/notifications/in-app/{id}/mark-read/:
+    post:
+      operationId: api_notifications_in_app_mark_read_create
+      description: Marks a specific in-app notification as read and sets read_at timestamp.
+      summary: Mark notification as read
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this In-App Notification.
+        required: true
+      tags:
+      - Notifications - In-App
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationStatusResponse'
+          description: ''
+  /api/notifications/in-app/mark-all-read/:
+    post:
+      operationId: api_notifications_in_app_mark_all_read_create
+      description: Marks all unread in-app notifications for the authenticated user
+        as read.
+      summary: Mark all notifications as read
+      tags:
+      - Notifications - In-App
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationStatusResponse'
+          description: ''
+  /api/notifications/in-app/unread-count/:
+    get:
+      operationId: api_notifications_in_app_unread_count_retrieve
+      description: Returns the total count of unread in-app notifications for the
+        authenticated user.
+      summary: Get unread notification count
+      tags:
+      - Notifications - In-App
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCountResponse'
+          description: ''
+  /api/notifications/logs/:
+    get:
+      operationId: api_notifications_logs_list
+      description: Read-only delivery audit logs for portal administrators.
+      summary: List notification delivery logs
+      parameters:
+      - in: query
+        name: backend
+        schema:
+          type: string
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Earliest creation date (YYYY-MM-DD).
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: Latest creation date (YYYY-MM-DD).
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: recipient
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - failed
+          - pending
+          - sent
+      tags:
+      - Admin - Notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationLogList'
+          description: ''
+  /api/notifications/logs/{id}/:
+    get:
+      operationId: api_notifications_logs_retrieve
+      description: Read-only delivery audit logs for portal administrators.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Notification Log.
+        required: true
+      tags:
+      - Admin - Notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationLog'
+          description: ''
+  /api/notifications/settings/:
+    get:
+      operationId: api_notifications_settings_list
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Admin - Notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEmailConfigurationList'
+          description: ''
+    post:
+      operationId: api_notifications_settings_create
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      tags:
+      - Admin - Notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailConfigurationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailConfigurationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailConfigurationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailConfiguration'
+          description: ''
+  /api/notifications/settings/{id}/:
+    get:
+      operationId: api_notifications_settings_retrieve
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Email Configuration.
+        required: true
+      tags:
+      - Admin - Notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailConfiguration'
+          description: ''
+    put:
+      operationId: api_notifications_settings_update
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Email Configuration.
+        required: true
+      tags:
+      - Admin - Notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailConfigurationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailConfigurationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailConfigurationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailConfiguration'
+          description: ''
+    patch:
+      operationId: api_notifications_settings_partial_update
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Email Configuration.
+        required: true
+      tags:
+      - Admin - Notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEmailConfigurationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEmailConfigurationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEmailConfigurationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailConfiguration'
+          description: ''
+    delete:
+      operationId: api_notifications_settings_destroy
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      summary: Delete an inactive email configuration
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Email Configuration.
+        required: true
+      tags:
+      - Admin - Notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          description: The active configuration cannot be deleted.
+  /api/notifications/settings/{id}/activate/:
+    post:
+      operationId: api_notifications_settings_activate_create
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      summary: Activate an email configuration
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Email Configuration.
+        required: true
+      tags:
+      - Admin - Notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailConfiguration'
+          description: ''
+  /api/notifications/settings/{id}/test/:
+    post:
+      operationId: api_notifications_settings_test_create
+      description: |-
+        API endpoint for managing email backend settings.
+        Only accessible by portal administrators.
+      summary: Send a test email with this configuration
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Email Configuration.
+        required: true
+      tags:
+      - Admin - Notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestEmailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TestEmailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TestEmailRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestEmailSuccess'
+          description: ''
+        '502':
+          description: The provider could not deliver the test email.
+  /api/program-type/:
+    get:
+      operationId: api_program_type_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProgrammeType'
+          description: ''
+  /api/programme/:
+    get:
+      operationId: api_programme_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Programme'
+          description: ''
+  /api/programme/search:
+    get:
+      operationId: api_programme_search_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Programme'
+          description: ''
+  /api/semesters/:
+    get:
+      operationId: api_semesters_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSemesterList'
+          description: ''
+    post:
+      operationId: api_semesters_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+  /api/semesters/{id}/:
+    get:
+      operationId: api_semesters_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this semester.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+    put:
+      operationId: api_semesters_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this semester.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+    patch:
+      operationId: api_semesters_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this semester.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSemesterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSemesterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSemesterRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+    delete:
+      operationId: api_semesters_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this semester.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/sessions/:
+    get:
+      operationId: api_sessions_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAcademicSessionList'
+          description: ''
+    post:
+      operationId: api_sessions_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+  /api/sessions/{id}/:
+    get:
+      operationId: api_sessions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this academic session.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+    put:
+      operationId: api_sessions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this academic session.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+    patch:
+      operationId: api_sessions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this academic session.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicSessionRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+    delete:
+      operationId: api_sessions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this academic session.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/staff/assessment/assignments/:
+    get:
+      operationId: api_staff_assessment_assignments_list
+      description: |-
+        Unified endpoint for list/create assignments.
+        Create also handles initial file uploads via multipart/form-data.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAssignmentReadList'
+          description: ''
+    post:
+      operationId: api_staff_assessment_assignments_create
+      description: |-
+        Unified endpoint for list/create assignments.
+        Create also handles initial file uploads via multipart/form-data.
+      tags:
+      - Staff - Assignments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AssignmentWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AssignmentWriteRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentWrite'
+          description: ''
+  /api/staff/assessment/assignments/{id}/:
+    get:
+      operationId: api_staff_assessment_assignments_retrieve
+      description: Staff detail/update/delete access to assignments
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentRead'
+          description: ''
+    put:
+      operationId: api_staff_assessment_assignments_update
+      description: Staff detail/update/delete access to assignments
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Assignments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AssignmentWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AssignmentWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentWrite'
+          description: ''
+    patch:
+      operationId: api_staff_assessment_assignments_partial_update
+      description: Staff detail/update/delete access to assignments
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Assignments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAssignmentWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAssignmentWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAssignmentWriteRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentWrite'
+          description: ''
+    delete:
+      operationId: api_staff_assessment_assignments_destroy
+      description: Staff detail/update/delete access to assignments
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/staff/assessment/assignments/{id}/export/:
+    get:
+      operationId: api_staff_assessment_assignments_export_retrieve
+      description: Generates and downloads a CSV spreadsheet containing all student
+        scores for the given assignment.
+      summary: Export assignment scores as CSV (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: CSV File download
+  /api/staff/assessment/attempts/:
+    get:
+      operationId: api_staff_assessment_attempts_list
+      description: List all quiz attempts (staff)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizAttemptList'
+          description: ''
+  /api/staff/assessment/attempts/{id}/:
+    get:
+      operationId: api_staff_assessment_attempts_retrieve
+      description: View any attempt details (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizAttemptDetail'
+          description: ''
+  /api/staff/assessment/attempts/{id}/questions/{question_attempt_id}/grade/:
+    post:
+      operationId: api_staff_assessment_attempts_questions_grade_create
+      description: Manually grade a question attempt (staff)
+      summary: Manually grade quiz question (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: question_attempt_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualGradeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ManualGradeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ManualGradeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Question manually graded successfully
+  /api/staff/assessment/question-bank/categories/:
+    get:
+      operationId: api_staff_assessment_question_bank_categories_list
+      description: List/Create question categories (staff)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Question Bank
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuestionCategoryList'
+          description: ''
+    post:
+      operationId: api_staff_assessment_question_bank_categories_create
+      description: List/Create question categories (staff)
+      tags:
+      - Staff - Question Bank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuestionCategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuestionCategoryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionCategory'
+          description: ''
+  /api/staff/assessment/question-bank/categories/{id}/:
+    get:
+      operationId: api_staff_assessment_question_bank_categories_retrieve
+      description: Detail/Update/Delete question category (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionCategory'
+          description: ''
+    put:
+      operationId: api_staff_assessment_question_bank_categories_update
+      description: Detail/Update/Delete question category (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuestionCategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuestionCategoryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionCategory'
+          description: ''
+    patch:
+      operationId: api_staff_assessment_question_bank_categories_partial_update
+      description: Detail/Update/Delete question category (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQuestionCategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQuestionCategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQuestionCategoryRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionCategory'
+          description: ''
+    delete:
+      operationId: api_staff_assessment_question_bank_categories_destroy
+      description: Detail/Update/Delete question category (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/staff/assessment/question-bank/questions/:
+    get:
+      operationId: api_staff_assessment_question_bank_questions_list
+      description: List/Create questions (staff)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Question Bank
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuestionList'
+          description: ''
+    post:
+      operationId: api_staff_assessment_question_bank_questions_create
+      description: List/Create questions (staff)
+      tags:
+      - Staff - Question Bank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionCreateUpdate'
+          description: ''
+  /api/staff/assessment/question-bank/questions/{id}/:
+    get:
+      operationId: api_staff_assessment_question_bank_questions_retrieve
+      description: Detail/Update/Delete question (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+          description: ''
+    put:
+      operationId: api_staff_assessment_question_bank_questions_update
+      description: Detail/Update/Delete question (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionCreateUpdate'
+          description: ''
+    patch:
+      operationId: api_staff_assessment_question_bank_questions_partial_update
+      description: Detail/Update/Delete question (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQuestionCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQuestionCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQuestionCreateUpdateRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionCreateUpdate'
+          description: ''
+    delete:
+      operationId: api_staff_assessment_question_bank_questions_destroy
+      description: Detail/Update/Delete question (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Question Bank
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/staff/assessment/quizzes/:
+    get:
+      operationId: api_staff_assessment_quizzes_list
+      description: List/Create quizzes (staff)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizList'
+          description: ''
+    post:
+      operationId: api_staff_assessment_quizzes_create
+      description: List/Create quizzes (staff)
+      tags:
+      - Staff - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+  /api/staff/assessment/quizzes/{id}/:
+    get:
+      operationId: api_staff_assessment_quizzes_retrieve
+      description: Detail/Update/Delete quiz (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+    put:
+      operationId: api_staff_assessment_quizzes_update
+      description: Detail/Update/Delete quiz (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+    patch:
+      operationId: api_staff_assessment_quizzes_partial_update
+      description: Detail/Update/Delete quiz (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+    delete:
+      operationId: api_staff_assessment_quizzes_destroy
+      description: Detail/Update/Delete quiz (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/staff/assessment/quizzes/{id}/export/:
+    get:
+      operationId: api_staff_assessment_quizzes_export_retrieve
+      description: Generates and downloads a CSV spreadsheet containing all student
+        scores for the given quiz.
+      summary: Export quiz scores as CSV (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: CSV File download
+  /api/staff/assessment/quizzes/questions/:
+    get:
+      operationId: api_staff_assessment_quizzes_questions_list
+      description: List/Create quiz question slots (staff)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizQuestionSlotList'
+          description: ''
+    post:
+      operationId: api_staff_assessment_quizzes_questions_create
+      description: List/Create quiz question slots (staff)
+      tags:
+      - Staff - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionSlotRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionSlotRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionSlotRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestionSlot'
+          description: ''
+  /api/staff/assessment/quizzes/questions/{id}/:
+    get:
+      operationId: api_staff_assessment_quizzes_questions_retrieve
+      description: Detail/Update/Delete quiz question slot (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestionSlot'
+          description: ''
+    put:
+      operationId: api_staff_assessment_quizzes_questions_update
+      description: Detail/Update/Delete quiz question slot (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionSlotRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionSlotRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionSlotRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestionSlot'
+          description: ''
+    patch:
+      operationId: api_staff_assessment_quizzes_questions_partial_update
+      description: Detail/Update/Delete quiz question slot (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizQuestionSlotRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizQuestionSlotRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizQuestionSlotRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestionSlot'
+          description: ''
+    delete:
+      operationId: api_staff_assessment_quizzes_questions_destroy
+      description: Detail/Update/Delete quiz question slot (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/staff/assessment/submissions/:
+    get:
+      operationId: api_staff_assessment_submissions_list
+      description: List all submissions (staff) with filtering
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAssignmentSubmissionList'
+          description: ''
+  /api/staff/assessment/submissions/{id}/:
+    get:
+      operationId: api_staff_assessment_submissions_retrieve
+      description: View any submission (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentSubmission'
+          description: ''
+  /api/staff/assessment/submissions/{id}/grade/:
+    post:
+      operationId: api_staff_assessment_submissions_grade_create
+      description: Grade an assignment submission and create a grade record.
+      summary: Grade assignment submission (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Assignments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeAssignmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GradeAssignmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GradeAssignmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Grade'
+          description: ''
+  /api/student/assessment/assignments/:
+    get:
+      operationId: api_student_assessment_assignments_list
+      description: Student read-only list access to assignments in their courses
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: semester
+        schema:
+          type: string
+        description: Semester, for example First Semester.
+        required: true
+      - in: query
+        name: session
+        schema:
+          type: string
+        description: Academic session, for example 2025/2026.
+        required: true
+      tags:
+      - Student - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAssignmentReadList'
+          description: ''
+  /api/student/assessment/assignments/{id}/:
+    get:
+      operationId: api_student_assessment_assignments_retrieve
+      description: Student read-only detail access to an assignment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: semester
+        schema:
+          type: string
+        description: Semester, for example First Semester.
+        required: true
+      - in: query
+        name: session
+        schema:
+          type: string
+        description: Academic session, for example 2025/2026.
+        required: true
+      tags:
+      - Student - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentRead'
+          description: ''
+  /api/student/assessment/attempts/:
+    get:
+      operationId: api_student_assessment_attempts_list
+      description: List my quiz attempts (students)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Student - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizAttemptList'
+          description: ''
+  /api/student/assessment/attempts/{id}/:
+    get:
+      operationId: api_student_assessment_attempts_retrieve
+      description: Detail of a specific quiz attempt (students)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Student - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizAttemptDetail'
+          description: ''
+  /api/student/assessment/quizzes/:
+    get:
+      operationId: api_student_assessment_quizzes_list
+      description: List available quizzes (students)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: semester
+        schema:
+          type: string
+        description: Semester, for example First Semester.
+        required: true
+      - in: query
+        name: session
+        schema:
+          type: string
+        description: Academic session, for example 2025/2026.
+        required: true
+      tags:
+      - Student - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizList'
+          description: ''
+  /api/student/assessment/quizzes/{id}/:
+    get:
+      operationId: api_student_assessment_quizzes_retrieve
+      description: View quiz details (students)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: semester
+        schema:
+          type: string
+        description: Semester, for example First Semester.
+        required: true
+      - in: query
+        name: session
+        schema:
+          type: string
+        description: Academic session, for example 2025/2026.
+        required: true
+      tags:
+      - Student - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizDetail'
+          description: ''
+  /api/student/assessment/quizzes/{id}/attempts/{attempt_id}/finish/:
+    post:
+      operationId: api_student_assessment_quizzes_attempts_finish_create
+      description: Finish a quiz attempt (students)
+      summary: Finish quiz attempt (students)
+      parameters:
+      - in: path
+        name: attempt_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Student - Quizzes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizAttemptDetail'
+          description: ''
+  /api/student/assessment/quizzes/{id}/attempts/{attempt_id}/submit/:
+    post:
+      operationId: api_student_assessment_quizzes_attempts_submit_create
+      description: Submit a response for a single question in an active attempt (students)
+      summary: Submit question response (students)
+      parameters:
+      - in: path
+        name: attempt_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Student - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitResponseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubmitResponseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubmitResponseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Response saved successfully
+  /api/student/assessment/quizzes/{id}/start/:
+    post:
+      operationId: api_student_assessment_quizzes_start_create
+      description: Start a new quiz attempt (students)
+      summary: Start quiz attempt (students)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Student - Quizzes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartQuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StartQuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StartQuizRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizAttempt'
+          description: ''
+  /api/student/assessment/submissions/:
+    get:
+      operationId: api_student_assessment_submissions_list
+      description: List my submissions (students)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Student - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAssignmentSubmissionList'
+          description: ''
+  /api/student/assessment/submissions/{id}/:
+    get:
+      operationId: api_student_assessment_submissions_retrieve
+      description: View my submission (students)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Student - Assignments
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentSubmission'
+          description: ''
+  /api/student/assessment/submissions/{id}/submit/:
+    post:
+      operationId: api_student_assessment_submissions_submit_create
+      description: Finalizes the submission, locking it from further changes.
+      summary: Submit assignment (students)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Student - Assignments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitAssignmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubmitAssignmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubmitAssignmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Submission successful
+  /api/student/assessment/submissions/create/:
+    post:
+      operationId: api_student_assessment_submissions_create_create
+      description: Starts a new attempt and uploads provided files.
+      summary: Create submission with files (students)
+      tags:
+      - Student - Assignments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                assignment_id:
+                  type: string
+                  format: uuid
+                session:
+                  type: string
+                semester:
+                  type: string
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+              - assignment_id
+              - session
+              - semester
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentSubmission'
+          description: ''
+  /api/synchronize/sync-all:
+    post:
+      operationId: api_synchronize_sync_all_create
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/token/:
+    post:
+      operationId: api_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - Global - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/token/refresh/:
+    post:
+      operationId: api_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - Global - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /auth/login:
+    get:
+      operationId: auth_login_retrieve
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /auth/login/:
+    get:
+      operationId: auth_login_retrieve_2
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /auth/logout:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/logout/:
+    post:
+      operationId: auth_logout_create_2
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/me:
+    get:
+      operationId: auth_me_retrieve
+      description: Returns details of the currently authenticated user.
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalUser'
+          description: ''
+  /auth/me/:
+    get:
+      operationId: auth_me_retrieve_2
+      description: Returns details of the currently authenticated user.
+      tags:
+      - Global - Authentication
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalUser'
+          description: ''
+  /auth/oidc/callback:
+    get:
+      operationId: auth_oidc_callback_retrieve
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+  /auth/oidc/callback/:
+    get:
+      operationId: auth_oidc_callback_retrieve_2
+      tags:
+      - Global - Authentication
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '302':
+          description: No response body
+components:
+  schemas:
+    AcademicSession:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+      required:
+      - id
+      - name
+    AcademicSessionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - name
+    ActionEnum:
+      enum:
+      - view
+      - download
+      type: string
+      description: |-
+        * `view` - View
+        * `download` - Download
+    AssignmentContent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        content_type:
+          allOf:
+          - $ref: '#/components/schemas/AssignmentContentContentTypeEnum'
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content_type
+      - created_at
+      - id
+      - title
+      - url
+    AssignmentContentContentTypeEnum:
+      enum:
+      - instruction
+      - resource
+      - example
+      type: string
+      description: |-
+        * `instruction` - Instruction
+        * `resource` - Resource
+        * `example` - Example
+    AssignmentRead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course:
+          allOf:
+          - $ref: '#/components/schemas/CourseCache'
+          readOnly: true
+        content_files:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentContent'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 512
+        description:
+          type: string
+        open_at:
+          type: string
+          format: date-time
+        due_at:
+          type: string
+          format: date-time
+        close_at:
+          type: string
+          format: date-time
+          nullable: true
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Null means unlimited attempts
+        allow_late_submission:
+          type: boolean
+        is_published:
+          type: boolean
+        max_marks:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum marks for this assignment
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+      required:
+      - content_files
+      - course
+      - created_at
+      - created_by
+      - due_at
+      - id
+      - open_at
+      - title
+    AssignmentSubmission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        assignment:
+          type: string
+          format: uuid
+          readOnly: true
+        student_external_id:
+          type: string
+          readOnly: true
+        attempt_number:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AssignmentSubmissionStatusEnum'
+          readOnly: true
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        graded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        marks:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+          description: Final score for this submission attempt
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentSubmissionFile'
+          readOnly: true
+      required:
+      - assignment
+      - attempt_number
+      - created_at
+      - files
+      - graded_at
+      - id
+      - marks
+      - status
+      - student_external_id
+      - submitted_at
+    AssignmentSubmissionFile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        storage_path:
+          type: string
+          maxLength: 512
+        original_filename:
+          type: string
+          maxLength: 512
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        mime_type:
+          type: string
+          maxLength: 100
+        storage_backend:
+          type: string
+          maxLength: 20
+        content_hash:
+          type: string
+          maxLength: 64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        submission:
+          type: string
+          format: uuid
+      required:
+      - created_at
+      - file_size
+      - id
+      - mime_type
+      - original_filename
+      - storage_path
+      - submission
+      - url
+    AssignmentSubmissionStatusEnum:
+      enum:
+      - draft
+      - submitted
+      - graded
+      - reopened
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `submitted` - Submitted
+        * `graded` - Graded
+        * `reopened` - Reopened
+    AssignmentWrite:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 512
+        description:
+          type: string
+        open_at:
+          type: string
+          format: date-time
+        due_at:
+          type: string
+          format: date-time
+        close_at:
+          type: string
+          format: date-time
+          nullable: true
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Null means unlimited attempts
+        allow_late_submission:
+          type: boolean
+        is_published:
+          type: boolean
+        max_marks:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum marks for this assignment
+        course:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - course
+      - due_at
+      - open_at
+      - title
+    AssignmentWriteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 512
+        description:
+          type: string
+        open_at:
+          type: string
+          format: date-time
+        due_at:
+          type: string
+          format: date-time
+        close_at:
+          type: string
+          format: date-time
+          nullable: true
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Null means unlimited attempts
+        allow_late_submission:
+          type: boolean
+        is_published:
+          type: boolean
+        max_marks:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum marks for this assignment
+        course:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - course
+      - due_at
+      - open_at
+      - title
+    Backend048Enum:
+      enum:
+      - smtp
+      - resend
+      - brevo
+      - console
+      type: string
+      description: |-
+        * `smtp` - SMTP (Standard)
+        * `resend` - Resend API
+        * `brevo` - Brevo (Sendinblue) API
+        * `console` - Console (Development)
+    BackendChoiceEnum:
+      enum:
+      - smtp
+      - resend
+      - brevo
+      - console
+      type: string
+      description: |-
+        * `smtp` - SMTP (Standard)
+        * `resend` - Resend API
+        * `brevo` - Brevo (Sendinblue) API
+        * `console` - Console (Development)
+    BlankEnum:
+      enum:
+      - ''
+    ContentAccessLog:
+      type: object
+      description: Serializer for content access tracking.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+          format: uuid
+        content_title:
+          type: string
+          readOnly: true
+        user:
+          type: integer
+          nullable: true
+        full_name:
+          type: string
+          readOnly: true
+        external_id:
+          type: string
+          readOnly: true
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+        ip_address:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+        accessed_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - accessed_at
+      - action
+      - content
+      - content_title
+      - external_id
+      - full_name
+      - id
+    ContentStatistics:
+      type: object
+      description: Aggregated content statistics.
+      properties:
+        total_contents:
+          type: integer
+        total_size:
+          type: integer
+        by_type:
+          type: object
+          additionalProperties: {}
+        by_backend:
+          type: object
+          additionalProperties: {}
+        most_downloaded:
+          type: array
+          items: {}
+      required:
+      - by_backend
+      - by_type
+      - most_downloaded
+      - total_contents
+      - total_size
+    CourseCache:
+      type: object
+      properties:
+        course_external_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        course_title:
+          type: string
+          maxLength: 512
+        course_code:
+          type: string
+          maxLength: 128
+        department_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course_code
+      - course_external_id
+      - course_title
+      - updated_at
+    Department:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        upStreamId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 100
+        faculty:
+          type: integer
+        faculty_name:
+          type: string
+          readOnly: true
+        last_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - faculty
+      - faculty_name
+      - id
+      - last_synced_at
+      - name
+      - upStreamId
+    EmailConfiguration:
+      type: object
+      description: Serializer for managing email backend configurations.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        backend_choice:
+          allOf:
+          - $ref: '#/components/schemas/BackendChoiceEnum'
+          description: |-
+            The active email delivery service.
+
+            * `smtp` - SMTP (Standard)
+            * `resend` - Resend API
+            * `brevo` - Brevo (Sendinblue) API
+            * `console` - Console (Development)
+        is_active:
+          type: boolean
+          description: Only one configuration should be active at a time.
+        config:
+          description: Non-sensitive settings only. Currently supports from_email.
+            Credentials must be set through environment variables.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - updated_at
+    EmailConfigurationRequest:
+      type: object
+      description: Serializer for managing email backend configurations.
+      properties:
+        backend_choice:
+          allOf:
+          - $ref: '#/components/schemas/BackendChoiceEnum'
+          description: |-
+            The active email delivery service.
+
+            * `smtp` - SMTP (Standard)
+            * `resend` - Resend API
+            * `brevo` - Brevo (Sendinblue) API
+            * `console` - Console (Development)
+        is_active:
+          type: boolean
+          description: Only one configuration should be active at a time.
+        config:
+          description: Non-sensitive settings only. Currently supports from_email.
+            Credentials must be set through environment variables.
+    Faculty:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        upStreamId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 100
+        last_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - id
+      - last_synced_at
+      - name
+      - upStreamId
+    Grade:
+      type: object
+      description: Serializer for Grade model
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        item_name:
+          type: string
+          readOnly: true
+        course_name:
+          type: string
+          readOnly: true
+        student_external_id:
+          type: string
+          description: External student identifier
+          maxLength: 255
+        grade_type:
+          allOf:
+          - $ref: '#/components/schemas/GradeTypeEnum'
+          description: |-
+            Type of graded item
+
+            * `assignment` - Assignment
+            * `quiz` - Quiz
+        marks:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Score earned by student
+        total_possible:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum possible score for this item
+        percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+          description: Percentage score (marks/total_possible × 100)
+        graded_at:
+          type: string
+          format: date-time
+          description: When the item was graded
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        course:
+          type: integer
+          description: Course this grade belongs to
+        assignment_submission:
+          type: string
+          format: uuid
+          nullable: true
+          description: Link to graded assignment submission
+        quiz_attempt:
+          type: string
+          format: uuid
+          nullable: true
+          description: Link to graded quiz attempt
+      required:
+      - course
+      - course_name
+      - created_at
+      - grade_type
+      - graded_at
+      - id
+      - item_name
+      - marks
+      - percentage
+      - student_external_id
+      - total_possible
+      - updated_at
+    GradeAssignmentRequest:
+      type: object
+      description: Serializer for grading an assignment submission
+      properties:
+        marks:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Score to assign
+      required:
+      - marks
+    GradeTypeEnum:
+      enum:
+      - assignment
+      - quiz
+      type: string
+      description: |-
+        * `assignment` - Assignment
+        * `quiz` - Quiz
+    InAppNotification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        notification_type:
+          allOf:
+          - $ref: '#/components/schemas/NotificationTypeEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+        assignment_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        course_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        action_url:
+          type: string
+          readOnly: true
+          nullable: true
+        is_read:
+          type: boolean
+        read_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action_url
+      - assignment_id
+      - course_id
+      - created_at
+      - id
+      - message
+      - notification_type
+      - read_at
+      - title
+    LearningContent:
+      type: object
+      description: Serializer for learning content metadata.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        component:
+          type: string
+          description: Component name (similar to Moodle components).
+          maxLength: 100
+        content_type:
+          $ref: '#/components/schemas/LearningContentContentTypeEnum'
+        course_external_id:
+          type: integer
+          readOnly: true
+        course_title:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 512
+        description:
+          type: string
+        original_filename:
+          type: string
+          maxLength: 512
+        file_size:
+          type: integer
+          readOnly: true
+          nullable: true
+        mime_type:
+          type: string
+          readOnly: true
+        storage_backend:
+          type: string
+          readOnly: true
+          description: Backend where file is stored.
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        file_extension:
+          type: string
+          readOnly: true
+        is_video:
+          type: boolean
+          readOnly: true
+        is_document:
+          type: boolean
+          readOnly: true
+        uploaded_by:
+          type: integer
+          nullable: true
+        uploaded_by_name:
+          type: string
+          readOnly: true
+        uploaded_by_external_id:
+          type: string
+          readOnly: true
+        is_published:
+          type: boolean
+        download_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content_type
+      - course_external_id
+      - course_title
+      - created_at
+      - download_count
+      - file_extension
+      - file_size
+      - id
+      - is_document
+      - is_video
+      - mime_type
+      - original_filename
+      - storage_backend
+      - title
+      - updated_at
+      - uploaded_by_external_id
+      - uploaded_by_name
+      - url
+    LearningContentContentTypeEnum:
+      enum:
+      - note
+      - video
+      - resource
+      - assignment
+      type: string
+      description: |-
+        * `note` - Lecture Note
+        * `video` - Video Lecture
+        * `resource` - Resource
+        * `assignment` - Assignment
+    LearningContentUploadContentTypeEnum:
+      enum:
+      - note
+      - video
+      - resource
+      - assignment
+      type: string
+      description: |-
+        * `note` - note
+        * `video` - video
+        * `resource` - resource
+        * `assignment` - assignment
+    LearningContentUploadRequest:
+      type: object
+      description: |-
+        Serializer for file upload content.
+        Used for handling multipart/form-data uploads.
+        Accepts either course external_id (e.g., 'CS101') or UUID.
+      properties:
+        file:
+          type: string
+          format: binary
+        course_id:
+          type: string
+          minLength: 1
+          description: Course external_id (e.g., 'CS101') or UUID
+        content_type:
+          $ref: '#/components/schemas/LearningContentUploadContentTypeEnum'
+        title:
+          type: string
+          maxLength: 512
+        description:
+          type: string
+        storage_backend:
+          nullable: true
+          description: |-
+            Storage backend (optional - uses database default if not specified)
+
+            * `local` - local
+            * `s3` - s3
+            * `cloudinary` - cloudinary
+            * `youtube` - youtube
+          oneOf:
+          - $ref: '#/components/schemas/StorageBackendEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - content_type
+      - course_id
+      - file
+    LevelEnum:
+      enum:
+      - '100'
+      - '200'
+      - '300'
+      - '400'
+      - '500'
+      - all
+      type: string
+      description: |-
+        * `100` - 100
+        * `200` - 200
+        * `300` - 300
+        * `400` - 400
+        * `500` - 500
+        * `all` - All Levels
+    ManualGradeRequest:
+      type: object
+      description: Request serializer for manually grading a question
+      properties:
+        fraction:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+        feedback:
+          type: string
+      required:
+      - fraction
+    NotificationLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        recipient:
+          type: string
+          format: email
+          readOnly: true
+        subject:
+          type: string
+          readOnly: true
+        body_text:
+          type: string
+          readOnly: true
+        body_html:
+          type: string
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/NotificationLogStatusEnum'
+          readOnly: true
+        error_message:
+          type: string
+          readOnly: true
+          nullable: true
+        backend_used:
+          type: string
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - backend_used
+      - body_html
+      - body_text
+      - created_at
+      - error_message
+      - id
+      - recipient
+      - sent_at
+      - status
+      - subject
+    NotificationLogStatusEnum:
+      enum:
+      - pending
+      - sent
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `sent` - Sent
+        * `failed` - Failed
+    NotificationStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Status message of the action executed.
+      required:
+      - status
+    NotificationTypeEnum:
+      enum:
+      - ASSIGNMENT_POSTED
+      - DEADLINE_EXTENDED
+      - GENERAL
+      type: string
+      description: |-
+        * `ASSIGNMENT_POSTED` - Assignment Posted
+        * `DEADLINE_EXTENDED` - Deadline Extended
+        * `GENERAL` - General Notification
+    NullEnum:
+      enum:
+      - null
+    PaginatedAcademicSessionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademicSession'
+    PaginatedAssignmentReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentRead'
+    PaginatedAssignmentSubmissionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentSubmission'
+    PaginatedContentAccessLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentAccessLog'
+    PaginatedCourseCacheList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseCache'
+    PaginatedEmailConfigurationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailConfiguration'
+    PaginatedInAppNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InAppNotification'
+    PaginatedLearningContentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningContent'
+    PaginatedNotificationLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationLog'
+    PaginatedQuestionCategoryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionCategory'
+    PaginatedQuestionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+    PaginatedQuizAttemptList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuizAttempt'
+    PaginatedQuizList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Quiz'
+    PaginatedQuizQuestionSlotList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuizQuestionSlot'
+    PaginatedSemesterList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Semester'
+    PaginatedStorageSettingsList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageSettings'
+    PatchedAcademicSessionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+    PatchedAssignmentWriteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 512
+        description:
+          type: string
+        open_at:
+          type: string
+          format: date-time
+        due_at:
+          type: string
+          format: date-time
+        close_at:
+          type: string
+          format: date-time
+          nullable: true
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Null means unlimited attempts
+        allow_late_submission:
+          type: boolean
+        is_published:
+          type: boolean
+        max_marks:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum marks for this assignment
+        course:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+    PatchedEmailConfigurationRequest:
+      type: object
+      description: Serializer for managing email backend configurations.
+      properties:
+        backend_choice:
+          allOf:
+          - $ref: '#/components/schemas/BackendChoiceEnum'
+          description: |-
+            The active email delivery service.
+
+            * `smtp` - SMTP (Standard)
+            * `resend` - Resend API
+            * `brevo` - Brevo (Sendinblue) API
+            * `console` - Console (Development)
+        is_active:
+          type: boolean
+          description: Only one configuration should be active at a time.
+        config:
+          description: Non-sensitive settings only. Currently supports from_email.
+            Credentials must be set through environment variables.
+    PatchedQuestionCategoryRequest:
+      type: object
+      description: Serializer for question categories
+      properties:
+        course_id:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Course external_id or UUID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        level:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          description: |-
+            Educational level for questions in this category (100-500)
+
+            * `100` - 100
+            * `200` - 200
+            * `300` - 300
+            * `400` - 400
+            * `500` - 500
+            * `all` - All Levels
+    PatchedQuestionCreateUpdateRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          format: uuid
+        qtype:
+          $ref: '#/components/schemas/QtypeEnum'
+        name:
+          type: string
+          minLength: 1
+          description: Internal name for question management
+          maxLength: 255
+        question_text:
+          type: string
+          minLength: 1
+          description: Question text (supports HTML)
+        general_feedback:
+          type: string
+          description: Feedback shown after answering
+        default_mark:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Default points for this question
+        penalty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          description: Penalty factor for wrong attempts (0-1)
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAnswerCreateRequest'
+    PatchedQuizQuestionSlotRequest:
+      type: object
+      properties:
+        quiz:
+          type: string
+          format: uuid
+        question:
+          type: string
+          format: uuid
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Question order in quiz
+        max_mark:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum points for this question in this quiz (can override
+            default_mark)
+    PatchedQuizRequest:
+      type: object
+      description: Basic quiz serializer for creation/listing.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        time_open:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz becomes available
+        time_close:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz closes
+        time_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Time limit in seconds (null = no limit)
+        max_grade:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum grade for this quiz
+        shuffle_questions:
+          type: boolean
+          description: Randomize question order
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Maximum attempts allowed (0 = unlimited)
+        show_feedback:
+          type: boolean
+          description: Show feedback after submission
+        course_id:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Course external_id or UUID
+    PatchedSemesterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    PatchedStorageSettingsRequest:
+      type: object
+      description: |-
+        Serializer for managing storage backend settings.
+
+        NOTE: Credentials are loaded from environment variables (.env file).
+        This serializer only manages which backend is active.
+      properties:
+        backend:
+          allOf:
+          - $ref: '#/components/schemas/StorageSettingsBackendEnum'
+          description: |-
+            Active storage backend. Credentials are loaded from environment variables.
+
+            * `local` - Local Filesystem
+            * `s3` - Amazon S3
+            * `cloudinary` - Cloudinary
+            * `youtube` - YouTube
+        is_active:
+          type: boolean
+          description: Only one configuration can be active.
+    PortalUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        external_id:
+          type: string
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+          nullable: true
+        full_name:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        firstName:
+          type: string
+          readOnly: true
+        lastName:
+          type: string
+          readOnly: true
+        level:
+          type: string
+          readOnly: true
+          nullable: true
+        roles:
+          readOnly: true
+        profile_picture:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        programme:
+          type: integer
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+          readOnly: true
+        is_staff:
+          type: boolean
+          readOnly: true
+        last_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - email
+      - external_id
+      - firstName
+      - first_name
+      - full_name
+      - id
+      - is_active
+      - is_staff
+      - lastName
+      - last_name
+      - last_synced_at
+      - level
+      - profile_picture
+      - programme
+      - roles
+      - username
+    Programme:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        upStreamId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 100
+        department:
+          type: integer
+        department_name:
+          type: string
+          readOnly: true
+        programme_type:
+          type: integer
+        programme_type_name:
+          type: string
+          readOnly: true
+        last_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - department
+      - department_name
+      - id
+      - last_synced_at
+      - name
+      - programme_type
+      - programme_type_name
+      - upStreamId
+    ProgrammeType:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        upStreamId:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 100
+        last_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - id
+      - last_synced_at
+      - name
+      - upStreamId
+    QtypeEnum:
+      enum:
+      - multichoice
+      - truefalse
+      - shortanswer
+      - essay
+      type: string
+      description: |-
+        * `multichoice` - Multiple Choice
+        * `truefalse` - True/False
+        * `shortanswer` - Short Answer
+        * `essay` - Essay
+    Question:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        category:
+          type: string
+          format: uuid
+        category_name:
+          type: string
+          readOnly: true
+        qtype:
+          $ref: '#/components/schemas/QtypeEnum'
+        qtype_display:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: Internal name for question management
+          maxLength: 255
+        question_text:
+          type: string
+          description: Question text (supports HTML)
+        general_feedback:
+          type: string
+          description: Feedback shown after answering
+        default_mark:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Default points for this question
+        penalty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          description: Penalty factor for wrong attempts (0-1)
+        version:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Question version for tracking changes
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAnswer'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - answers
+      - category
+      - category_name
+      - created_at
+      - id
+      - name
+      - qtype
+      - qtype_display
+      - question_text
+      - updated_at
+    QuestionAnswer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        question:
+          type: string
+          format: uuid
+        answer_text:
+          type: string
+        fraction:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          description: 'Grade fraction: 1.0=correct, 0.5=partial, 0.0=wrong, -1.0=penalty'
+        feedback:
+          type: string
+          description: Feedback for this answer option
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Display order
+      required:
+      - answer_text
+      - fraction
+      - id
+      - question
+    QuestionAnswerCreate:
+      type: object
+      properties:
+        answer_text:
+          type: string
+        fraction:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          description: 'Grade fraction: 1.0=correct, 0.5=partial, 0.0=wrong, -1.0=penalty'
+        feedback:
+          type: string
+          description: Feedback for this answer option
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Display order
+      required:
+      - answer_text
+      - fraction
+    QuestionAnswerCreateRequest:
+      type: object
+      properties:
+        answer_text:
+          type: string
+          minLength: 1
+        fraction:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          description: 'Grade fraction: 1.0=correct, 0.5=partial, 0.0=wrong, -1.0=penalty'
+        feedback:
+          type: string
+          description: Feedback for this answer option
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Display order
+      required:
+      - answer_text
+      - fraction
+    QuestionAttemptDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        question:
+          allOf:
+          - $ref: '#/components/schemas/Question'
+          readOnly: true
+        response:
+          description: Student response (structure depends on question type)
+        fraction:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          nullable: true
+          description: Grade fraction (0.0-1.0)
+        score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Actual points earned (fraction × max_mark)
+        max_mark:
+          type: number
+          format: double
+          readOnly: true
+        correct_answer:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        graded_at:
+          type: string
+          format: date-time
+          nullable: true
+        manually_graded:
+          type: boolean
+          description: True if manually graded (e.g., essays)
+        feedback:
+          type: string
+          description: Specific feedback for this attempt
+      required:
+      - correct_answer
+      - id
+      - max_mark
+      - question
+    QuestionCategory:
+      type: object
+      description: Serializer for question categories
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_external_id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        level:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          description: |-
+            Educational level for questions in this category (100-500)
+
+            * `100` - 100
+            * `200` - 200
+            * `300` - 300
+            * `400` - 400
+            * `500` - 500
+            * `all` - All Levels
+        level_display:
+          type: string
+          readOnly: true
+        questions_count:
+          type: integer
+          readOnly: true
+        available_question_types:
+          type: array
+          items: {}
+          readOnly: true
+          description: List of question types available for this category's level
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - available_question_types
+      - course_external_id
+      - created_at
+      - id
+      - level_display
+      - name
+      - questions_count
+      - updated_at
+    QuestionCategoryRequest:
+      type: object
+      description: Serializer for question categories
+      properties:
+        course_id:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Course external_id or UUID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        level:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          description: |-
+            Educational level for questions in this category (100-500)
+
+            * `100` - 100
+            * `200` - 200
+            * `300` - 300
+            * `400` - 400
+            * `500` - 500
+            * `all` - All Levels
+      required:
+      - course_id
+      - name
+    QuestionCreateUpdate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        category:
+          type: string
+          format: uuid
+        qtype:
+          $ref: '#/components/schemas/QtypeEnum'
+        name:
+          type: string
+          description: Internal name for question management
+          maxLength: 255
+        question_text:
+          type: string
+          description: Question text (supports HTML)
+        general_feedback:
+          type: string
+          description: Feedback shown after answering
+        default_mark:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Default points for this question
+        penalty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          description: Penalty factor for wrong attempts (0-1)
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAnswerCreate'
+      required:
+      - category
+      - id
+      - name
+      - qtype
+      - question_text
+    QuestionCreateUpdateRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          format: uuid
+        qtype:
+          $ref: '#/components/schemas/QtypeEnum'
+        name:
+          type: string
+          minLength: 1
+          description: Internal name for question management
+          maxLength: 255
+        question_text:
+          type: string
+          minLength: 1
+          description: Question text (supports HTML)
+        general_feedback:
+          type: string
+          description: Feedback shown after answering
+        default_mark:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Default points for this question
+        penalty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          description: Penalty factor for wrong attempts (0-1)
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAnswerCreateRequest'
+      required:
+      - category
+      - name
+      - qtype
+      - question_text
+    Quiz:
+      type: object
+      description: Basic quiz serializer for creation/listing.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_external_id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        time_open:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz becomes available
+        time_close:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz closes
+        time_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Time limit in seconds (null = no limit)
+        max_grade:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum grade for this quiz
+        shuffle_questions:
+          type: boolean
+          description: Randomize question order
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Maximum attempts allowed (0 = unlimited)
+        show_feedback:
+          type: boolean
+          description: Show feedback after submission
+        questions_count:
+          type: integer
+          readOnly: true
+        total_marks:
+          type: number
+          format: double
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course_external_id
+      - created_at
+      - id
+      - name
+      - questions_count
+      - total_marks
+      - updated_at
+    QuizAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        quiz:
+          type: string
+          format: uuid
+        quiz_name:
+          type: string
+          readOnly: true
+        user_external_id:
+          type: string
+          description: External user ID
+          maxLength: 255
+        attempt_number:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Attempt number for this user/quiz
+        state:
+          allOf:
+          - $ref: '#/components/schemas/StateEnum'
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+        finished_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        total_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+          description: Final score for this attempt
+        time_taken_seconds:
+          type: integer
+          readOnly: true
+      required:
+      - attempt_number
+      - finished_at
+      - id
+      - quiz
+      - quiz_name
+      - started_at
+      - state
+      - time_taken_seconds
+      - total_score
+      - user_external_id
+    QuizAttemptDetail:
+      type: object
+      description: Detailed quiz attempt with all question attempts
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        quiz:
+          allOf:
+          - $ref: '#/components/schemas/Quiz'
+          readOnly: true
+        user_external_id:
+          type: string
+          description: External user ID
+          maxLength: 255
+        attempt_number:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Attempt number for this user/quiz
+        state:
+          $ref: '#/components/schemas/StateEnum'
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        total_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Final score for this attempt
+        time_taken_seconds:
+          type: integer
+          readOnly: true
+        question_attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAttemptDetail'
+          readOnly: true
+        summary:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+      required:
+      - attempt_number
+      - id
+      - question_attempts
+      - quiz
+      - started_at
+      - summary
+      - time_taken_seconds
+      - user_external_id
+    QuizDetail:
+      type: object
+      description: Detailed quiz serializer with question slots and full public question
+        content
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_external_id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        time_open:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz becomes available
+        time_close:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz closes
+        time_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Time limit in seconds (null = no limit)
+        max_grade:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum grade for this quiz
+        shuffle_questions:
+          type: boolean
+          description: Randomize question order
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Maximum attempts allowed (0 = unlimited)
+        show_feedback:
+          type: boolean
+          description: Show feedback after submission
+        questions_count:
+          type: integer
+          readOnly: true
+        total_marks:
+          type: number
+          format: double
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        quiz_questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuizQuestionSlot'
+          readOnly: true
+        questions:
+          type: array
+          items: {}
+          readOnly: true
+        time_limit_minutes:
+          type: integer
+          readOnly: true
+      required:
+      - course_external_id
+      - created_at
+      - id
+      - name
+      - questions
+      - questions_count
+      - quiz_questions
+      - time_limit_minutes
+      - total_marks
+      - updated_at
+    QuizQuestionSlot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        quiz:
+          type: string
+          format: uuid
+        question:
+          type: string
+          format: uuid
+        question_name:
+          type: string
+          readOnly: true
+        question_type:
+          type: string
+          readOnly: true
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Question order in quiz
+        max_mark:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum points for this question in this quiz (can override
+            default_mark)
+      required:
+      - id
+      - max_mark
+      - order
+      - question
+      - question_name
+      - question_type
+      - quiz
+    QuizQuestionSlotRequest:
+      type: object
+      properties:
+        quiz:
+          type: string
+          format: uuid
+        question:
+          type: string
+          format: uuid
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Question order in quiz
+        max_mark:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum points for this question in this quiz (can override
+            default_mark)
+      required:
+      - max_mark
+      - order
+      - question
+      - quiz
+    QuizRequest:
+      type: object
+      description: Basic quiz serializer for creation/listing.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        time_open:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz becomes available
+        time_close:
+          type: string
+          format: date-time
+          nullable: true
+          description: When quiz closes
+        time_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Time limit in seconds (null = no limit)
+        max_grade:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Maximum grade for this quiz
+        shuffle_questions:
+          type: boolean
+          description: Randomize question order
+        max_attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Maximum attempts allowed (0 = unlimited)
+        show_feedback:
+          type: boolean
+          description: Show feedback after submission
+        course_id:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Course external_id or UUID
+      required:
+      - course_id
+      - name
+    Semester:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+      required:
+      - id
+      - name
+    SemesterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+      - name
+    StartQuizRequest:
+      type: object
+      description: Request serializer for starting a quiz
+      properties:
+        session:
+          type: string
+          minLength: 1
+          maxLength: 50
+        semester:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+      - semester
+      - session
+    StateEnum:
+      enum:
+      - in_progress
+      - finished
+      - abandoned
+      type: string
+      description: |-
+        * `in_progress` - In Progress
+        * `finished` - Finished
+        * `abandoned` - Abandoned
+    StorageBackendEnum:
+      enum:
+      - local
+      - s3
+      - cloudinary
+      - youtube
+      type: string
+      description: |-
+        * `local` - local
+        * `s3` - s3
+        * `cloudinary` - cloudinary
+        * `youtube` - youtube
+    StorageSettings:
+      type: object
+      description: |-
+        Serializer for managing storage backend settings.
+
+        NOTE: Credentials are loaded from environment variables (.env file).
+        This serializer only manages which backend is active.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        backend:
+          allOf:
+          - $ref: '#/components/schemas/StorageSettingsBackendEnum'
+          description: |-
+            Active storage backend. Credentials are loaded from environment variables.
+
+            * `local` - Local Filesystem
+            * `s3` - Amazon S3
+            * `cloudinary` - Cloudinary
+            * `youtube` - YouTube
+        is_active:
+          type: boolean
+          description: Only one configuration can be active.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - updated_at
+    StorageSettingsBackendEnum:
+      enum:
+      - local
+      - s3
+      - cloudinary
+      - youtube
+      type: string
+      description: |-
+        * `local` - Local Filesystem
+        * `s3` - Amazon S3
+        * `cloudinary` - Cloudinary
+        * `youtube` - YouTube
+    StorageSettingsRequest:
+      type: object
+      description: |-
+        Serializer for managing storage backend settings.
+
+        NOTE: Credentials are loaded from environment variables (.env file).
+        This serializer only manages which backend is active.
+      properties:
+        backend:
+          allOf:
+          - $ref: '#/components/schemas/StorageSettingsBackendEnum'
+          description: |-
+            Active storage backend. Credentials are loaded from environment variables.
+
+            * `local` - Local Filesystem
+            * `s3` - Amazon S3
+            * `cloudinary` - Cloudinary
+            * `youtube` - YouTube
+        is_active:
+          type: boolean
+          description: Only one configuration can be active.
+    SubmitAssignmentRequest:
+      type: object
+      properties:
+        confirm:
+          type: boolean
+          description: Confirm submission
+        session:
+          type: string
+          minLength: 1
+          maxLength: 50
+        semester:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+      - confirm
+      - semester
+      - session
+    SubmitResponseRequest:
+      type: object
+      description: Request serializer for submitting a question response
+      properties:
+        question_id:
+          type: string
+          format: uuid
+        response: {}
+      required:
+      - question_id
+      - response
+    TestEmailRequest:
+      type: object
+      properties:
+        recipient:
+          type: string
+          format: email
+          minLength: 1
+        subject:
+          type: string
+          minLength: 1
+          default: LMS email delivery test
+          maxLength: 255
+        message:
+          type: string
+          minLength: 1
+          default: This is a test notification from the LMS.
+        html_message:
+          type: string
+          nullable: true
+      required:
+      - recipient
+    TestEmailSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          readOnly: true
+        detail:
+          type: string
+          readOnly: true
+        backend:
+          allOf:
+          - $ref: '#/components/schemas/Backend048Enum'
+          readOnly: true
+        recipient:
+          type: string
+          format: email
+          readOnly: true
+      required:
+      - backend
+      - detail
+      - recipient
+      - success
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    UnreadCountResponse:
+      type: object
+      properties:
+        unread_count:
+          type: integer
+          description: Number of unread in-app notifications.
+      required:
+      - unread_count
+    YouTubeVideoRequest:
+      type: object
+      description: |-
+        Serializer for registering YouTube videos as course content.
+        Accepts either course external_id (e.g., 'CS101') or UUID.
+      properties:
+        video_url:
+          type: string
+          minLength: 1
+          maxLength: 512
+        course_id:
+          type: string
+          minLength: 1
+          description: Course external_id (e.g., 'CS101') or UUID
+        title:
+          type: string
+          minLength: 1
+          maxLength: 512
+        description:
+          type: string
+      required:
+      - course_id
+      - title
+      - video_url
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/token/ endpoint
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+      description: Session cookie from Django admin login
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

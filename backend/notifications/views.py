@@ -1,19 +1,24 @@
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 from portal_auth.permissions import IsPortalAdmin
 
 from .email import send_one
-from .models import EmailConfiguration, NotificationLog
+from .models import EmailConfiguration, NotificationLog, InAppNotification
 from .serializers import (
     EmailConfigurationSerializer,
     NotificationLogFilterSerializer,
     NotificationLogSerializer,
     TestEmailSerializer,
     TestEmailSuccessSerializer,
+    InAppNotificationSerializer,
+    UnreadCountResponseSerializer,
+    NotificationStatusResponseSerializer,
 )
 
 
@@ -156,3 +161,84 @@ class NotificationLogViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(created_at__date__lte=values['date_to'])
 
         return queryset
+
+
+@extend_schema(tags=['Notifications - In-App'])
+class InAppNotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for authenticated users to retrieve and manage their in-app notifications.
+    """
+    serializer_class = InAppNotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False) or not hasattr(self, 'request') or self.request is None:
+            return InAppNotification.objects.none()
+        queryset = InAppNotification.objects.filter(recipient=self.request.user)
+        is_read_param = self.request.query_params.get('is_read')
+        if is_read_param is not None:
+            if is_read_param.lower() in ['true', '1']:
+                queryset = queryset.filter(is_read=True)
+            elif is_read_param.lower() in ['false', '0']:
+                queryset = queryset.filter(is_read=False)
+        return queryset
+
+    @extend_schema(
+        summary="List user notifications",
+        description="Retrieve all in-app notifications for the authenticated user, optionally filtered by read status.",
+        parameters=[
+            OpenApiParameter('is_read', bool, description='Filter notifications by read status (true/false).'),
+        ],
+        responses={200: InAppNotificationSerializer(many=True)}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Get single notification",
+        description="Retrieve detailed info for a specific in-app notification by UUID.",
+        responses={200: InAppNotificationSerializer}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Get unread notification count",
+        description="Returns the total count of unread in-app notifications for the authenticated user.",
+        responses={200: UnreadCountResponseSerializer}
+    )
+    @action(detail=False, methods=['get'], url_path='unread-count')
+    def unread_count(self, request):
+        count = self.get_queryset().filter(is_read=False).count()
+        return Response({'unread_count': count})
+
+    @extend_schema(
+        summary="Mark notification as read",
+        description="Marks a specific in-app notification as read and sets read_at timestamp.",
+        request=None,
+        responses={200: NotificationStatusResponseSerializer}
+    )
+    @action(detail=True, methods=['post'], url_path='mark-read')
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
+        if not notification.is_read:
+            notification.is_read = True
+            notification.read_at = timezone.now()
+            notification.save(update_fields=['is_read', 'read_at'])
+        return Response({'status': 'marked as read'})
+
+    @extend_schema(
+        summary="Mark all notifications as read",
+        description="Marks all unread in-app notifications for the authenticated user as read.",
+        request=None,
+        responses={200: NotificationStatusResponseSerializer}
+    )
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
+    def mark_all_read(self, request):
+        self.get_queryset().filter(is_read=False).update(
+            is_read=True,
+            read_at=timezone.now()
+        )
+        return Response({'status': 'all marked as read'})
+
+

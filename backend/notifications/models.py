@@ -3,6 +3,7 @@ import uuid
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 
 from .config import validate_email_configuration
 
@@ -103,3 +104,49 @@ class NotificationLog(models.Model):
 
     def __str__(self):
         return f"{self.recipient} - {self.subject} ({self.status})"
+
+
+class NotificationType(models.TextChoices):
+    ASSIGNMENT_POSTED = 'ASSIGNMENT_POSTED', _('Assignment Posted')
+    DEADLINE_EXTENDED = 'DEADLINE_EXTENDED', _('Deadline Extended')
+    GENERAL = 'GENERAL', _('General Notification')
+
+
+class InAppNotification(models.Model):
+    """
+    In-App notifications for users (students and staff).
+    Stores notifications for offline viewing and tracking read state.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    recipient = models.ForeignKey(
+        'portal_auth.PortalUser',
+        on_delete=models.CASCADE,
+        related_name='in_app_notifications'
+    )
+    notification_type = models.CharField(
+        max_length=50,
+        choices=NotificationType.choices,
+        default=NotificationType.GENERAL
+    )
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+
+    assignment_id = models.UUIDField(null=True, blank=True)
+    course_id = models.BigIntegerField(null=True, blank=True)
+    action_url = models.CharField(max_length=512, null=True, blank=True)
+
+    is_read = models.BooleanField(default=False, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = _("In-App Notification")
+        verbose_name_plural = _("In-App Notifications")
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient', 'is_read']),
+        ]
+
+    def __str__(self):
+        return f"{self.notification_type} -> {self.recipient}: {self.title}"
+

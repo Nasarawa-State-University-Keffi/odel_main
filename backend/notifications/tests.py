@@ -341,3 +341,128 @@ class EmailServiceRoutingTests(TestCase):
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 EmailConfiguration.objects.bulk_create(configurations)
+
+
+class InAppNotificationApiTests(APITestCase):
+    def setUp(self):
+        self.student = PortalUser.objects.create(
+            external_id='student101',
+            full_name='Jane Student',
+            roles=['STUDENT'],
+        )
+        self.client.force_authenticate(self.student)
+
+        from .models import InAppNotification, NotificationType
+        self.notification1 = InAppNotification.objects.create(
+            recipient=self.student,
+            notification_type=NotificationType.ASSIGNMENT_POSTED,
+            title='New Assignment Posted',
+            message='Assignment 1 is now available.',
+            is_read=False
+        )
+        self.notification2 = InAppNotification.objects.create(
+            recipient=self.student,
+            notification_type=NotificationType.DEADLINE_EXTENDED,
+            title='Deadline Extended',
+            message='Assignment 1 deadline extended.',
+            is_read=False
+        )
+
+    def test_list_in_app_notifications(self):
+        response = self.client.get('/api/notifications/in-app/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+
+    def test_unread_count(self):
+        response = self.client.get('/api/notifications/in-app/unread-count/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['unread_count'], 2)
+
+    def test_mark_read(self):
+        response = self.client.post(f'/api/notifications/in-app/{self.notification1.id}/mark-read/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.notification1.refresh_from_db()
+        self.assertTrue(self.notification1.is_read)
+
+    def test_mark_all_read(self):
+        response = self.client.post('/api/notifications/in-app/mark-all-read/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self.student.in_app_notifications.filter(is_read=False).count(),
+            0
+        )
+
+
+class AssignmentNotificationSignalTests(TestCase):
+    def setUp(self):
+        from courses.models import CourseCache, StudentRegisteredCourse
+        from assessment.models import Assignment
+
+        self.staff = PortalUser.objects.create(
+            external_id='staff202',
+            full_name='Lecturer Smith',
+            roles=['STAFF'],
+        )
+        self.student = PortalUser.objects.create(
+            external_id='student202',
+            full_name='Alice Student',
+            roles=['STUDENT'],
+        )
+        self.course = CourseCache.objects.create(
+            course_external_id=999,
+            course_code='CSC401',
+            course_title='Software Engineering'
+        )
+        StudentRegisteredCourse.objects.create(
+            student_external=self.student,
+            course=self.course,
+            session='2025/2026',
+            semester='FIRST'
+        )
+
+    def test_assignment_posted_signal_dispatches_notification(self):
+        from assessment.models import Assignment
+        from notifications.models import InAppNotification, NotificationType
+
+        now = timezone.now()
+        assignment = Assignment.objects.create(
+            course=self.course,
+            title='Project Architecture',
+            created_by=self.staff,
+            open_at=now,
+            due_at=now + timedelta(days=7),
+            is_published=True
+        )
+
+        notifications = InAppNotification.objects.filter(recipient=self.student)
+        self.assertEqual(notifications.count(), 1)
+        notif = notifications.first()
+        self.assertEqual(notif.notification_type, NotificationType.ASSIGNMENT_POSTED)
+        self.assertIn('Project Architecture', notif.title)
+
+    def test_assignment_deadline_extended_signal_dispatches_notification(self):
+        from assessment.models import Assignment
+        from notifications.models import InAppNotification, NotificationType
+
+        now = timezone.now()
+        assignment = Assignment.objects.create(
+            course=self.course,
+            title='Final Project',
+            created_by=self.staff,
+            open_at=now,
+            due_at=now + timedelta(days=5),
+            is_published=True
+        )
+
+        InAppNotification.objects.all().delete()
+
+        assignment.due_at = now + timedelta(days=10)
+        assignment.save()
+
+        notifications = InAppNotification.objects.filter(recipient=self.student)
+        self.assertEqual(notifications.count(), 1)
+        notif = notifications.first()
+        self.assertEqual(notif.notification_type, NotificationType.DEADLINE_EXTENDED)
+        self.assertIn('Deadline Extended', notif.title)
+
+
