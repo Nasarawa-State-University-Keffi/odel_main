@@ -41,7 +41,7 @@ const CreateAssignment = () => {
 
             await createAssignment(formattedData);
             toast.success("Assignment created successfully!");
-            navigate("/assignments");
+            navigate("/staff/dashboardassignments");
         } catch (error: any) {
             toast.error(error || "An error occurred while creating the assignment.");
         }

@@ -40,6 +40,7 @@ const AdminNotificationSettingsPage = lazy(() => import("./AdminNotificationSett
 const AdminCreateNotificationSettingPage = lazy(() => import("./AdminCreateNotificationSettingPage"));
 const AdminNotificationSettingDetailPage = lazy(() => import("./AdminNotificationSettingDetailPage"));
 const AdminNotificationLogsPage = lazy(() => import("./AdminNotificationLogsPage"));
+const NotificationsPage = lazy(() => import("./NotificationsPage"));
 
 // 2. Lazy load named exports using .then()
 const LearningContentPage = lazy(() => import("./LearningContentPage").then(mod => ({ default: mod.LearningContentPage })));
@@ -147,6 +148,7 @@ const Presentation = () => {
                             {/* Shared Profile & Content Routes */}
                             <Route path="/profile" element={<ProfilePage />} />
                             <Route path="/learning-content" element={<LearningContentPage />} />
+                            <Route path="/notifications" element={<NotificationsPage />} />
 
                             {/* Admin Dashboard */}
                             <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>

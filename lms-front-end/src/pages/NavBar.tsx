@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Bell, Menu, Search, ChevronDown, Circle } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Bell, Menu, Search, ChevronDown, Circle, Badge } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -16,8 +15,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { navItems } from "@/data";
 import { useUserContext } from "@/context/UserProvider";
+import { useInAppNotifications } from "@/service/useInAppNotifications";
 
 
 interface NavBarProps {
@@ -89,6 +88,8 @@ const MobileNavItem = ({ item, currentPath }: { item: any; currentPath: string }
 const NavBar = ({ targetNav }: NavBarProps) => {
     const { user } = useUserContext()
     const location = useLocation();
+    const navigate = useNavigate();
+    const { unreadCount } = useInAppNotifications();
 
     let currentPage = "Dashboard";
     for (const item of targetNav) {
@@ -148,11 +149,11 @@ const NavBar = ({ targetNav }: NavBarProps) => {
                 </div>
 
                 {/* Notifications */}
-                <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                <Button onClick={() => { navigate("/notifications") }} variant="ghost" size="icon" className="relative rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
                     <Bell className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
-                    {/* <Badge className="absolute top-0 right-0 h-4 w-4 flex items-center justify-center p-0 bg-emerald-500 text-white rounded-full text-[9px] font-bold border-2 border-white dark:border-zinc-950">
-                        3
-                    </Badge> */}
+                    <Badge className="absolute top-0 right-0 h-4 w-4 flex items-center justify-center p-0 bg-emerald-500 text-white rounded-full text-[9px] font-bold border-2 border-white dark:border-zinc-950">
+                        {unreadCount > 0 ? unreadCount : null}
+                    </Badge>
                 </Button>
 
                 {/* User Profile Dropdown */}

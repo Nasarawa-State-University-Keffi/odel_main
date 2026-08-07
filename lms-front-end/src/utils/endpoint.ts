@@ -18,6 +18,12 @@ export const endpoint = {
         all: "/synchronize/sync-all"
     },
 
+    notifications: {
+        inApp: {
+            base: "/notifications/in-app/"
+        }
+    },
+
     student: {
         dashboard: {
             student: '/dashboard/students/?session=2024%2F2025&semester=First',
