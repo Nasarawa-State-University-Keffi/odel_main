@@ -168,7 +168,7 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
         content = create_unified_content(
             content_format=data['content_format'], course=course, user=request.user,
             title=data['title'],
-            description=data.get('description', ''), module=data.get('module'),
+            module=data.get('module'),
             order=data.get('order', 0), is_published=data.get('is_published', True),
             file_obj=data.get('file'), text_content=data.get('text_content', ''),
             external_url=data.get('url', ''), storage_backend=data.get('storage_backend'),

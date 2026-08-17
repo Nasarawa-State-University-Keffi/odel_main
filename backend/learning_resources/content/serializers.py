@@ -46,11 +46,11 @@ class LearningContentSerializer(serializers.ModelSerializer):
         model = LearningContent
         fields = [
             # identity
-            'id', 'component', 'content_type', 'course_external_id', 'course_title',
+            'id', 'component', 'course_external_id', 'course_title',
             'content_format', 'module', 'module_title', 'order',
 
             # metadata
-            'title', 'description', 'text_content', 'external_url', 'original_filename', 'file_size',
+            'title', 'text_content', 'external_url', 'original_filename', 'file_size',
             'mime_type', 'storage_backend', 'url', 'file_extension',
             'is_video', 'is_document',
 
@@ -66,7 +66,6 @@ class LearningContentSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'component',
-            'content_type',
             'original_filename',
             'file_size',
             'mime_type',
@@ -207,7 +206,6 @@ class UnifiedLearningContentSerializer(serializers.Serializer):
         choices=['file', 'text', 'link', 'youtube'], default='file'
     )
     title = serializers.CharField(max_length=512)
-    description = serializers.CharField(required=False, allow_blank=True, default='')
     text_content = serializers.CharField(required=False, allow_blank=True, default='')
     url = serializers.URLField(required=False, allow_blank=True)
     file = serializers.FileField(required=False)
