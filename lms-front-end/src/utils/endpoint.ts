@@ -26,7 +26,7 @@ export const endpoint = {
 
     student: {
         dashboard: {
-            student: '/dashboard/students/?session=2024%2F2025&semester=First',
+            student: '/dashboard/students/',
             // /dashboard/students/?semester_id=19&session_id=17
             assessment: {
                 assignment: {
@@ -34,7 +34,6 @@ export const endpoint = {
                     submissions: {
                         base: "/student/assessment/submissions/",
                         create: "/student/assessment/submissions/create/"
-
                     }
                 },
 

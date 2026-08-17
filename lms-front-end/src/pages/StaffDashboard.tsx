@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useUserContext } from "@/context/UserProvider";
 import { AnimateIn } from "@/components/ui/animate-in";
 import {
@@ -10,24 +11,50 @@ import {
   LayoutDashboard,
   LogOut,
   CheckCircle2,
-  Loader2
+  Loader2,
+  GraduationCap,
+  ArrowRight
 } from "lucide-react";
 import { useAuth } from "@/service/useAuth";
 import { useStaffDashboard } from "@/service/useStaffDashboard";
-import { useEffect } from "react";
+import { useAcademicSetup } from "@/service/useAcademicSetup";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const StaffDashboard = () => {
   const { user, isLoading } = useUserContext();
   const { handleLogout, isPending } = useAuth();
   const { fetchStaffData } = useStaffDashboard();
 
+  // the academic setup hook
+  const {
+    fetchSemester,
+    fetchSession,
+    semester,
+    session,
+    isPending: isAcademicPending
+  } = useAcademicSetup();
+
+  // Local state for term selection
+  const [selectedSession, setSelectedSession] = useState<string>("");
+  const [selectedSemester, setSelectedSemester] = useState<string>("");
+  const [isTermSelected, setIsTermSelected] = useState<boolean>(false);
+  const [isSetupPending, setIsSetupPending] = useState<boolean>(false);
+
+  // Fetch session and semester data on mount
   useEffect(() => {
-    if (user?.external_id) {
-      fetchStaffData(user.external_id);
-    }
+    fetchSession();
+    fetchSemester();
   }, []);
 
- 
+  const handleTermSubmit = async () => {
+    if (!selectedSession || !selectedSemester || !user?.external_id) return;
+
+    setIsSetupPending(true);
+    await fetchStaffData(user.external_id, selectedSession, selectedSemester);
+    setIsSetupPending(false);
+    setIsTermSelected(true);
+  };
 
   if (isLoading) {
     return (
@@ -37,11 +64,106 @@ const StaffDashboard = () => {
     );
   }
 
+  // ==========================================
+  //  ACADEMIC TERM SELECTOR
+  // ==========================================
+  if (!isTermSelected) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50/50 dark:bg-slate-950 px-4 py-12 transition-colors duration-200">
+        <div className="w-full max-w-md sm:min-w-112.5">
+          <AnimateIn direction="up">
+            <Card className="w-full shadow-2xl shadow-slate-200/50 dark:shadow-none border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-900">
+              <div className="bg-primary-500/5 dark:bg-primary-500/10 p-8 flex justify-center border-b border-slate-100 dark:border-slate-800/60">
+                <div className="w-20 h-20 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center ring-4 ring-white dark:ring-slate-900 shadow-sm">
+                  <GraduationCap className="w-10 h-10 text-primary-600 dark:text-primary-400" />
+                </div>
+              </div>
+              <CardHeader className="text-center pt-8 pb-4">
+                <CardTitle className="font-heading text-2xl font-bold text-slate-900 dark:text-slate-50">
+                  Select Academic Term
+                </CardTitle>
+                <CardDescription className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-2">
+                  Please specify the session and semester to initialize your instructor workspace.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 p-8 pt-2">
+
+                {/* SESSION SELECT */}
+                <div className="space-y-2.5">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase block ml-1">
+                    Academic Session
+                  </label>
+                  <Select
+                    value={selectedSession}
+                    onValueChange={(value: string | null) => setSelectedSession(value || "")}
+                    disabled={isSetupPending || isAcademicPending}
+                  >
+                    <SelectTrigger className="w-full h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800">
+                      <SelectValue placeholder={isAcademicPending ? "Loading sessions..." : "Select a session"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(session as any)?.results?.map((s: any) => (
+                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* SEMESTER SELECT */}
+                <div className="space-y-2.5">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase block ml-1">
+                    Semester
+                  </label>
+                  <Select
+                    value={selectedSemester}
+                    onValueChange={(value: string | null) => setSelectedSemester(value || "")}
+                    disabled={isSetupPending || isAcademicPending}
+                  >
+                    <SelectTrigger className="w-full h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800">
+                      <SelectValue placeholder={isAcademicPending ? "Loading semesters..." : "Select a semester"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Change semester?.map to semester?.results?.map */}
+                      {(semester as any)?.results?.map((s: any) => (
+                        <SelectItem key={s.id} value={s.name}>{s.name} Semester</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <button
+                  onClick={handleTermSubmit}
+                  disabled={!selectedSession || !selectedSemester || isSetupPending || isAcademicPending}
+                  className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-primary-600 px-5 py-3.5 text-sm font-semibold text-white transition-all shadow-md hover:bg-primary-500 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                >
+                  {isSetupPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Initializing Workspace...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Access Terminal</span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </>
+                  )}
+                </button>
+              </CardContent>
+            </Card>
+          </AnimateIn>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  //  MAIN STAFF DASHBOARD
+  // ==========================================
   return (
     <div className="min-h-screen w-full bg-slate-50/50 dark:bg-slate-950 px-4 py-8 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="mx-auto max-w-6xl space-y-8">
 
-        {/* TOP BAR / NAVIGATION HEADER */}
+        {/*  NAVIGATION HEADER */}
         <AnimateIn direction="down" delay={0.1}>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 p-5 shadow-sm backdrop-blur-xl">
             <div className="flex items-center gap-4">
@@ -50,20 +172,29 @@ const StaffDashboard = () => {
               </div>
               <div>
                 <h1 className="font-heading text-xl font-bold text-slate-900 dark:text-slate-50">Instructor's Terminal</h1>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Control Center & System Governance</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {selectedSession} • {selectedSemester} Semester
+                </p>
               </div>
             </div>
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              {/* Change Term Button */}
+              <button
+                onClick={() => setIsTermSelected(false)}
+                className="group relative flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
+              >
+                Change Term
+              </button>
+
               {/* Terminate Session Button */}
               <button
                 onClick={handleLogout}
                 disabled={isPending}
-                className={`group relative flex w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-xl border px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${
-                  isPending
-                    ? "border-red-200/50 bg-red-50/50 text-red-400 cursor-not-allowed dark:border-red-900/10 dark:bg-red-500/5 dark:text-red-500/50"
-                    : "border-red-200 bg-red-50 text-red-600 hover:border-transparent hover:bg-red-600 hover:text-white dark:border-red-900/30 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
-                }`}
+                className={`group relative flex w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-xl border px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${isPending
+                  ? "border-red-200/50 bg-red-50/50 text-red-400 cursor-not-allowed dark:border-red-900/10 dark:bg-red-500/5 dark:text-red-500/50"
+                  : "border-red-200 bg-red-50 text-red-600 hover:border-transparent hover:bg-red-600 hover:text-white dark:border-red-900/30 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
+                  }`}
               >
                 {isPending ? (
                   <>
@@ -84,7 +215,6 @@ const StaffDashboard = () => {
         {/* HERO WELCOME BANNER */}
         <AnimateIn direction="up" delay={0.2}>
           <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary-600 via-primary-700 to-indigo-900 p-8 sm:p-10 text-white shadow-xl shadow-primary-900/20 dark:shadow-none border border-primary-500/20">
-            {/* Structural Vector Accents */}
             <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-white/10 blur-3xl mix-blend-overlay" />
             <div className="absolute -bottom-20 right-40 h-64 w-64 rounded-full bg-indigo-500/30 blur-3xl mix-blend-overlay" />
 
@@ -107,7 +237,6 @@ const StaffDashboard = () => {
 
         {/* PROFILE METRICS GRID */}
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Main Account Identity Card */}
           <AnimateIn direction="up" delay={0.3} className="md:col-span-2">
             <div className="h-full rounded-3xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 shadow-sm">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-5 mb-6">
@@ -151,7 +280,6 @@ const StaffDashboard = () => {
             </div>
           </AnimateIn>
 
-          {/* System Access & Security State */}
           <AnimateIn direction="up" delay={0.4}>
             <div className="h-full rounded-3xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 shadow-sm">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-5 mb-6">
@@ -210,7 +338,7 @@ const StaffDashboard = () => {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 shadow-sm backdrop-blur-md">
             <div className="flex items-center gap-2.5">
               <Clock className="h-4 w-4 text-primary-500" />
-              <span>Session Initialized Securely</span>
+              <span>Session Initialized Securely for Term: {selectedSession}</span>
             </div>
           </div>
         </AnimateIn>

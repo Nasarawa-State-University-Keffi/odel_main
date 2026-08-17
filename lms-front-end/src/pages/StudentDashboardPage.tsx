@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     BookOpen, CalendarDays, ClipboardList, GraduationCap,
-    ChevronRight, Clock, FileText, AlertCircle
+    ChevronRight, Clock, FileText, AlertCircle, Filter
 } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AnimateIn } from "@/components/ui/animate-in";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { useStudentDashboard } from "@/service/useStudentDashboard";
 import { useAcademicSetup } from "@/service/useAcademicSetup";
 
-// Helper to format ISO dates into readable strings (e.g., "Aug 1, 4:10 PM")
 const formatDeadline = (dateString: string) => {
     return new Intl.DateTimeFormat("en-US", {
         month: "short",
@@ -25,19 +26,27 @@ const formatDeadline = (dateString: string) => {
 };
 
 const StudentOverviewPage = () => {
-    const { fetchDashboardData, isPending, dashboardData } = useStudentDashboard();
-    const { fetchSemester, fetchSession } = useAcademicSetup();
+    // Hooks
+    const { fetchDashboardData, isPending: isDashboardPending, dashboardData } = useStudentDashboard();
+    const { fetchSemester, fetchSession, isPending: isSetupPending, semester, session } = useAcademicSetup();
 
-    // Fetch data when the component loads
+    // Local State for selections
+    const [selectedSession, setSelectedSession] = useState<string>("");
+    const [selectedSemester, setSelectedSemester] = useState<string>("");
+
     useEffect(() => {
-        const initializeDashboard = async () => {
-            fetchSemester();
-            fetchSession();
-            fetchDashboardData();
-        };
-
-        initializeDashboard();
+        fetchSemester();
+        fetchSession();
     }, []);
+
+    useEffect(() => {
+        if (selectedSession && selectedSemester) {
+            fetchDashboardData(selectedSession, selectedSemester);
+        }
+    }, [selectedSession, selectedSemester]);
+
+    const sessionList = useMemo(() => (session as any)?.results || session || [], [session]);
+    const semesterList = useMemo(() => (semester as any)?.results || semester || [], [semester]);
 
     const agendaItems = useMemo(() => {
         if (!dashboardData) return [];
@@ -52,56 +61,107 @@ const StudentOverviewPage = () => {
 
         const quizzes = (dashboardData.pending_quizzes || []).map((q: any) => ({
             id: q.id,
-            title: q.name, // Quizzes use 'name' instead of 'title'
+            title: q.name,
             date: new Date(q.time_close),
             rawDate: q.time_close,
             type: "quiz" as const,
         }));
 
-        // Combine and sort chronologically by closest deadline
         return [...assignments, ...quizzes].sort((a, b) => a.date.getTime() - b.date.getTime());
     }, [dashboardData]);
 
-    // --- LOADING STATE ---
-    if (isPending || !dashboardData) {
+    // --- INITIAL TERM SELECTION ---
+    if (!selectedSession || !selectedSemester) {
         return (
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-                <Skeleton className="h-[160px] md:h-[120px] w-full rounded-3xl" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[100px] rounded-2xl" />)}
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-4">
-                        <Skeleton className="h-[40px] w-1/3 rounded-lg" />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {[1, 2].map((i) => <Skeleton key={i} className="h-[140px] rounded-2xl" />)}
-                        </div>
-                    </div>
-                    <Skeleton className="h-[400px] w-full rounded-2xl" />
+            <div className="w-full min-h-[80vh] flex items-center justify-center px-4 py-12">
+                <div className="w-full max-w-md sm:min-w-112.5">
+                    <AnimateIn direction="up">
+                        <Card className="w-full shadow-xl border-zinc-200/50 dark:border-zinc-800/50 rounded-3xl overflow-hidden">
+                            <div className="bg-emerald-500/10 p-8 flex justify-center">
+                                <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                                    <GraduationCap className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                            </div>
+
+                            <CardHeader className="text-center pt-6 pb-2">
+                                <CardTitle className="text-2xl font-bold">Select Academic Term</CardTitle>
+                                <CardDescription>
+                                    Please select your current session and semester to view your dashboard.
+                                </CardDescription>
+                            </CardHeader>
+
+                            <CardContent className="space-y-5 p-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Session</label>
+                                    <Select value={selectedSession} onValueChange={(value: string | null) => setSelectedSession(value || "")} disabled={isSetupPending}>
+                                        <SelectTrigger className="w-full h-12 rounded-xl">
+                                            <SelectValue placeholder={isSetupPending ? "Loading..." : "Select a session"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {sessionList.map((s: any) => (
+                                                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Semester</label>
+                                    <Select value={selectedSemester} onValueChange={(value: string | null) => setSelectedSemester(value || "")} disabled={isSetupPending}>
+                                        <SelectTrigger className="w-full h-12 rounded-xl">
+                                            <SelectValue placeholder={isSetupPending ? "Loading..." : "Select a semester"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {semesterList.map((s: any) => (
+                                                <SelectItem key={s.id} value={s.name}>{s.name} Semester</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </AnimateIn>
                 </div>
             </div>
         );
     }
 
-    // Extract data with safe fallbacks
-    const {
-        user,
-        courses = [],
-        course_count = 0,
-        pending_quizzes = [],
-        upcoming_assignments = []
-    } = dashboardData;
+    // --- LOADING DASHBOARD DATA ---
+    if (isDashboardPending || !dashboardData) {
+        return (
+            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+                <Skeleton className="h-55 md:h-40 w-full rounded-3xl" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-25 rounded-2xl" />)}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-4">
+                        <Skeleton className="h-10 w-1/3 rounded-lg" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {[1, 2].map((i) => <Skeleton key={i} className="h-35 rounded-2xl" />)}
+                        </div>
+                    </div>
+                    <Skeleton className="h-100 w-full rounded-2xl" />
+                </div>
+            </div>
+        );
+    }
+
+    // --- MAIN DASHBOARD RENDER ---
+    const { user, courses = [], course_count = 0, pending_quizzes = [], upcoming_assignments = [] } = dashboardData;
 
     return (
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-12">
 
-            {/* 1. Welcome Hero Section */}
+            {/* 1. Welcome Hero Section w/ Dynamic Selectors */}
             <AnimateIn direction="up">
                 <div className="relative overflow-hidden rounded-3xl bg-zinc-950 p-6 sm:p-8 text-white shadow-lg">
                     {/* Subtle Background Gradients */}
                     <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+
+                        {/* Welcome Text */}
                         <div className="space-y-3">
                             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
                                 <GraduationCap className="w-4 h-4" />
@@ -115,19 +175,42 @@ const StudentOverviewPage = () => {
                             </p>
                         </div>
 
-                        <div className="shrink-0">
-                            <Button className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl h-12 px-6 font-semibold shadow-lg shadow-emerald-500/20 transition-all">
-                                View Schedule
-                                <CalendarDays className="ml-2 w-4 h-4" />
-                            </Button>
+                        {/* Inline Term Selectors */}
+                        <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-zinc-900/50 p-3 rounded-2xl border border-zinc-800/50 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 text-zinc-400 px-2">
+                                <Filter className="w-4 h-4" />
+                                <span className="text-xs font-medium uppercase tracking-wider hidden sm:inline-block">Term:</span>
+                            </div>
+
+                            <Select value={selectedSession} onValueChange={(value: string | null) => setSelectedSession(value || "")}>
+                                <SelectTrigger className="w-full sm:w-35 h-10 bg-zinc-950 border-zinc-800 text-sm rounded-xl text-white">
+                                    <SelectValue placeholder="Session" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                    {sessionList.map((s: any) => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Select value={selectedSemester} onValueChange={(value: string | null) => setSelectedSemester(value || "")}>
+                                <SelectTrigger className="w-full sm:w-35 h-10 bg-zinc-950 border-zinc-800 text-sm rounded-xl text-white">
+                                    <SelectValue placeholder="Semester" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                    {semesterList.map((s: any) => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
+
                     </div>
                 </div>
             </AnimateIn>
 
             {/* 2. Quick Stats Grid */}
             <AnimateIn delay={0.1} direction="up" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {/* Stat Card 1 */}
                 <Card className="border-zinc-200/50 shadow-sm rounded-2xl transition-all hover:shadow-md">
                     <CardContent className="p-6 flex items-center gap-4">
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl shrink-0">
@@ -140,7 +223,6 @@ const StudentOverviewPage = () => {
                     </CardContent>
                 </Card>
 
-                {/* Stat Card 2 */}
                 <Card className="border-zinc-200/50 shadow-sm rounded-2xl transition-all hover:shadow-md">
                     <CardContent className="p-6 flex items-center gap-4">
                         <div className="p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-2xl shrink-0">
@@ -153,7 +235,6 @@ const StudentOverviewPage = () => {
                     </CardContent>
                 </Card>
 
-                {/* Stat Card 3 */}
                 <Card className="border-zinc-200/50 shadow-sm rounded-2xl transition-all hover:shadow-md sm:col-span-2 md:col-span-1">
                     <CardContent className="p-6 flex items-center gap-4">
                         <div className="p-4 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl shrink-0">
@@ -167,14 +248,14 @@ const StudentOverviewPage = () => {
                 </Card>
             </AnimateIn>
 
-            {/* 3. Main Content Area  */}
+            {/* 3. Main Content Area */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                 {/* Course Grid */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                            Current Semester Courses
+                            Courses for {selectedSemester} Semester
                         </h2>
                         <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs sm:text-sm">
                             View All <ChevronRight className="w-4 h-4 ml-1" />
@@ -187,11 +268,7 @@ const StudentOverviewPage = () => {
                             <p className="text-zinc-500 text-sm font-medium">No courses registered for this semester yet.</p>
                         </div>
                     ) : (
-                        <AnimateIn
-                            delay={0.2}
-                            direction="up"
-                            className={`grid grid-cols-1 ${courses.length > 1 ? 'sm:grid-cols-2' : ''} gap-4 sm:gap-6`}
-                        >
+                        <AnimateIn delay={0.2} direction="up" className={`grid grid-cols-1 ${courses.length > 1 ? 'sm:grid-cols-2' : ''} gap-4 sm:gap-6`}>
                             {courses.map((course: any, idx: number) => (
                                 <Card key={course.course_external_id || idx} className="group hover:border-emerald-500/50 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer flex flex-col h-full bg-white dark:bg-zinc-950">
                                     <CardHeader className="p-5 pb-4">
@@ -205,7 +282,6 @@ const StudentOverviewPage = () => {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardFooter className="p-5 pt-0 mt-auto border-t border-zinc-100 dark:border-zinc-800/50 bg-zinc-50/50 dark:bg-zinc-900/20 flex flex-col gap-3">
-                                        {/* Faux Progress Bar for visual flair */}
                                         <div className="w-full space-y-1.5 mt-3">
                                             <div className="flex justify-between text-[11px] text-zinc-500 font-semibold uppercase tracking-wider">
                                                 <span>Progress</span>
@@ -220,7 +296,7 @@ const StudentOverviewPage = () => {
                     )}
                 </div>
 
-                {/*  Mini Agenda Sidebar */}
+                {/* Mini Agenda Sidebar */}
                 <AnimateIn delay={0.3} direction="left" className="space-y-6">
                     <Card className="rounded-2xl border-zinc-200/50 shadow-sm sticky top-6 overflow-hidden bg-white dark:bg-zinc-950">
                         <CardHeader className="border-b border-zinc-100 dark:border-zinc-800/80 pb-4 bg-zinc-50/50 dark:bg-zinc-900/20">
@@ -242,23 +318,18 @@ const StudentOverviewPage = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/80 max-h-[450px] overflow-y-auto">
+                                <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/80 max-h-112.5 overflow-y-auto">
                                     {agendaItems.map((item) => (
                                         <div key={item.id} className="p-4 sm:p-5 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors flex gap-4 items-start cursor-pointer group">
-
-                                            {/* Icon Indicator */}
                                             <div className={`mt-0.5 shrink-0 w-9 h-9 rounded-full flex items-center justify-center border ${item.type === 'quiz'
-                                                    ? 'bg-rose-50 border-rose-100 text-rose-500 dark:bg-rose-500/10 dark:border-rose-500/20'
-                                                    : 'bg-amber-50 border-amber-100 text-amber-500 dark:bg-amber-500/10 dark:border-amber-500/20'
+                                                ? 'bg-rose-50 border-rose-100 text-rose-500 dark:bg-rose-500/10 dark:border-rose-500/20'
+                                                : 'bg-amber-50 border-amber-100 text-amber-500 dark:bg-amber-500/10 dark:border-amber-500/20'
                                                 }`}>
                                                 {item.type === 'quiz' ? <AlertCircle className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
                                             </div>
-
-                                            {/* Details */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${item.type === 'quiz' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'
-                                                        }`}>
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${item.type === 'quiz' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                                         {item.type}
                                                     </span>
                                                 </div>
@@ -275,13 +346,6 @@ const StudentOverviewPage = () => {
                                 </div>
                             )}
                         </CardContent>
-                        {agendaItems.length > 0 && (
-                            <CardFooter className="p-3 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/20">
-                                <Button variant="ghost" className="w-full text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                                    View Full Calendar
-                                </Button>
-                            </CardFooter>
-                        )}
                     </Card>
                 </AnimateIn>
 

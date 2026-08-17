@@ -13,13 +13,18 @@ export const useStudentDashboard = () => {
 
 
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (sessionName: string, semesterName: string) => {
         startTransition(async () => {
             try {
-                const response = await repository.get(endpoint.student.dashboard.student)
-                setDashboardData(response.data as Dashboard)
+                const url = `${endpoint.student.dashboard.student}?session=${encodeURIComponent(sessionName)}&semester=${encodeURIComponent(semesterName)}`;
+
+                const response = await repository.get(url);
+
+                if (response.success) {
+                    setDashboardData(response.data as Dashboard);
+                }
             } catch (error) {
-                setError(error)
+                setError(error);
             }
         });
     };

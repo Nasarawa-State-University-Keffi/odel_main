@@ -72,10 +72,6 @@ export const useAcademicSetup = (academicType: 'semesters' | 'sessions' = "semes
         }
     };
 
-
-
-
-
     return {
         fetchSemester,
         fetchSession,

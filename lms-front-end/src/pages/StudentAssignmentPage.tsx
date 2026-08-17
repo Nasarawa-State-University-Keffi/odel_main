@@ -1,6 +1,6 @@
-// pages/StudentAssignmentsPage.tsx
 import { useEffect, useState } from "react";
 import { useStudentAssignment } from "@/service/useStudentAssignment";
+import { useAcademicSetup } from "@/service/useAcademicSetup";
 import { AnimateIn } from "@/components/ui/animate-in";
 import {
     BookOpen,
@@ -17,26 +17,50 @@ import {
 } from "lucide-react";
 import { AssignmentsSkeleton } from "@/components/student/AssignmentsSkeleton";
 import { useNavigate } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const StudentAssignmentsPage = () => {
     const { data, isLoading, error, currentPage, fetchAssignment } = useStudentAssignment();
+    const { fetchSemester, fetchSession, semester, session, isPending: isAcademicPending } = useAcademicSetup();
+
     const [searchTerm, setSearchTerm] = useState("");
-    const navigate = useNavigate()
+    const [selectedSession, setSelectedSession] = useState("");
+    const [selectedSemester, setSelectedSemester] = useState("");
+    const navigate = useNavigate();
 
     useEffect(() => {
-        fetchAssignment({ page: 1 });
-    }, [fetchAssignment]);
+        fetchSession();
+        fetchSemester();
+    }, [fetchSession]);
+
+    useEffect(() => {
+        fetchAssignment({
+            page: 1,
+            search: searchTerm,
+            session: selectedSession,
+            semester: selectedSemester
+        });
+    }, [selectedSession, selectedSemester]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        fetchAssignment({ page: 1, search: searchTerm });
+        fetchAssignment({
+            page: 1,
+            search: searchTerm,
+            session: selectedSession,
+            semester: selectedSemester
+        });
     };
 
     const handlePageChange = (newPage: number) => {
-        fetchAssignment({ page: newPage, search: searchTerm });
+        fetchAssignment({
+            page: newPage,
+            search: searchTerm,
+            session: selectedSession,
+            semester: selectedSemester
+        });
     };
 
-    // Calculate status indicator helper
     const getAssignmentStatus = (dueAt: string, closeAt: string) => {
         const now = new Date();
         const dueDate = new Date(dueAt);
@@ -52,16 +76,15 @@ export const StudentAssignmentsPage = () => {
     };
 
     const totalResults = data?.count || 0;
-    const pageSize = 10; 
+    const pageSize = 10;
     const totalPages = Math.ceil(totalResults / pageSize) || 1;
 
     return (
         <div className="min-h-screen w-full bg-slate-50/50 dark:bg-slate-950 px-4 py-8 sm:px-6 lg:px-8 transition-colors duration-200">
             <div className="mx-auto max-w-6xl space-y-6">
 
-                {/* PAGE HEADER */}
                 <AnimateIn direction="down" delay={0.1}>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <h1 className="font-heading text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
                                 Academic Assignments
@@ -71,21 +94,43 @@ export const StudentAssignmentsPage = () => {
                             </p>
                         </div>
 
-                        {/* SEARCH BAR */}
-                        <form onSubmit={handleSearch} className="relative w-full sm:w-72">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search assignment title..."
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pl-10 pr-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-sm"
-                            />
-                        </form>
+                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                            <Select value={selectedSession} onValueChange={(value: string | null) => setSelectedSession(value || "")}>
+                                <SelectTrigger className="w-full sm:w-40 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                    <SelectValue placeholder="Session" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {(session as any)?.results?.map((s: any) => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Select value={selectedSemester} onValueChange={(value: string | null) => setSelectedSemester(value || "")}>
+                                <SelectTrigger className="w-full sm:w-40 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                    <SelectValue placeholder="Semester" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {(semester as any)?.results?.map((s: any) => (
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <form onSubmit={handleSearch} className="relative w-full sm:w-64">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="Search title..."
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pl-10 pr-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-sm"
+                                />
+                            </form>
+                        </div>
                     </div>
                 </AnimateIn>
 
-                {/* ERROR STATE */}
                 {error && (
                     <div className="rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 p-4 text-red-600 dark:text-red-400 flex items-center justify-between">
                         <div className="flex items-center gap-3 text-sm font-medium">
@@ -93,7 +138,7 @@ export const StudentAssignmentsPage = () => {
                             <span>{error}</span>
                         </div>
                         <button
-                            onClick={() => fetchAssignment({ page: currentPage })}
+                            onClick={() => fetchAssignment({ page: currentPage, search: searchTerm, session: selectedSession, semester: selectedSemester })}
                             className="inline-flex items-center gap-1 text-xs font-bold underline hover:opacity-80"
                         >
                             <RotateCcw className="h-3.5 w-3.5" /> Retry
@@ -101,7 +146,6 @@ export const StudentAssignmentsPage = () => {
                     </div>
                 )}
 
-                {/* CONTENT AREA */}
                 {isLoading ? (
                     <AssignmentsSkeleton />
                 ) : data?.results && data.results.length > 0 ? (
@@ -119,7 +163,6 @@ export const StudentAssignmentsPage = () => {
                                 <AnimateIn key={assignment.id} direction="up" delay={0.05 * index}>
                                     <div className="group flex flex-col justify-between h-full rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md transition-all duration-200">
                                         <div className="space-y-4">
-                                            {/* Header Tags */}
                                             <div className="flex items-center justify-between gap-2">
                                                 <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">
                                                     <BookOpen className="h-3.5 w-3.5 text-emerald-500" />
@@ -131,7 +174,6 @@ export const StudentAssignmentsPage = () => {
                                                 </span>
                                             </div>
 
-                                            {/* Assignment Info */}
                                             <div>
                                                 <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                                                     {assignment.title}
@@ -145,7 +187,6 @@ export const StudentAssignmentsPage = () => {
                                             </div>
                                         </div>
 
-                                        {/* Metadata & Actions Footer */}
                                         <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-4">
                                             <div className="grid grid-cols-3 gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                                                 <div className="flex items-center gap-1.5">
@@ -164,7 +205,16 @@ export const StudentAssignmentsPage = () => {
                                                 </div>
                                             </div>
 
-                                            <button onClick={() => navigate("/student/assignments/" + assignment.id)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold transition-colors shadow-sm">
+                                            <button
+                                                onClick={() => {
+                                                    const queryParams = new URLSearchParams();
+                                                    if (selectedSession) queryParams.append("session", selectedSession);
+                                                    if (selectedSemester) queryParams.append("semester", selectedSemester);
+                                                    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+                                                    navigate(`/student/assignments/${assignment.id}${queryString}`);
+                                                }}
+                                                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-2.5 text-sm font-semibold transition-colors shadow-sm"
+                                            >
                                                 <FileText className="h-4 w-4" />
                                                 View Assignment
                                             </button>
@@ -175,7 +225,6 @@ export const StudentAssignmentsPage = () => {
                         })}
                     </div>
                 ) : (
-                    /* EMPTY STATE */
                     <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 py-16 px-4 text-center">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 mb-4">
                             <CheckCircle2 className="h-6 w-6" />
@@ -187,7 +236,6 @@ export const StudentAssignmentsPage = () => {
                     </div>
                 )}
 
-                {/* PAGINATION FOOTER */}
                 {totalResults > 0 && (
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-6 py-4 shadow-sm backdrop-blur-md text-xs font-medium text-slate-500 dark:text-slate-400">
                         <div>
@@ -219,7 +267,6 @@ export const StudentAssignmentsPage = () => {
                         </div>
                     </div>
                 )}
-
             </div>
         </div>
     );

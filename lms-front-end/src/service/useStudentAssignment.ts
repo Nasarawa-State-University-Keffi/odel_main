@@ -5,9 +5,11 @@ import type { PaginatedAssignments } from "@/types/assignment.types";
 import { PaginatedAssignmentsSchema } from "@/types/student.assignment.types";
 import { z } from "zod";
 
-interface FetchAssignmentsParams {
+export interface FetchAssignmentsParams {
     page?: number;
     search?: string;
+    session?: string;
+    semester?: string;
 }
 
 export const useStudentAssignment = () => {
@@ -18,8 +20,10 @@ export const useStudentAssignment = () => {
 
     const repository = new BaseRepository();
 
+
+
     const fetchAssignment = useCallback(async (params: FetchAssignmentsParams = {}) => {
-        const { page = 1, search = "" } = params;
+        const { page = 1, search = "", session = "", semester = "" } = params;
         setIsLoading(true);
         setError(null);
 
@@ -27,17 +31,14 @@ export const useStudentAssignment = () => {
             const queryParams = new URLSearchParams();
             if (page) queryParams.append("page", page.toString());
             if (search) queryParams.append("search", search);
+            if (session) queryParams.append("session", session);
+            if (semester) queryParams.append("semester", semester);
 
-            const queryString = queryParams.toString() ? `?${queryParams.toString()}&session=2024%2F2025&semester=First` : "?session=2024%2F2025&semester=First";
+            const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
             const url = `${endpoint.student.dashboard.assessment.assignment.base}${queryString}`;
-
             const response = await repository.get(url);
-
             const rawPayload = response?.data && typeof response.data === 'object' && "results" in response.data ? response.data : (response?.data ?? response);
-
-            const validatedData = PaginatedAssignmentsSchema.parse(rawPayload);
-
-            setData(validatedData as PaginatedAssignments);
+            setData(rawPayload as PaginatedAssignments);
             setCurrentPage(page);
         } catch (err: any) {
             console.error("Assignment Fetch Error:", err);

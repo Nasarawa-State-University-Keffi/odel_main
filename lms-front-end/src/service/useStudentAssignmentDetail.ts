@@ -4,6 +4,10 @@ import BaseRepository from "@/repository/base.repository";
 import { endpoint } from "@/utils/endpoint";
 import { AssignmentDetailSchema, type AssignmentDetail } from "@/types/student.assignment.types";
 import { z } from "zod";
+export interface FetchAssignmentDetailParams {
+    session?: string;
+    semester?: string;
+}
 
 export const useStudentAssignmentDetail = (id: string | undefined) => {
     const [data, setData] = useState<AssignmentDetail | null>(null);
@@ -11,25 +15,23 @@ export const useStudentAssignmentDetail = (id: string | undefined) => {
     const [error, setError] = useState<string | null>(null);
 
     const repository = new BaseRepository();
-
-    const fetchAssignmentDetail = useCallback(async () => {
+    const fetchAssignmentDetail = useCallback(async (params: FetchAssignmentDetailParams = {}) => {
         if (!id) return;
         setIsLoading(true);
         setError(null);
 
         try {
-            // Hardcoded compulsory parameters as requested
-            const sessionParam = encodeURIComponent("2024/2025");
-            const semesterParam = encodeURIComponent("First");
+            const queryParams = new URLSearchParams();
+            if (params.session) queryParams.append("session", params.session);
+            if (params.semester) queryParams.append("semester", params.semester);
 
-            const url = `${endpoint.student.dashboard.assessment.assignment.base}${id}/?session=${sessionParam}&semester=${semesterParam}`;
+            const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+            const url = `${endpoint.student.dashboard.assessment.assignment.base}${id}/${queryString}`;
 
             const response = await repository.get(url);
-            
-            // Safely unwrap data
+
             const rawPayload = response?.data && typeof response.data === 'object' && "id" in response.data ? response.data : (response?.data ?? response);
 
-            // Validate against Zod Schema
             const validatedData = AssignmentDetailSchema.parse(rawPayload);
             setData(validatedData as AssignmentDetail);
 

@@ -1,6 +1,5 @@
-// pages/StudentAssignmentDetailPage.tsx
 import { useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useStudentAssignmentDetail } from "@/service/useStudentAssignmentDetail";
 import { AnimateIn } from "@/components/ui/animate-in";
 import {
@@ -19,14 +18,17 @@ import { AssignmentDetailSkeleton } from "@/components/student/AssignmentDetailS
 
 export const StudentAssignmentDetailPage = () => {
     const { id } = useParams<{ id: string }>();
+    const [searchParams] = useSearchParams();
+    const session = searchParams.get("session") || "";
+    const semester = searchParams.get("semester") || "";
+
     const navigate = useNavigate();
     const { data: assignment, isLoading, error, fetchAssignmentDetail } = useStudentAssignmentDetail(id);
 
     useEffect(() => {
-        fetchAssignmentDetail();
-    }, [fetchAssignmentDetail]);
+        fetchAssignmentDetail({ session, semester });
+    }, [session, semester]);
 
-    // Format Date Helper
     const formatDate = (isoString: string) => {
         return new Date(isoString).toLocaleDateString(undefined, {
             weekday: 'long',
@@ -38,7 +40,6 @@ export const StudentAssignmentDetailPage = () => {
         });
     };
 
-    // Status Helper
     const getStatus = (dueAt: string, closeAt: string) => {
         const now = new Date();
         const dueDate = new Date(dueAt);
@@ -76,15 +77,14 @@ export const StudentAssignmentDetailPage = () => {
         <div className="min-h-screen w-full bg-slate-50/50 dark:bg-slate-950 px-4 py-8 sm:px-6 lg:px-8 transition-colors duration-200">
             <div className="mx-auto max-w-6xl space-y-6">
 
-                {/* HEADER / NAVIGATION */}
                 <AnimateIn direction="down" delay={0.1}>
-                    <button 
-                        onClick={() => navigate(-1)} 
+                    <button
+                        onClick={() => navigate(-1)}
                         className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors mb-4"
                     >
                         <ChevronLeft className="h-4 w-4" /> Back to Assignments
                     </button>
-                    
+
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
@@ -106,8 +106,7 @@ export const StudentAssignmentDetailPage = () => {
                 </AnimateIn>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
-                    
-                    {/* LEFT COLUMN: DESCRIPTION & FILES */}
+
                     <div className="lg:col-span-2 space-y-6">
                         <AnimateIn direction="up" delay={0.2}>
                             <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm">
@@ -120,7 +119,6 @@ export const StudentAssignmentDetailPage = () => {
                             </div>
                         </AnimateIn>
 
-                        {/* ATTACHED FILES */}
                         {assignment.content_files && assignment.content_files.length > 0 && (
                             <AnimateIn direction="up" delay={0.3}>
                                 <div className="space-y-3">
@@ -129,10 +127,10 @@ export const StudentAssignmentDetailPage = () => {
                                     </h3>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         {assignment.content_files.map((file) => (
-                                            <a 
-                                                key={file.id} 
-                                                href={file.url} 
-                                                target="_blank" 
+                                            <a
+                                                key={file.id}
+                                                href={file.url}
+                                                target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="group flex items-center justify-between p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-500/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10 transition-all shadow-sm"
                                             >
@@ -158,12 +156,10 @@ export const StudentAssignmentDetailPage = () => {
                         )}
                     </div>
 
-                    {/* RIGHT COLUMN: SIDEBAR METADATA */}
                     <div className="space-y-6">
                         <AnimateIn direction="left" delay={0.3}>
                             <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6">
-                                
-                                {/* Timeline */}
+
                                 <div className="space-y-4">
                                     <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
                                         Timeline
@@ -195,7 +191,6 @@ export const StudentAssignmentDetailPage = () => {
 
                                 <div className="h-px w-full bg-slate-100 dark:bg-slate-800" />
 
-                                {/* Grading & Rules */}
                                 <div className="space-y-4">
                                     <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
                                         Rules & Grading
@@ -221,10 +216,15 @@ export const StudentAssignmentDetailPage = () => {
                             </div>
                         </AnimateIn>
 
-                        {/* CTA ACTION */}
                         <AnimateIn direction="up" delay={0.4}>
-                            <button 
-                                onClick={() => navigate(`/student/assignments/${assignment.id}/submit`)}
+                            <button
+                                onClick={() => {
+                                    const queryParams = new URLSearchParams();
+                                    if (session) queryParams.append("session", session);
+                                    if (semester) queryParams.append("semester", semester);
+                                    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+                                    navigate(`/student/assignments/${assignment.id}/submit${queryString}`);
+                                }}
                                 disabled={status.closed}
                                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white py-4 font-bold text-sm transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:bg-slate-400 dark:disabled:bg-slate-700"
                             >
