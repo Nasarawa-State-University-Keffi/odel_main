@@ -68,5 +68,16 @@ try:
                 'scheme': 'bearer',
                 'bearerFormat': 'JWT',
             }
+
+    class PortalSessionAuthenticationScheme(OpenApiAuthenticationExtension):
+        target_class = 'portal_auth.authentication.PortalSessionAuthentication'
+        name = 'cookieAuth'
+
+        def get_security_definition(self, auto_schema):
+            return {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'sessionid',
+            }
 except ImportError:
     pass

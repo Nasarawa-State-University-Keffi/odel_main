@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .config import redact_sensitive_config
-from .models import EmailConfiguration, NotificationLog
+from .models import EmailConfiguration, NotificationLog, InAppNotification
 
 
 class EmailConfigurationSerializer(serializers.ModelSerializer):
@@ -61,6 +61,34 @@ class NotificationLogFilterSerializer(serializers.Serializer):
         if date_from and date_to and date_from > date_to:
             raise serializers.ValidationError('date_from must not be later than date_to.')
         return attrs
+
+
+class InAppNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InAppNotification
+        fields = [
+            'id',
+            'notification_type',
+            'title',
+            'message',
+            'assignment_id',
+            'course_id',
+            'action_url',
+            'is_read',
+            'read_at',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'notification_type', 'title', 'message', 'assignment_id', 'course_id', 'action_url', 'created_at', 'read_at']
+
+
+class UnreadCountResponseSerializer(serializers.Serializer):
+    unread_count = serializers.IntegerField(help_text="Number of unread in-app notifications.")
+
+
+class NotificationStatusResponseSerializer(serializers.Serializer):
+    status = serializers.CharField(help_text="Status message of the action executed.")
+
+
 
 
 class TestEmailSerializer(serializers.Serializer):
