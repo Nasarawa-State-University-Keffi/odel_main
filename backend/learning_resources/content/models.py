@@ -133,6 +133,13 @@ class LearningContent(models.Model):
         ('assignment', 'Assignment'),
     )
 
+    CONTENT_FORMAT_CHOICES = (
+        ('file', 'Uploaded file'),
+        ('text', 'Text'),
+        ('link', 'External link'),
+        ('youtube', 'YouTube video'),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     component = models.CharField(
@@ -145,6 +152,13 @@ class LearningContent(models.Model):
         max_length=20,
         choices=CONTENT_TYPE_CHOICES,
         db_index=True
+    )
+
+    content_format = models.CharField(
+        max_length=20,
+        choices=CONTENT_FORMAT_CHOICES,
+        default='file',
+        db_index=True,
     )
 
     course = models.ForeignKey(
@@ -170,6 +184,9 @@ class LearningContent(models.Model):
 
     title = models.CharField(max_length=512)
     description = models.TextField(blank=True)
+
+    text_content = models.TextField(blank=True)
+    external_url = models.URLField(max_length=2048, blank=True)
 
     # Storage info
     storage_path = models.CharField(max_length=512, db_index=True)
@@ -230,6 +247,9 @@ class LearningContent(models.Model):
         """
         Resolve public URL via storage backend router.
         """
+        if self.external_url:
+            return self.external_url
+
         from learning_resources.storage import get_storage_engine
         try:
             storage = get_storage_engine(self.storage_backend)
@@ -266,8 +286,9 @@ class LearningContent(models.Model):
         from learning_resources.storage import get_storage_engine
 
         try:
-            engine = get_storage_engine(self.storage_backend)
-            engine.delete(self.storage_path)
+            if self.storage_backend not in ('external', 'text'):
+                engine = get_storage_engine(self.storage_backend)
+                engine.delete(self.storage_path)
         except Exception:
             # You may log this exception for debugging.
             pass

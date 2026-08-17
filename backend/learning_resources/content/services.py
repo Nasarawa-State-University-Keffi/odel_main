@@ -85,6 +85,7 @@ def upload_learning_content(
             content = LearningContent.objects.create(
                 component='learning_content',
                 content_type=content_type,
+                content_format='file',
                 course=course,
                 module=module,
                 order=order,
@@ -141,6 +142,7 @@ def upload_youtube_video(
         return LearningContent.objects.create(
             component='learning_content',
             content_type='video',
+            content_format='youtube',
             course=course,
             module=module,
             order=order,
@@ -156,6 +158,41 @@ def upload_youtube_video(
 
     except Exception as e:
         raise StorageException(f"Failed to add YouTube video: {str(e)}")
+
+
+def create_unified_content(
+    *, content_format, course, user, content_type, title, description='',
+    module=None, order=0, is_published=True, file_obj=None, text_content='',
+    external_url='', storage_backend=None,
+):
+    """Create file, text, external-link, or YouTube content uniformly."""
+    if content_format == 'file':
+        return upload_learning_content(
+            file_obj=file_obj, course=course, content_type=content_type,
+            user=user, title=title, description=description,
+            storage_backend=storage_backend, module=module, order=order,
+            is_published=is_published,
+        )
+
+    if content_format == 'youtube':
+        return upload_youtube_video(
+            video_url=external_url, course=course, user=user, title=title,
+            description=description, module=module, order=order,
+            is_published=is_published,
+        )
+
+    if module and module.course_id != course.id:
+        raise ValueError("The selected module belongs to a different course.")
+
+    return LearningContent.objects.create(
+        component='learning_content', content_type=content_type,
+        content_format=content_format, course=course, module=module,
+        order=order, title=title, description=description,
+        text_content=text_content, external_url=external_url,
+        storage_path=external_url or '', original_filename=title,
+        storage_backend='external' if content_format == 'link' else 'text',
+        uploaded_by=user, is_published=is_published,
+    )
 
 
 # ==========================================================

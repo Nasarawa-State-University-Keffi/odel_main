@@ -47,10 +47,10 @@ class LearningContentSerializer(serializers.ModelSerializer):
         fields = [
             # identity
             'id', 'component', 'content_type', 'course_external_id', 'course_title',
-            'module', 'module_title', 'order',
+            'content_format', 'module', 'module_title', 'order',
 
             # metadata
-            'title', 'description', 'original_filename', 'file_size',
+            'title', 'description', 'text_content', 'external_url', 'original_filename', 'file_size',
             'mime_type', 'storage_backend', 'url', 'file_extension',
             'is_video', 'is_document',
 
@@ -194,6 +194,50 @@ class StudentCourseModuleSerializer(serializers.ModelSerializer):
             'course', 'module', 'uploaded_by'
         ).order_by('order', 'created_at')
         return LearningContentSerializer(contents, many=True).data
+
+
+class UnifiedLearningContentSerializer(serializers.Serializer):
+    """Create any supported learning-content format through one endpoint."""
+
+    course_id = serializers.CharField()
+    module_id = serializers.PrimaryKeyRelatedField(
+        source='module', queryset=CourseModule.objects.all(), required=False, allow_null=True
+    )
+    content_type = serializers.ChoiceField(choices=['note', 'video', 'resource', 'assignment'])
+    content_format = serializers.ChoiceField(
+        choices=['file', 'text', 'link', 'youtube'], default='file'
+    )
+    title = serializers.CharField(max_length=512)
+    description = serializers.CharField(required=False, allow_blank=True, default='')
+    text_content = serializers.CharField(required=False, allow_blank=True, default='')
+    url = serializers.URLField(required=False, allow_blank=True)
+    file = serializers.FileField(required=False)
+    order = serializers.IntegerField(required=False, min_value=0, default=0)
+    is_published = serializers.BooleanField(required=False, default=True)
+    storage_backend = serializers.ChoiceField(
+        choices=['local', 's3', 'cloudinary'], required=False, allow_blank=True
+    )
+
+    def validate_course_id(self, value):
+        if not resolve_course_identifier(value):
+            raise serializers.ValidationError('Course not found. Provide the course external ID or internal ID.')
+        return value
+
+    def validate(self, attrs):
+        course = resolve_course_identifier(attrs['course_id'])
+        module = attrs.get('module')
+        content_format = attrs.get('content_format')
+        if module and module.course_id != course.id:
+            raise serializers.ValidationError({'module_id': 'The selected module belongs to a different course.'})
+        if content_format == 'file' and not attrs.get('file'):
+            raise serializers.ValidationError({'file': 'This field is required for file content.'})
+        if content_format == 'text' and not attrs.get('text_content', '').strip():
+            raise serializers.ValidationError({'text_content': 'This field is required for text content.'})
+        if content_format in ('link', 'youtube') and not attrs.get('url'):
+            raise serializers.ValidationError({'url': 'This field is required for link or YouTube content.'})
+        if content_format == 'youtube' and not YouTubeVideoSerializer().validate_video_url(attrs['url']):
+            raise serializers.ValidationError({'url': 'Invalid YouTube URL or video ID.'})
+        return attrs
 
 
 # ===============================================
