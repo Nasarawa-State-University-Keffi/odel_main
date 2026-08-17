@@ -47,7 +47,7 @@ class LearningContentSerializer(serializers.ModelSerializer):
         fields = [
             # identity
             'id', 'component', 'course_external_id', 'course_title',
-            'content_format', 'module', 'module_title', 'order',
+            'module', 'module_title', 'order',
 
             # metadata
             'title', 'text_content', 'external_url', 'original_filename', 'file_size',
@@ -196,14 +196,11 @@ class StudentCourseModuleSerializer(serializers.ModelSerializer):
 
 
 class UnifiedLearningContentSerializer(serializers.Serializer):
-    """Create any supported learning-content format through one endpoint."""
+    """Create one lesson with any combination of text, file, and link content."""
 
     course_id = serializers.CharField()
     module_id = serializers.PrimaryKeyRelatedField(
         source='module', queryset=CourseModule.objects.all(), required=False, allow_null=True
-    )
-    content_format = serializers.ChoiceField(
-        choices=['file', 'text', 'link', 'youtube'], default='file'
     )
     title = serializers.CharField(max_length=512)
     text_content = serializers.CharField(required=False, allow_blank=True, default='')
@@ -223,16 +220,11 @@ class UnifiedLearningContentSerializer(serializers.Serializer):
     def validate(self, attrs):
         course = resolve_course_identifier(attrs['course_id'])
         module = attrs.get('module')
-        content_format = attrs.get('content_format')
         if module and module.course_id != course.id:
             raise serializers.ValidationError({'module_id': 'The selected module belongs to a different course.'})
-        if content_format == 'file' and not attrs.get('file'):
-            raise serializers.ValidationError({'file': 'This field is required for file content.'})
-        if content_format == 'text' and not attrs.get('text_content', '').strip():
-            raise serializers.ValidationError({'text_content': 'This field is required for text content.'})
-        if content_format in ('link', 'youtube') and not attrs.get('url'):
-            raise serializers.ValidationError({'url': 'This field is required for link or YouTube content.'})
-        if content_format == 'youtube':
+        if not attrs.get('file') and not attrs.get('url') and not attrs.get('text_content', '').strip():
+            raise serializers.ValidationError('Provide at least one of file, url, or text_content.')
+        if attrs.get('url') and ('youtube.com' in attrs['url'] or 'youtu.be' in attrs['url']):
             YouTubeVideoSerializer().validate_video_url(attrs['url'])
         return attrs
 
@@ -250,12 +242,7 @@ class LearningContentUploadSerializer(serializers.Serializer):
     
     file = serializers.FileField(required=True)
     course_id = serializers.CharField(required=True, help_text="Course external_id (e.g., 'CS101') or UUID")
-    content_type = serializers.ChoiceField(
-        choices=['note', 'video', 'resource', 'assignment'],
-        required=True
-    )
     title = serializers.CharField(max_length=512, required=False, allow_blank=True)
-    description = serializers.CharField(required=False, allow_blank=True)
     module_id = serializers.PrimaryKeyRelatedField(
         source='module',
         queryset=CourseModule.objects.all(),
@@ -287,9 +274,6 @@ class LearningContentUploadSerializer(serializers.Serializer):
         e.g., forcing YouTube uploads to use YouTube serializer.
         """
 
-        backend = attrs.get("storage_backend")
-        file: serializers.FileField = attrs.get("file")
-
         course = resolve_course_identifier(attrs.get('course_id'))
         module = attrs.get('module')
         if module and course and module.course_id != course.id:
@@ -298,17 +282,6 @@ class LearningContentUploadSerializer(serializers.Serializer):
             })
 
         # If backend is not specified, allow default logic
-        if not backend:
-            return attrs
-
-        # Validate video constraints
-        if attrs["content_type"] == "video" and backend != "youtube":
-            # Allow local/S3/Cloudinary video if file is actually uploaded
-            if file is None:
-                raise serializers.ValidationError(
-                    "Uploading a video without a file requires using YouTube backend."
-                )
-
         return attrs
 
 
@@ -325,7 +298,6 @@ class YouTubeVideoSerializer(serializers.Serializer):
     video_url = serializers.CharField(max_length=512, required=True)
     course_id = serializers.CharField(required=True, help_text="Course external_id (e.g., 'CS101') or UUID")
     title = serializers.CharField(max_length=512, required=True)
-    description = serializers.CharField(required=False, allow_blank=True)
     module_id = serializers.PrimaryKeyRelatedField(
         source='module',
         queryset=CourseModule.objects.all(),
@@ -430,6 +402,5 @@ class ContentStatisticsSerializer(serializers.Serializer):
     
     total_contents = serializers.IntegerField()
     total_size = serializers.IntegerField()
-    by_type = serializers.DictField()
     by_backend = serializers.DictField()
     most_downloaded = serializers.ListField()

@@ -123,7 +123,6 @@ class LearningContentAdmin(admin.ModelAdmin):
     
     list_display = [
         'title',
-        'content_type',
         'module',
         'order',
         'course_link',
@@ -136,7 +135,6 @@ class LearningContentAdmin(admin.ModelAdmin):
     ]
     
     list_filter = [
-        'content_type',
         'module',
         'storage_backend',
         'is_published',
@@ -145,7 +143,7 @@ class LearningContentAdmin(admin.ModelAdmin):
     
     search_fields = [
         'title',
-        'description',
+        'text_content',
         'original_filename',
         'course__course_title'
     ]
@@ -166,8 +164,7 @@ class LearningContentAdmin(admin.ModelAdmin):
         ('Content Information', {
             'fields': (
                 'title',
-                'description',
-                'content_type',
+                'text_content',
                 'course',
                 'module',
                 'order',

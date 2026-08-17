@@ -126,14 +126,8 @@ class LearningContent(models.Model):
     Stores metadata; the actual file lives in the storage backend.
     """
 
-    CONTENT_TYPE_CHOICES = (
-        ('note', 'Lecture Note'),
-        ('video', 'Video Lecture'),
-        ('resource', 'Resource'),
-        ('assignment', 'Assignment'),
-    )
-
     CONTENT_FORMAT_CHOICES = (
+        ('mixed', 'Lesson content'),
         ('file', 'Uploaded file'),
         ('text', 'Text'),
         ('link', 'External link'),
@@ -146,12 +140,6 @@ class LearningContent(models.Model):
         max_length=100,
         default='learning_content',
         help_text='Component name (similar to Moodle components).'
-    )
-
-    content_type = models.CharField(
-        max_length=20,
-        choices=CONTENT_TYPE_CHOICES,
-        db_index=True
     )
 
     content_format = models.CharField(
@@ -183,8 +171,6 @@ class LearningContent(models.Model):
     )
 
     title = models.CharField(max_length=512)
-    description = models.TextField(blank=True)
-
     text_content = models.TextField(blank=True)
     external_url = models.URLField(max_length=2048, blank=True)
 
@@ -223,9 +209,7 @@ class LearningContent(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['course', 'content_type']),
             models.Index(fields=['content_hash']),
-            models.Index(fields=['course', 'content_type', 'is_published']),
             models.Index(
                 fields=['module', 'order'],
                 name='content_lea_module_order_idx'
@@ -233,7 +217,7 @@ class LearningContent(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.title} ({self.get_content_type_display()})"
+        return self.title
 
     def clean(self):
         if self.module_id and self.module.course_id != self.course_id:
@@ -245,9 +229,9 @@ class LearningContent(models.Model):
     @property
     def url(self):
         """
-        Resolve public URL via storage backend router.
+        Resolve the uploaded file URL. External links are returned separately.
         """
-        if self.external_url:
+        if self.storage_backend in ('external', 'text'):
             return self.external_url
 
         from learning_resources.storage import get_storage_engine
@@ -266,7 +250,7 @@ class LearningContent(models.Model):
 
     @property
     def is_video(self):
-        return self.content_type == 'video' or self.storage_backend == 'youtube'
+        return self.storage_backend == 'youtube' or self.mime_type.startswith('video/')
 
     @property
     def is_document(self):

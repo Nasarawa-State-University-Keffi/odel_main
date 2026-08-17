@@ -139,10 +139,6 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
             course = resolve_course_identifier(course_id)
             queryset = queryset.filter(course=course) if course else queryset.none()
         
-        content_type = self.request.query_params.get('content_type')
-        if content_type:
-            queryset = queryset.filter(content_type=content_type)
-
         module_id = self.request.query_params.get('module_id')
         if module_id:
             queryset = queryset.filter(module_id=module_id)
@@ -151,7 +147,7 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
         if search:
             queryset = queryset.filter(
                 Q(title__icontains=search) |
-                Q(description__icontains=search) |
+                Q(text_content__icontains=search) |
                 Q(original_filename__icontains=search)
             )
         
@@ -166,7 +162,7 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
         data = serializer.validated_data
         course = resolve_course_identifier(data['course_id'])
         content = create_unified_content(
-            content_format=data['content_format'], course=course, user=request.user,
+            course=course, user=request.user,
             title=data['title'],
             module=data.get('module'),
             order=data.get('order', 0), is_published=data.get('is_published', True),
@@ -251,10 +247,8 @@ class LearningContentUploadAPIView(views.APIView):
             content = upload_learning_content(
                 file_obj=serializer.validated_data['file'],
                 course=course,
-                content_type=serializer.validated_data['content_type'],
                 user=request.user,
                 title=serializer.validated_data.get('title'),
-                description=serializer.validated_data.get('description', ''),
                 storage_backend=serializer.validated_data.get('storage_backend'),
                 module=serializer.validated_data.get('module'),
                 order=serializer.validated_data.get('order', 0),
@@ -303,7 +297,6 @@ class YouTubeVideoAddAPIView(views.APIView):
                 course=course,
                 user=request.user,
                 title=serializer.validated_data['title'],
-                description=serializer.validated_data.get('description', ''),
                 module=serializer.validated_data.get('module'),
                 order=serializer.validated_data.get('order', 0),
                 is_published=serializer.validated_data.get('is_published', True),
@@ -400,11 +393,6 @@ class LearningContentStatsAPIView(views.APIView):
         stats = {
             'total_contents': queryset.count(),
             'total_size': queryset.aggregate(total=Sum('file_size'))['total'] or 0,
-            'by_type': dict(
-                queryset.values('content_type')
-                .annotate(count=Count('id'))
-                .values_list('content_type', 'count')
-            ),
             'by_backend': dict(
                 queryset.values('storage_backend')
                 .annotate(count=Count('id'))

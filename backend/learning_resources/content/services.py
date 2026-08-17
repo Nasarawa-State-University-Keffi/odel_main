@@ -25,10 +25,8 @@ from courses.models import CourseCache
 def upload_learning_content(
     file_obj: UploadedFile,
     course: CourseCache,
-    content_type: str,
     user: PortalUser,
     title: Optional[str] = None,
-    description: str = '',
     storage_backend: Optional[str] = None,
     module: Optional[CourseModule] = None,
     order: int = 0,
@@ -39,11 +37,6 @@ def upload_learning_content(
     Upload learning content (Moodle-style).
     Fixed version: deduplication handled at storage level ONLY.
     """
-
-    # Validate content type
-    valid_types = ['note', 'video', 'resource', 'assignment']
-    if content_type not in valid_types:
-        raise ValueError(f"Invalid content_type. Must be one of: {', '.join(valid_types)}")
 
     if module and module.course_id != course.id:
         raise ValueError("The selected module belongs to a different course.")
@@ -64,7 +57,7 @@ def upload_learning_content(
     # Generate persistent path
     storage_path = _generate_storage_path(
         course_id=str(course.id),
-        content_type=content_type,
+        content_type='content',
         filename=file_obj.name
     )
 
@@ -85,13 +78,11 @@ def upload_learning_content(
         with transaction.atomic():
             content = LearningContent.objects.create(
                 component='learning_content',
-                content_type=content_type,
                 content_format='file',
                 course=course,
                 module=module,
                 order=order,
                 title=title,
-                description=description,
                 text_content=text_content,
                 storage_path=stored_path,
                 original_filename=file_obj.name,
@@ -124,7 +115,6 @@ def upload_youtube_video(
     course: CourseCache,
     user: PortalUser,
     title: str,
-    description: str = '',
     module: Optional[CourseModule] = None,
     order: int = 0,
     is_published: bool = True,
@@ -144,13 +134,11 @@ def upload_youtube_video(
 
         return LearningContent.objects.create(
             component='learning_content',
-            content_type='video',
             content_format='youtube',
             course=course,
             module=module,
             order=order,
             title=title,
-            description=description,
             text_content=text_content,
             storage_path=video_id,
             original_filename=f"{video_id}.mp4",
@@ -165,44 +153,35 @@ def upload_youtube_video(
 
 
 def create_unified_content(
-    *, content_format, course, user, title, content_type=None,
+    *, content_format=None, course, user, title,
     module=None, order=0, is_published=True, file_obj=None, text_content='',
     external_url='', storage_backend=None,
 ):
-    """Create file, text, external-link, or YouTube content uniformly."""
-    content_type = content_type or {
-        'text': 'note',
-        'youtube': 'video',
-        'link': 'resource',
-        'file': 'resource',
-    }[content_format]
-
-    if content_format == 'file':
-        return upload_learning_content(
-            file_obj=file_obj, course=course, content_type=content_type,
-            user=user, title=title, description='',
+    """Create one lesson with any combination of file, text, and link data."""
+    if file_obj:
+        content = upload_learning_content(
+            file_obj=file_obj, course=course,
+            user=user, title=title,
             text_content=text_content,
             storage_backend=storage_backend, module=module, order=order,
             is_published=is_published,
         )
-
-    if content_format == 'youtube':
-        return upload_youtube_video(
-            video_url=external_url, course=course, user=user, title=title,
-            description='', module=module, order=order,
-            is_published=is_published, text_content=text_content,
-        )
+        content.text_content = text_content
+        content.external_url = external_url
+        content.content_format = 'mixed'
+        content.save(update_fields=['text_content', 'external_url', 'content_format'])
+        return content
 
     if module and module.course_id != course.id:
         raise ValueError("The selected module belongs to a different course.")
 
     return LearningContent.objects.create(
-        component='learning_content', content_type=content_type,
-        content_format=content_format, course=course, module=module,
-        order=order, title=title, description='',
+        component='learning_content',
+        content_format='mixed', course=course, module=module,
+        order=order, title=title,
         text_content=text_content, external_url=external_url,
         storage_path=external_url or '', original_filename=title,
-        storage_backend='external' if content_format == 'link' else 'text',
+        storage_backend='external' if external_url else 'text',
         uploaded_by=user, is_published=is_published,
     )
 
@@ -227,7 +206,6 @@ def delete_learning_content(content_id: uuid.UUID) -> bool:
 
 def get_course_contents(
     course: CourseCache,
-    content_type: Optional[str] = None,
     published_only: bool = True
 ):
     """
@@ -235,9 +213,6 @@ def get_course_contents(
     """
 
     qs = LearningContent.objects.filter(course=course)
-
-    if content_type:
-        qs = qs.filter(content_type=content_type)
 
     if published_only:
         qs = qs.filter(is_published=True)
