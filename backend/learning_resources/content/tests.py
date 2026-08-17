@@ -5,16 +5,18 @@ Tests file upload, YouTube video addition, storage backends, and error handling.
 
 import io
 import os
+from datetime import timedelta
 from unittest.mock import patch, MagicMock, Mock
 from django.apps import apps
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from portal_auth.models import PortalUser
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
-from courses.models import CourseCache
-from .models import LearningContent, StorageSettings, ContentAccessLog
+from courses.models import CourseCache, StudentRegisteredCourse
+from .models import CourseModule, LearningContent, StorageSettings, ContentAccessLog
 from .services import upload_learning_content, upload_youtube_video, delete_learning_content
 from learning_resources.storage.base import StorageException
 
@@ -27,13 +29,204 @@ class ContentAppConfigurationTests(TestCase):
         self.assertEqual(app_config.label, 'content')
 
 
+class CourseModuleAPITestCase(APITestCase):
+    def setUp(self):
+        self.staff = PortalUser.objects.create(
+            external_id='module-staff',
+            full_name='Module Staff',
+            is_staff=True,
+            roles=['STAFF'],
+        )
+        self.student = PortalUser.objects.create(
+            external_id='module-student',
+            full_name='Module Student',
+            roles=['STUDENT'],
+        )
+        self.outsider = PortalUser.objects.create(
+            external_id='module-outsider',
+            full_name='Module Outsider',
+            roles=['STUDENT'],
+        )
+        self.course = CourseCache.objects.create(
+            course_external_id=501,
+            course_title='Module-Based Course',
+            course_code='MOD501',
+        )
+        self.other_course = CourseCache.objects.create(
+            course_external_id=502,
+            course_title='Other Course',
+            course_code='MOD502',
+        )
+        StudentRegisteredCourse.objects.create(
+            student_external=self.student,
+            course=self.course,
+            session='2025/2026',
+            semester='First',
+        )
+
+    def test_staff_can_create_and_update_module(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.post('/api/content/modules/', {
+            'course_id': self.course.course_external_id,
+            'title': 'Module 1: Foundations',
+            'description': 'Start here',
+            'order': 1,
+            'is_published': False,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['course_external_id'], 501)
+        self.assertEqual(response.data['content_count'], 0)
+
+        module = CourseModule.objects.get(pk=response.data['id'])
+        self.assertEqual(module.created_by, self.staff)
+
+        update_response = self.client.patch(
+            f'/api/content/modules/{module.id}/',
+            {'is_published': True, 'order': 2},
+            format='json',
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(update_response.data['is_published'])
+        self.assertEqual(update_response.data['order'], 2)
+
+        move_response = self.client.patch(
+            f'/api/content/modules/{module.id}/',
+            {'course_id': self.other_course.course_external_id},
+            format='json',
+        )
+        self.assertEqual(move_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch('learning_resources.content.services.get_storage_engine')
+    def test_staff_can_upload_content_into_module(self, get_storage_engine):
+        storage = MagicMock()
+        storage.save.return_value = 'courses/501/note/foundations.pdf'
+        get_storage_engine.return_value = storage
+        module = CourseModule.objects.create(
+            course=self.course,
+            title='Foundations',
+            order=1,
+            created_by=self.staff,
+        )
+
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.post('/api/content/upload/', {
+            'file': SimpleUploadedFile('foundations.pdf', b'content'),
+            'course_id': self.course.course_external_id,
+            'module_id': str(module.id),
+            'content_type': 'note',
+            'title': 'Foundations Note',
+            'order': 2,
+            'is_published': True,
+        }, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data['module']), str(module.id))
+        self.assertEqual(response.data['module_title'], 'Foundations')
+        self.assertEqual(response.data['order'], 2)
+
+    def test_non_staff_cannot_manage_modules(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post('/api/content/modules/', {
+            'course_id': self.course.course_external_id,
+            'title': 'Not Allowed',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_student_receives_only_available_modules_and_published_content(self):
+        available_module = CourseModule.objects.create(
+            course=self.course,
+            title='Available Module',
+            order=1,
+            is_published=True,
+            available_from=timezone.now() - timedelta(days=1),
+            created_by=self.staff,
+        )
+        CourseModule.objects.create(
+            course=self.course,
+            title='Draft Module',
+            order=2,
+            is_published=False,
+            created_by=self.staff,
+        )
+        CourseModule.objects.create(
+            course=self.course,
+            title='Future Module',
+            order=3,
+            is_published=True,
+            available_from=timezone.now() + timedelta(days=1),
+            created_by=self.staff,
+        )
+        LearningContent.objects.create(
+            course=self.course,
+            module=available_module,
+            order=2,
+            content_type='note',
+            title='Visible Note',
+            storage_path='courses/501/note/visible.pdf',
+            original_filename='visible.pdf',
+            storage_backend='local',
+            uploaded_by=self.staff,
+            is_published=True,
+        )
+        LearningContent.objects.create(
+            course=self.course,
+            module=available_module,
+            order=1,
+            content_type='resource',
+            title='Hidden Resource',
+            storage_path='courses/501/resource/hidden.pdf',
+            original_filename='hidden.pdf',
+            storage_backend='local',
+            uploaded_by=self.staff,
+            is_published=False,
+        )
+
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(
+            f'/api/content/course/{self.course.course_external_id}/modules/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['title'], 'Available Module')
+        self.assertEqual(len(response.data['results'][0]['contents']), 1)
+        self.assertEqual(
+            response.data['results'][0]['contents'][0]['title'],
+            'Visible Note',
+        )
+
+    def test_unenrolled_student_cannot_consume_course_modules(self):
+        self.client.force_authenticate(user=self.outsider)
+        response = self.client.get(
+            f'/api/content/course/{self.course.course_external_id}/modules/'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_upload_rejects_module_from_another_course(self):
+        module = CourseModule.objects.create(
+            course=self.other_course,
+            title='Other Module',
+            order=1,
+            created_by=self.staff,
+        )
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.post('/api/content/upload/', {
+            'file': SimpleUploadedFile('note.pdf', b'note'),
+            'course_id': self.course.course_external_id,
+            'module_id': str(module.id),
+            'content_type': 'note',
+        }, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
 class ContentUploadAPITestCase(APITestCase):
     """Test cases for content upload API endpoints."""
 
     def setUp(self):
         """Set up test data."""
         # Create test user
-        self.user = PortalUser.objects.create(external_id='testuser', full_name='Test User')
+        self.user = PortalUser.objects.create(external_id='testuser', full_name='Test User', is_staff=True)
         self.admin_user = PortalUser.objects.create(external_id='admin', full_name='Admin User', is_staff=True)
 
         # Create test course
@@ -211,7 +404,7 @@ class YouTubeVideoAPITestCase(APITestCase):
 
     def setUp(self):
         """Set up test data."""
-        self.user = PortalUser.objects.create(external_id='testuser', full_name='Test User')
+        self.user = PortalUser.objects.create(external_id='testuser', full_name='Test User', is_staff=True)
         self.course = CourseCache.objects.create(
             course_external_id=101,
             course_title='Test Course',
@@ -543,7 +736,7 @@ class ErrorHandlingTestCase(APITestCase):
 
     def setUp(self):
         """Set up test data."""
-        self.user = PortalUser.objects.create(external_id='testuser', full_name='Test User')
+        self.user = PortalUser.objects.create(external_id='testuser', full_name='Test User', is_staff=True)
         self.course = CourseCache.objects.create(
             course_external_id=101,
             course_title='Test Course',

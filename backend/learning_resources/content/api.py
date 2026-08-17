@@ -6,23 +6,29 @@ Provides RESTful endpoints for uploading, listing, and managing content.
 from rest_framework import viewsets, status, generics, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, SAFE_METHODS
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
-from .models import LearningContent, StorageSettings, ContentAccessLog
+from .models import CourseModule, LearningContent, StorageSettings, ContentAccessLog
 from .serializers import (
+    CourseModuleSerializer,
+    CourseModuleDetailSerializer,
+    StudentCourseModuleSerializer,
     LearningContentSerializer,
     LearningContentUploadSerializer,
     YouTubeVideoSerializer,
     StorageSettingsSerializer,
     ContentAccessLogSerializer,
-    ContentStatisticsSerializer
+    ContentStatisticsSerializer,
+    resolve_course_identifier,
 )
 from .services import (
     upload_learning_content,
@@ -31,7 +37,78 @@ from .services import (
     get_course_contents,
     log_content_access
 )
-from courses.models import CourseCache
+from courses.models import CourseCache, StudentRegisteredCourse
+from portal_auth.permissions import IsPortalStaff
+
+
+@extend_schema(tags=['Staff - Course Modules'])
+class CourseModuleListCreateAPIView(generics.ListCreateAPIView):
+    """List or create ordered learning modules."""
+
+    serializer_class = CourseModuleSerializer
+    permission_classes = [IsAuthenticated, IsPortalStaff]
+
+    def get_queryset(self):
+        queryset = CourseModule.objects.select_related(
+            'course', 'created_by'
+        ).prefetch_related('contents')
+        course_id = self.request.query_params.get('course_id')
+        if course_id:
+            course = resolve_course_identifier(course_id)
+            if not course:
+                return queryset.none()
+            queryset = queryset.filter(course=course)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+@extend_schema(tags=['Staff - Course Modules'])
+class CourseModuleDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete one learning module."""
+
+    serializer_class = CourseModuleDetailSerializer
+    permission_classes = [IsAuthenticated, IsPortalStaff]
+    queryset = CourseModule.objects.select_related(
+        'course', 'created_by'
+    ).prefetch_related('contents__uploaded_by')
+
+
+@extend_schema(tags=['Student - Content'])
+class StudentCourseModulesAPIView(generics.ListAPIView):
+    """Return the available module/content structure for an enrolled student."""
+
+    serializer_class = StudentCourseModuleSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        course = resolve_course_identifier(self.kwargs.get('course_id'))
+        if not course:
+            raise NotFound('Course not found.')
+
+        if not self.request.user.is_staff:
+            is_enrolled = StudentRegisteredCourse.objects.filter(
+                student_external=self.request.user,
+                course=course,
+            ).exists()
+            if not is_enrolled:
+                raise PermissionDenied('You are not enrolled in this course.')
+
+        queryset = CourseModule.objects.filter(course=course).select_related(
+            'course', 'created_by'
+        ).prefetch_related('contents__uploaded_by')
+
+        if not self.request.user.is_staff:
+            now = timezone.now()
+            queryset = queryset.filter(
+                is_published=True,
+            ).filter(
+                Q(available_from__isnull=True) | Q(available_from__lte=now),
+                Q(available_until__isnull=True) | Q(available_until__gte=now),
+            )
+
+        return queryset.order_by('order', 'created_at')
 
 
 @extend_schema(tags=['Global - Content'])
@@ -47,11 +124,16 @@ class LearningContentListAPIView(generics.ListAPIView):
         
         course_id = self.request.query_params.get('course_id')
         if course_id:
-            queryset = queryset.filter(course_id=course_id)
+            course = resolve_course_identifier(course_id)
+            queryset = queryset.filter(course=course) if course else queryset.none()
         
         content_type = self.request.query_params.get('content_type')
         if content_type:
             queryset = queryset.filter(content_type=content_type)
+
+        module_id = self.request.query_params.get('module_id')
+        if module_id:
+            queryset = queryset.filter(module_id=module_id)
         
         search = self.request.query_params.get('search')
         if search:
@@ -64,7 +146,7 @@ class LearningContentListAPIView(generics.ListAPIView):
         if not self.request.user.is_staff:
             queryset = queryset.filter(is_published=True)
         
-        return queryset.select_related('course', 'uploaded_by')
+        return queryset.select_related('course', 'module', 'uploaded_by')
 
 
 @extend_schema(tags=['Student - Content'])
@@ -81,34 +163,32 @@ class CourseContentAPIView(generics.ListAPIView):
         description="Filter content for a specific course using course ID or external ID."
     )
     def get_queryset(self):
-        course_id = self.kwargs.get('course_id')
-        
-        # Resolve course first
-        course = CourseCache.objects.filter(course_external_id=course_id).first()
+        course = resolve_course_identifier(self.kwargs.get('course_id'))
         if not course:
-            try:
-                import uuid
-                uuid_value = uuid.UUID(course_id)
-                course = get_object_or_404(CourseCache, id=uuid_value)
-            except (ValueError, AttributeError):
-                return LearningContent.objects.none()
+            return LearningContent.objects.none()
 
         queryset = LearningContent.objects.filter(course=course)
         
         if not self.request.user.is_staff:
             queryset = queryset.filter(is_published=True)
             
-        return queryset.select_related('course', 'uploaded_by')
+        return queryset.select_related('course', 'module', 'uploaded_by')
 
 
 @extend_schema(tags=['Global - Content'])
-class LearningContentDetailAPIView(generics.RetrieveDestroyAPIView):
+class LearningContentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     """
     Retrieve or delete specific learning content.
     """
-    queryset = LearningContent.objects.all()
+    queryset = LearningContent.objects.select_related('course', 'module', 'uploaded_by')
     serializer_class = LearningContentSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        permission_classes = [IsAuthenticated]
+        if self.request.method not in SAFE_METHODS:
+            permission_classes.append(IsPortalStaff)
+        return [permission() for permission in permission_classes]
 
     def perform_destroy(self, instance):
         delete_learning_content(instance.id)
@@ -119,7 +199,7 @@ class LearningContentUploadAPIView(views.APIView):
     """
     Upload learning content file.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPortalStaff]
     parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
@@ -133,19 +213,13 @@ class LearningContentUploadAPIView(views.APIView):
         serializer.is_valid(raise_exception=True)
         
         try:
-            # Get course by external_id or UUID
             course_id = serializer.validated_data['course_id']
-            course = CourseCache.objects.filter(course_external_id=course_id).first()
+            course = resolve_course_identifier(course_id)
             if not course:
-                try:
-                    import uuid
-                    uuid_value = uuid.UUID(course_id)
-                    course = get_object_or_404(CourseCache, id=uuid_value)
-                except (ValueError, AttributeError):
-                    return Response(
-                        {'status': 'error', 'detail': 'Course not found'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
+                return Response(
+                    {'status': 'error', 'detail': 'Course not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
             
             content = upload_learning_content(
                 file_obj=serializer.validated_data['file'],
@@ -154,7 +228,10 @@ class LearningContentUploadAPIView(views.APIView):
                 user=request.user,
                 title=serializer.validated_data.get('title'),
                 description=serializer.validated_data.get('description', ''),
-                storage_backend=serializer.validated_data.get('storage_backend')
+                storage_backend=serializer.validated_data.get('storage_backend'),
+                module=serializer.validated_data.get('module'),
+                order=serializer.validated_data.get('order', 0),
+                is_published=serializer.validated_data.get('is_published', True),
             )
             
             return Response(
@@ -173,7 +250,7 @@ class YouTubeVideoAddAPIView(views.APIView):
     """
     Add YouTube video reference.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPortalStaff]
 
     @extend_schema(
         summary="Add YouTube video reference",
@@ -186,26 +263,23 @@ class YouTubeVideoAddAPIView(views.APIView):
         serializer.is_valid(raise_exception=True)
         
         try:
-            # Get course by external_id or UUID
             course_id = serializer.validated_data['course_id']
-            course = CourseCache.objects.filter(course_external_id=course_id).first()
+            course = resolve_course_identifier(course_id)
             if not course:
-                try:
-                    import uuid
-                    uuid_value = uuid.UUID(course_id)
-                    course = get_object_or_404(CourseCache, id=uuid_value)
-                except (ValueError, AttributeError):
-                    return Response(
-                        {'status': 'error', 'detail': 'Course not found'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
+                return Response(
+                    {'status': 'error', 'detail': 'Course not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
             
             content = upload_youtube_video(
                 video_url=serializer.validated_data['video_url'],
                 course=course,
                 user=request.user,
                 title=serializer.validated_data['title'],
-                description=serializer.validated_data.get('description', '')
+                description=serializer.validated_data.get('description', ''),
+                module=serializer.validated_data.get('module'),
+                order=serializer.validated_data.get('order', 0),
+                is_published=serializer.validated_data.get('is_published', True),
             )
             
             return Response(
@@ -293,7 +367,8 @@ class LearningContentStatsAPIView(views.APIView):
             
         course_id = request.query_params.get('course_id')
         if course_id:
-            queryset = queryset.filter(course_id=course_id)
+            course = resolve_course_identifier(course_id)
+            queryset = queryset.filter(course=course) if course else queryset.none()
         
         stats = {
             'total_contents': queryset.count(),

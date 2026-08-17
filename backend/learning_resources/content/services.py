@@ -14,7 +14,7 @@ from django.db import transaction
 from portal_auth.models import PortalUser
 from learning_resources.storage import get_storage_engine
 from learning_resources.storage.base import StorageException
-from .models import LearningContent, ContentAccessLog, StorageSettings
+from .models import CourseModule, LearningContent, ContentAccessLog, StorageSettings
 from courses.models import CourseCache
 
 
@@ -29,7 +29,10 @@ def upload_learning_content(
     user: PortalUser,
     title: Optional[str] = None,
     description: str = '',
-    storage_backend: Optional[str] = None
+    storage_backend: Optional[str] = None,
+    module: Optional[CourseModule] = None,
+    order: int = 0,
+    is_published: bool = True,
 ) -> LearningContent:
     """
     Upload learning content (Moodle-style).
@@ -40,6 +43,9 @@ def upload_learning_content(
     valid_types = ['note', 'video', 'resource', 'assignment']
     if content_type not in valid_types:
         raise ValueError(f"Invalid content_type. Must be one of: {', '.join(valid_types)}")
+
+    if module and module.course_id != course.id:
+        raise ValueError("The selected module belongs to a different course.")
 
     # Use original filename as title if none provided
     if not title:
@@ -80,6 +86,8 @@ def upload_learning_content(
                 component='learning_content',
                 content_type=content_type,
                 course=course,
+                module=module,
+                order=order,
                 title=title,
                 description=description,
                 storage_path=stored_path,
@@ -89,7 +97,7 @@ def upload_learning_content(
                 storage_backend=storage_backend,
                 content_hash=content_hash,
                 uploaded_by=user,
-                is_published=True,
+                is_published=is_published,
             )
 
         return content
@@ -113,11 +121,17 @@ def upload_youtube_video(
     course: CourseCache,
     user: PortalUser,
     title: str,
-    description: str = ''
+    description: str = '',
+    module: Optional[CourseModule] = None,
+    order: int = 0,
+    is_published: bool = True,
 ) -> LearningContent:
     """
     Register YouTube video as content.
     """
+
+    if module and module.course_id != course.id:
+        raise ValueError("The selected module belongs to a different course.")
 
     storage = get_storage_engine("youtube")
 
@@ -128,6 +142,8 @@ def upload_youtube_video(
             component='learning_content',
             content_type='video',
             course=course,
+            module=module,
+            order=order,
             title=title,
             description=description,
             storage_path=video_id,
@@ -135,7 +151,7 @@ def upload_youtube_video(
             storage_backend='youtube',
             content_hash=video_id,
             uploaded_by=user,
-            is_published=True,
+            is_published=is_published,
         )
 
     except Exception as e:

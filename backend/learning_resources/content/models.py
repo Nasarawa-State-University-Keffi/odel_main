@@ -4,9 +4,9 @@ Implements Moodle-style file areas and storage abstraction.
 """
 
 import uuid
-import hashlib
 from django.db import models
-from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from courses.models import CourseCache
 from portal_auth.models import PortalUser
@@ -59,6 +59,67 @@ class StorageSettings(models.Model):
         return f"{self.get_backend_display()} ({'Active' if self.is_active else 'Inactive'})"
 
 
+class CourseModule(models.Model):
+    """An ordered unit used to organize learning content within a course."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(
+        CourseCache,
+        on_delete=models.CASCADE,
+        related_name='content_modules'
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0, db_index=True)
+    is_published = models.BooleanField(default=False, db_index=True)
+    available_from = models.DateTimeField(null=True, blank=True)
+    available_until = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        PortalUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_course_modules'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['course', 'order', 'created_at']
+        indexes = [
+            models.Index(
+                fields=['course', 'order'],
+                name='content_mod_course_order_idx'
+            ),
+            models.Index(
+                fields=['course', 'is_published'],
+                name='content_mod_course_pub_idx'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.course.course_code} - Module {self.order}: {self.title}"
+
+    def clean(self):
+        if (
+            self.available_from
+            and self.available_until
+            and self.available_until <= self.available_from
+        ):
+            raise ValidationError({
+                'available_until': 'Must be later than available_from.'
+            })
+
+    @property
+    def is_available(self):
+        now = timezone.now()
+        return (
+            self.is_published
+            and (self.available_from is None or self.available_from <= now)
+            and (self.available_until is None or self.available_until >= now)
+        )
+
+
 class LearningContent(models.Model):
     """
     LMS Learning Content model with Moodle-like file handling.
@@ -90,6 +151,21 @@ class LearningContent(models.Model):
         CourseCache,
         on_delete=models.CASCADE,
         related_name='learning_contents'
+    )
+
+    module = models.ForeignKey(
+        CourseModule,
+        on_delete=models.SET_NULL,
+        related_name='contents',
+        null=True,
+        blank=True,
+        help_text='Course module containing this item. Null preserves legacy ungrouped content.'
+    )
+
+    order = models.PositiveIntegerField(
+        default=0,
+        db_index=True,
+        help_text='Display order within the module.'
     )
 
     title = models.CharField(max_length=512)
@@ -133,10 +209,20 @@ class LearningContent(models.Model):
             models.Index(fields=['course', 'content_type']),
             models.Index(fields=['content_hash']),
             models.Index(fields=['course', 'content_type', 'is_published']),
+            models.Index(
+                fields=['module', 'order'],
+                name='content_lea_module_order_idx'
+            ),
         ]
 
     def __str__(self):
         return f"{self.title} ({self.get_content_type_display()})"
+
+    def clean(self):
+        if self.module_id and self.module.course_id != self.course_id:
+            raise ValidationError({
+                'module': 'The selected module belongs to a different course.'
+            })
 
     # ------- URL RESOLUTION -------
     @property

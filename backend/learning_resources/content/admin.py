@@ -7,7 +7,19 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .models import StorageSettings, LearningContent, ContentAccessLog
+from .models import CourseModule, StorageSettings, LearningContent, ContentAccessLog
+
+
+@admin.register(CourseModule)
+class CourseModuleAdmin(admin.ModelAdmin):
+    list_display = [
+        'title', 'course', 'order', 'is_published',
+        'available_from', 'available_until', 'created_by',
+    ]
+    list_filter = ['is_published', 'course']
+    search_fields = ['title', 'description', 'course__course_title', 'course__course_code']
+    ordering = ['course', 'order', 'created_at']
+    readonly_fields = ['id', 'created_at', 'updated_at']
 
 
 @admin.register(StorageSettings)
@@ -112,6 +124,8 @@ class LearningContentAdmin(admin.ModelAdmin):
     list_display = [
         'title',
         'content_type',
+        'module',
+        'order',
         'course_link',
         'storage_backend',
         'file_size_display',
@@ -123,6 +137,7 @@ class LearningContentAdmin(admin.ModelAdmin):
     
     list_filter = [
         'content_type',
+        'module',
         'storage_backend',
         'is_published',
         'created_at'
@@ -132,7 +147,7 @@ class LearningContentAdmin(admin.ModelAdmin):
         'title',
         'description',
         'original_filename',
-        'course__title'
+        'course__course_title'
     ]
     
     readonly_fields = [
@@ -154,6 +169,8 @@ class LearningContentAdmin(admin.ModelAdmin):
                 'description',
                 'content_type',
                 'course',
+                'module',
+                'order',
                 'is_published'
             )
         }),
@@ -188,7 +205,7 @@ class LearningContentAdmin(admin.ModelAdmin):
     def course_link(self, obj):
         """Display course as link."""
         url = reverse('admin:courses_coursecache_change', args=[obj.course.id])
-        return format_html('<a href="{}">{}</a>', url, obj.course.title)
+        return format_html('<a href="{}">{}</a>', url, obj.course.course_title)
     course_link.short_description = 'Course'
     
     def file_size_display(self, obj):
