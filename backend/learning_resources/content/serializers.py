@@ -203,7 +203,6 @@ class UnifiedLearningContentSerializer(serializers.Serializer):
     module_id = serializers.PrimaryKeyRelatedField(
         source='module', queryset=CourseModule.objects.all(), required=False, allow_null=True
     )
-    content_type = serializers.ChoiceField(choices=['note', 'video', 'resource', 'assignment'])
     content_format = serializers.ChoiceField(
         choices=['file', 'text', 'link', 'youtube'], default='file'
     )
@@ -235,8 +234,8 @@ class UnifiedLearningContentSerializer(serializers.Serializer):
             raise serializers.ValidationError({'text_content': 'This field is required for text content.'})
         if content_format in ('link', 'youtube') and not attrs.get('url'):
             raise serializers.ValidationError({'url': 'This field is required for link or YouTube content.'})
-        if content_format == 'youtube' and not YouTubeVideoSerializer().validate_video_url(attrs['url']):
-            raise serializers.ValidationError({'url': 'Invalid YouTube URL or video ID.'})
+        if content_format == 'youtube':
+            YouTubeVideoSerializer().validate_video_url(attrs['url'])
         return attrs
 
 

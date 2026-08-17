@@ -161,11 +161,18 @@ def upload_youtube_video(
 
 
 def create_unified_content(
-    *, content_format, course, user, content_type, title, description='',
+    *, content_format, course, user, title, description='', content_type=None,
     module=None, order=0, is_published=True, file_obj=None, text_content='',
     external_url='', storage_backend=None,
 ):
     """Create file, text, external-link, or YouTube content uniformly."""
+    content_type = content_type or {
+        'text': 'note',
+        'youtube': 'video',
+        'link': 'resource',
+        'file': 'resource',
+    }[content_format]
+
     if content_format == 'file':
         return upload_learning_content(
             file_obj=file_obj, course=course, content_type=content_type,
