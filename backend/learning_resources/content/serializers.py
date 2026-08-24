@@ -32,7 +32,7 @@ def resolve_course_identifier(value):
 class LearningContentSerializer(serializers.ModelSerializer):
     """Serializer for learning content metadata."""
     
-    url = serializers.URLField(read_only=True)
+    url = serializers.SerializerMethodField()
     uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
     uploaded_by_external_id = serializers.CharField(source='uploaded_by.external_id', read_only=True)
     course_title = serializers.CharField(source='course.course_title', read_only=True)
@@ -41,6 +41,18 @@ class LearningContentSerializer(serializers.ModelSerializer):
     file_extension = serializers.CharField(read_only=True)
     is_video = serializers.BooleanField(read_only=True)
     is_document = serializers.BooleanField(read_only=True)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_url(self, obj) -> str:
+        raw_url = obj.url
+        if not raw_url:
+            return ""
+        if raw_url.startswith(('http://', 'https://')):
+            return raw_url
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(raw_url)
+        return raw_url
 
     class Meta:
         model = LearningContent
@@ -167,7 +179,7 @@ class CourseModuleDetailSerializer(CourseModuleSerializer):
         contents = obj.contents.select_related(
             'course', 'module', 'uploaded_by'
         ).order_by('order', 'created_at')
-        return LearningContentSerializer(contents, many=True).data
+        return LearningContentSerializer(contents, many=True, context=self.context).data
 
 
 class StudentCourseModuleSerializer(serializers.ModelSerializer):
@@ -192,7 +204,7 @@ class StudentCourseModuleSerializer(serializers.ModelSerializer):
         contents = contents.select_related(
             'course', 'module', 'uploaded_by'
         ).order_by('order', 'created_at')
-        return LearningContentSerializer(contents, many=True).data
+        return LearningContentSerializer(contents, many=True, context=self.context).data
 
 
 class UnifiedLearningContentSerializer(serializers.Serializer):

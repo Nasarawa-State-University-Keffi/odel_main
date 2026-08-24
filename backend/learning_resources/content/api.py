@@ -169,7 +169,10 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
             file_obj=data.get('file'), text_content=data.get('text_content', ''),
             external_url=data.get('url', ''), storage_backend=data.get('storage_backend'),
         )
-        return Response(LearningContentSerializer(content).data, status=status.HTTP_201_CREATED)
+        return Response(
+            LearningContentSerializer(content, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
 
 @extend_schema(tags=['Student - Content'])
@@ -256,7 +259,7 @@ class LearningContentUploadAPIView(views.APIView):
             )
             
             return Response(
-                LearningContentSerializer(content).data,
+                LearningContentSerializer(content, context={'request': request}).data,
                 status=status.HTTP_201_CREATED
             )
         except Exception as e:
@@ -303,7 +306,7 @@ class YouTubeVideoAddAPIView(views.APIView):
             )
             
             return Response(
-                LearningContentSerializer(content).data,
+                LearningContentSerializer(content, context={'request': request}).data,
                 status=status.HTTP_201_CREATED
             )
         except Exception as e:
