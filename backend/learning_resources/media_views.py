@@ -8,8 +8,10 @@ from pathlib import Path
 from django.conf import settings
 from django.http import FileResponse, Http404
 from django.utils._os import safe_join
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 
+@xframe_options_exempt
 def serve_media(request, path, document_root=None):
     """
     Serve media files from local storage, guaranteeing:
