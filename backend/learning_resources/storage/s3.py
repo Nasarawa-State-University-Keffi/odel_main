@@ -91,8 +91,18 @@ class S3StorageEngine(BaseStorageEngine):
                     pass  # Ignore ACL errors, bucket may have ACLs disabled
             
             # Set content type if available
-            if hasattr(file_obj, 'content_type'):
+            import mimetypes
+            if hasattr(file_obj, 'content_type') and file_obj.content_type:
                 extra_args['ContentType'] = file_obj.content_type
+            else:
+                guessed_type, _ = mimetypes.guess_type(path)
+                if path.lower().endswith('.pdf'):
+                    extra_args['ContentType'] = 'application/pdf'
+                elif guessed_type:
+                    extra_args['ContentType'] = guessed_type
+
+            # Default to inline disposition for in-browser viewing
+            extra_args['ContentDisposition'] = 'inline'
             
             s3_client = self._get_client()
             s3_client.put_object(

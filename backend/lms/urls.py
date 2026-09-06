@@ -19,12 +19,12 @@ from django.urls import path, include, re_path
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.static import serve
 from django.http import JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from portal_auth.views import CustomTokenObtainPairView, CustomTokenRefreshView
+from learning_resources.media_views import serve_media
 
 
 def health_check(request):
@@ -68,7 +68,7 @@ urlpatterns = [
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
     # Serve media files for local file storage (both development & production)
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    re_path(r'^media/(?P<path>.*)$', serve_media, {'document_root': settings.MEDIA_ROOT}),
 ]
 
 # Serve static files in development (in production, WhiteNoise handles static files)
