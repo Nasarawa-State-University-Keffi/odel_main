@@ -7,7 +7,7 @@ from rest_framework import viewsets, status, generics, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, SAFE_METHODS
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
@@ -113,7 +113,19 @@ class StudentCourseModulesAPIView(generics.ListAPIView):
         return queryset.order_by('order', 'created_at')
 
 
-@extend_schema(tags=['Global - Content'])
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Student - Content'],
+        parameters=[
+            OpenApiParameter(name='session', type=OpenApiTypes.STR, required=False),
+            OpenApiParameter(name='semester', type=OpenApiTypes.STR, required=False),
+            OpenApiParameter(name='course_id', type=OpenApiTypes.STR, required=False),
+            OpenApiParameter(name='search', type=OpenApiTypes.STR, required=False),
+            OpenApiParameter(name='content_format', type=OpenApiTypes.STR, required=False),
+        ],
+    ),
+    post=extend_schema(tags=['Staff - Content']),
+)
 class LearningContentListAPIView(generics.ListCreateAPIView):
     """
     List learning content with filtering.
@@ -133,6 +145,21 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
     
     def get_queryset(self):
         queryset = LearningContent.objects.all()
+
+        if not self.request.user.is_staff:
+            session = self.request.query_params.get('session')
+            semester = self.request.query_params.get('semester')
+            if not session or not semester:
+                raise ValidationError({
+                    'detail': 'session and semester are required for student content',
+                })
+
+            enrolled_course_ids = StudentRegisteredCourse.objects.filter(
+                student_external=self.request.user,
+                session=session,
+                semester=semester,
+            ).values_list('course_id', flat=True)
+            queryset = queryset.filter(course_id__in=enrolled_course_ids)
         
         course_id = self.request.query_params.get('course_id')
         if course_id:
@@ -150,6 +177,10 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
                 Q(text_content__icontains=search) |
                 Q(original_filename__icontains=search)
             )
+
+        content_format = self.request.query_params.get('content_format')
+        if content_format:
+            queryset = queryset.filter(content_format=content_format)
         
         if not self.request.user.is_staff:
             queryset = queryset.filter(is_published=True)

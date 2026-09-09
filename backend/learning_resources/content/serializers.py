@@ -62,7 +62,7 @@ class LearningContentSerializer(serializers.ModelSerializer):
             'module', 'module_title', 'order',
 
             # metadata
-            'title', 'text_content', 'external_url', 'original_filename', 'file_size',
+            'title', 'content_format', 'text_content', 'external_url', 'original_filename', 'file_size',
             'mime_type', 'storage_backend', 'url', 'file_extension',
             'is_video', 'is_document',
 

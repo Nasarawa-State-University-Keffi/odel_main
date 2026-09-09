@@ -108,6 +108,14 @@ paths:
       operationId: api_content_list
       description: List learning content with filtering.
       parameters:
+      - in: query
+        name: content_format
+        schema:
+          type: string
+      - in: query
+        name: course_id
+        schema:
+          type: string
       - name: ordering
         required: false
         in: query
@@ -120,14 +128,20 @@ paths:
         description: A page number within the paginated result set.
         schema:
           type: integer
-      - name: search
-        required: false
-        in: query
-        description: A search term.
+      - in: query
+        name: search
+        schema:
+          type: string
+      - in: query
+        name: semester
+        schema:
+          type: string
+      - in: query
+        name: session
         schema:
           type: string
       tags:
-      - Global - Content
+      - Student - Content
       security:
       - cookieAuth: []
       - cookieAuth: []
@@ -142,7 +156,7 @@ paths:
       operationId: api_content_create
       description: List learning content with filtering.
       tags:
-      - Global - Content
+      - Staff - Content
       requestBody:
         content:
           application/json:
@@ -4124,6 +4138,20 @@ components:
       - external_id
       - full_name
       - id
+    ContentFormatEnum:
+      enum:
+      - mixed
+      - file
+      - text
+      - link
+      - youtube
+      type: string
+      description: |-
+        * `mixed` - Lesson content
+        * `file` - Uploaded file
+        * `text` - Text
+        * `link` - External link
+        * `youtube` - YouTube video
     ContentStatistics:
       type: object
       description: Aggregated content statistics.
@@ -4678,6 +4706,8 @@ components:
         title:
           type: string
           maxLength: 512
+        content_format:
+          $ref: '#/components/schemas/ContentFormatEnum'
         text_content:
           type: string
         external_url:
@@ -4703,7 +4733,7 @@ components:
           description: Backend where file is stored.
         url:
           type: string
-          format: uri
+          nullable: true
           readOnly: true
         file_extension:
           type: string
@@ -4778,6 +4808,8 @@ components:
           type: string
           minLength: 1
           maxLength: 512
+        content_format:
+          $ref: '#/components/schemas/ContentFormatEnum'
         text_content:
           type: string
         external_url:
@@ -5487,6 +5519,8 @@ components:
           type: string
           minLength: 1
           maxLength: 512
+        content_format:
+          $ref: '#/components/schemas/ContentFormatEnum'
         text_content:
           type: string
         external_url:

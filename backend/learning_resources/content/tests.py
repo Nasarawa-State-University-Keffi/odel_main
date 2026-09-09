@@ -683,26 +683,39 @@ class ContentQueryFilterTestCase(APITestCase):
             course_title='Data Structures',
             course_code='CS201'
         )
-        StorageSettings.objects.create(backend='local', is_active=True)
-
-        # Create multiple content items
+        StudentRegisteredCourse.objects.create(
+            student_external=self.user,
+            course=self.course1,
+            session='2025/2026',
+            semester='First',
+        )
+        StudentRegisteredCourse.objects.create(
+            student_external=self.user,
+            course=self.course2,
+            session='2025/2026',
+            semester='Second',
+        )
+        # Create multiple content items using the current unified content model.
         for i in range(3):
-            file_obj = SimpleUploadedFile(f'cs101_note{i}.pdf', b'content')
-            upload_learning_content(
-                file_obj=file_obj,
+            LearningContent.objects.create(
                 course=self.course1,
-                content_type='note',
-                user=self.user,
-                title=f'CS101 Lecture {i}'
+                content_format='file',
+                title=f'CS101 Lecture {i}',
+                storage_path=f'courses/101/content/cs101_note{i}.pdf',
+                original_filename=f'cs101_note{i}.pdf',
+                storage_backend='local',
+                uploaded_by=self.user,
             )
 
-        file_obj = SimpleUploadedFile('cs201_video.mp4', b'video')
-        upload_learning_content(
-            file_obj=file_obj,
+        LearningContent.objects.create(
             course=self.course2,
-            content_type='video',
-            user=self.user,
-            title='CS201 Video'
+            content_format='youtube',
+            title='CS201 Video',
+            storage_path='',
+            original_filename='',
+            storage_backend='youtube',
+            external_url='https://www.youtube.com/watch?v=example',
+            uploaded_by=self.user,
         )
 
         self.client = APIClient()
@@ -710,25 +723,55 @@ class ContentQueryFilterTestCase(APITestCase):
 
     def test_filter_by_course(self):
         """Test filtering content by course."""
-        response = self.client.get('/api/content/', {'course_id': self.course1.id})
+        response = self.client.get('/api/content/', {
+            'course_id': self.course1.id,
+            'session': '2025/2026',
+            'semester': 'First',
+        })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 3)
 
-    def test_filter_by_content_type(self):
-        """Test filtering content by type."""
-        response = self.client.get('/api/content/', {'content_type': 'video'})
+    def test_filter_by_content_format(self):
+        """Test filtering content by its unified format."""
+        response = self.client.get('/api/content/', {
+            'content_format': 'youtube',
+            'session': '2025/2026',
+            'semester': 'Second',
+        })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0]['content_type'], 'video')
+        self.assertEqual(response.data['results'][0]['content_format'], 'youtube')
 
     def test_search_by_title(self):
         """Test searching content by title."""
-        response = self.client.get('/api/content/', {'search': '101'})
+        response = self.client.get('/api/content/', {
+            'search': '101',
+            'session': '2025/2026',
+            'semester': 'First',
+        })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 3)
+
+    def test_student_content_is_restricted_to_selected_term(self):
+        response = self.client.get('/api/content/', {
+            'session': '2025/2026',
+            'semester': 'First',
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 3)
+        self.assertTrue(all(
+            item['course_external_id'] == self.course1.course_external_id
+            for item in response.data['results']
+        ))
+
+    def test_student_content_requires_academic_period(self):
+        response = self.client.get('/api/content/')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class ErrorHandlingTestCase(APITestCase):
