@@ -3,7 +3,6 @@ Base settings shared across all environments.
 """
 import os
 from pathlib import Path
-from datetime import timedelta
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -143,7 +142,6 @@ YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "portal_auth.authentication.PortalJWTAuthentication",
         "portal_auth.authentication.PortalSessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -167,17 +165,6 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "learning_resources.content.exceptions.custom_exception_handler",
 }
 
-# Simple JWT Settings
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-}
-
 # API Documentation Settings (drf-spectacular)
 SPECTACULAR_SETTINGS = {
     'TITLE': 'LMS Service API',
@@ -195,22 +182,15 @@ SPECTACULAR_SETTINGS = {
     },
     'APPEND_COMPONENTS': {
         'securitySchemes': {
-            'bearerAuth': {
-                'type': 'http',
-                'scheme': 'bearer',
-                'bearerFormat': 'JWT',
-                'description': 'JWT token obtained from /api/token/ endpoint'
-            },
             'cookieAuth': {
                 'type': 'apiKey',
                 'in': 'cookie',
                 'name': 'sessionid',
-                'description': 'Session cookie from Django admin login'
+                'description': 'Authentik-backed LMS session cookie'
             }
         }
     },
     'SECURITY': [
-        {'bearerAuth': []},
         {'cookieAuth': []}
     ],
 }
@@ -296,14 +276,12 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # ====================================
-# Portal JWT Integration
+# Portal server-to-server synchronization
 # ====================================
 PORTAL_SYNC_BASE_URL = os.environ.get('PORTAL_SYNC_BASE_URL', 'https://test.nsuk.edu.ng')
 PORTAL_API_BASE_URL = PORTAL_SYNC_BASE_URL
 PORTAL_SYNC_PUBLIC_KEY = os.environ.get('PORTAL_SYNC_PUBLIC_KEY', '')
 PORTAL_SYNC_PRIVATE_KEY = os.environ.get('PORTAL_SYNC_PRIVATE_KEY', '')
-PORTAL_JWT_PUBLIC_KEY = os.environ.get('PORTAL_JWT_PUBLIC_KEY', '')
-PORTAL_JWT_ISSUER = os.environ.get('PORTAL_JWT_ISSUER', 'portal.nsuk.edu.ng')
 
 # ====================================
 # Authentik OIDC SSO Integration

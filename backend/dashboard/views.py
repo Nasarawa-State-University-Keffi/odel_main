@@ -10,12 +10,17 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 from courses.services import resolve_academic_period
-from assessment.models import Assignment, Quiz
+from assessment.models import Assignment, AssignmentSubmission, Quiz
 from portal_auth.services import (
     get_or_sync_staff_registered_courses,
     get_or_sync_student_registered_courses,
 )
-from .serializers import CourseSummarySerializer, QuizSummarySerializer, AssignmentSummarySerializer
+from .serializers import (
+    AssignmentSummarySerializer,
+    CourseSummarySerializer,
+    QuizSummarySerializer,
+    TeachingAssignmentSummarySerializer,
+)
 from portal_auth.permissions import IsPortalStudent, IsPortalStaff
 
 
@@ -137,7 +142,11 @@ class StudentDashboardView(APIView):
                 "roles": user.roles,
                 "profile_picture": user.profile_picture,
             },
-            "courses": CourseSummarySerializer(courses, many=True).data,
+            "courses": CourseSummarySerializer(
+                courses,
+                many=True,
+                context={'request': request},
+            ).data,
             "course_count": len(courses),
             "pending_quizzes": QuizSummarySerializer(pending_quizzes, many=True).data,
             "upcoming_assignments": AssignmentSummarySerializer(
@@ -251,7 +260,7 @@ class InstructorDashboardView(APIView):
             session,
             semester,
         )
-        assignments = get_or_sync_staff_registered_courses(
+        teaching_assignments = get_or_sync_staff_registered_courses(
             staff_external_id=user.external_id,
             programme_type_code=programme_type_code,
             session=session,
@@ -261,14 +270,19 @@ class InstructorDashboardView(APIView):
             "Instructor course synchronization completed staff_external_id=%r "
             "course_count=%d",
             user.external_id,
-            len(assignments),
+            len(teaching_assignments),
         )
 
-        course_assigned = StaffAssignedCourse.objects.filter(
-            staff_external_id=user.external_id,
-            programme_type_code=programme_type_code.upper(),
+        teaching_assignments = list(
+            StaffAssignedCourse.objects.filter(
+                pk__in=[assignment.pk for assignment in teaching_assignments],
+            ).select_related(
+                'course',
+                'course_offering__session',
+                'course_offering__semester',
+            )
         )
-        courses = [e.course for e in course_assigned]
+        courses = [assignment.course for assignment in teaching_assignments]
         course_ids = [c.id for c in courses]
 
           # 3️⃣ Fetch course-scoped quizzes & assignments
@@ -276,13 +290,31 @@ class InstructorDashboardView(APIView):
 
         total_assignments = Assignment.objects.filter(course_id__in=course_ids)
         total_quizzes = Quiz.objects.filter(course_id__in=course_ids)
+        pending_grading = AssignmentSubmission.objects.filter(
+            assignment__course_id__in=course_ids,
+            status='submitted',
+        )
+        active_quizzes = total_quizzes.filter(
+            time_open__lte=now,
+            time_close__gt=now,
+        )
         data = {
-            "total_courses": CourseSummarySerializer(courses, many=True).data,
+            "context": {
+                "programme_type_code": programme_type_code.upper(),
+                "session": session,
+                "semester": semester,
+            },
+            "total_courses": TeachingAssignmentSummarySerializer(
+                teaching_assignments,
+                many=True,
+            ).data,
             "total_courses_count": len(courses),
             "total_assignments": AssignmentSummarySerializer(total_assignments, many=True).data,
             "total_assignments_count": total_assignments.count(),
             "total_quizzes": QuizSummarySerializer(total_quizzes, many=True).data,
             "total_quizzes_count": total_quizzes.count(),
+            "pending_grading_count": pending_grading.count(),
+            "active_quizzes_count": active_quizzes.count(),
         }
         logger.info(
             "Instructor dashboard response ready staff_external_id=%r "
@@ -493,7 +525,7 @@ class InstructorDetailDashboardView(APIView):
             session,
             semester,
         )
-        assignments = get_or_sync_staff_registered_courses(
+        teaching_assignments = get_or_sync_staff_registered_courses(
             staff_external_id=external_id,
             programme_type_code=programme_type_code,
             session=session,
@@ -503,21 +535,34 @@ class InstructorDetailDashboardView(APIView):
             "Instructor detail course synchronization completed "
             "target_external_id=%r course_count=%d",
             external_id,
-            len(assignments),
+            len(teaching_assignments),
         )
 
-        course_assigned = StaffAssignedCourse.objects.filter(
-            staff_external_id=external_id,
-            programme_type_code=programme_type_code.upper(),
+        teaching_assignments = list(
+            StaffAssignedCourse.objects.filter(
+                pk__in=[assignment.pk for assignment in teaching_assignments],
+            ).select_related(
+                'course',
+                'course_offering__session',
+                'course_offering__semester',
+            )
         )
-        courses = [e.course for e in course_assigned]
+        courses = [assignment.course for assignment in teaching_assignments]
         course_ids = [c.id for c in courses]
 
         total_assignments = Assignment.objects.filter(course_id__in=course_ids)
         total_quizzes = Quiz.objects.filter(course_id__in=course_ids)
 
         data = {
-            "total_courses": CourseSummarySerializer(courses, many=True).data,
+            "context": {
+                "programme_type_code": programme_type_code.upper(),
+                "session": session,
+                "semester": semester,
+            },
+            "total_courses": TeachingAssignmentSummarySerializer(
+                teaching_assignments,
+                many=True,
+            ).data,
             "total_courses_count": len(courses),
             "total_assignments": AssignmentSummarySerializer(total_assignments, many=True).data,
             "total_assignments_count": total_assignments.count(),

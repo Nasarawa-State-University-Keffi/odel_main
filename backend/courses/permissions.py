@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from .models import EnrollmentCache, CourseCache
+from .models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
 
 
 class IsEnrolledStudent(permissions.BasePermission):
@@ -17,11 +17,14 @@ class IsEnrolledStudent(permissions.BasePermission):
         if course is None:
             return False
 
-        user_external = getattr(request.user, 'username', None) or request.META.get('HTTP_X_USER_EXTERNAL_ID')
+        user_external = getattr(request.user, 'external_id', None)
         if not user_external:
             return False
 
-        return EnrollmentCache.objects.filter(user_external_id=user_external, course=course, role='student').exists()
+        return StudentRegisteredCourse.objects.filter(
+            student_external_id=user_external,
+            course=course,
+        ).exists()
 
 
 class IsInstructorForCourse(permissions.BasePermission):
@@ -48,8 +51,11 @@ class IsInstructorForCourse(permissions.BasePermission):
         if course is None:
             return False
 
-        user_external = getattr(request.user, 'username', None) or request.META.get('HTTP_X_USER_EXTERNAL_ID')
+        user_external = getattr(request.user, 'external_id', None)
         if not user_external:
             return False
 
-        return EnrollmentCache.objects.filter(user_external_id=user_external, course=course, role='instructor').exists()
+        return StaffAssignedCourse.objects.filter(
+            staff_external_id=user_external,
+            course=course,
+        ).exists()

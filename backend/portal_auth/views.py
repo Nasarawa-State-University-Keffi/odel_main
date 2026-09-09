@@ -118,15 +118,3 @@ class OIDCLogoutView(APIView):
     def post(self, request):
         request.session.flush()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
-class CustomTokenObtainPairView(TokenObtainPairView):
-    @extend_schema(tags=['Global - Authentication'])
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
-
-class CustomTokenRefreshView(TokenRefreshView):
-    @extend_schema(tags=['Global - Authentication'])
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)

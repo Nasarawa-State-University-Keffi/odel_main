@@ -4,7 +4,14 @@ from .client import PortalClient
 from .models import PortalUser
 from .utils import fetch_from_portal
 
-from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
+from courses.models import (
+    AcademicSession,
+    CourseCache,
+    CourseOffering,
+    Semester,
+    StaffAssignedCourse,
+    StudentRegisteredCourse,
+)
 from django.db import transaction
 import hashlib
 import re
@@ -42,44 +49,6 @@ def resolve_programme(identity_data):
 
     matches = list(queryset[:2])
     return matches[0] if len(matches) == 1 else None
-
-
-def get_or_sync_portal_user(token: str) -> PortalUser:
-    client = PortalClient(token)
-
-    # Always fetch once to know who the user is
-    user_data = client.get_current_user()
-
-    external_id = user_data.get("userId")
-    if not external_id:
-        raise ValueError("Portal userId missing")
-
-    cache_key = f"portal:user:{external_id}"
-
-    def sync_user():
-        roles = user_data.get("roles", [])
-        is_staff = any(role in STAFF_ROLES for role in roles)
-        programme = resolve_programme(user_data)
-        # Extract level title if level is a dict, fallback to None
-        level = extract_level_title(user_data.get("level"))
-        obj, _ = PortalUser.objects.update_or_create(
-            external_id=external_id,
-            defaults={
-                "full_name": user_data.get("name"),
-                "first_name": user_data.get("firstName") or user_data.get("given_name") or "",
-                "last_name": user_data.get("lastName") or user_data.get("family_name") or "",
-                "email": user_data.get("email"),
-                "level": level,
-                "roles": roles,
-                "profile_picture": user_data.get("profilePicture"),
-                "is_staff": is_staff,
-                "is_active": True,
-                **({'programme': programme} if programme else {}),
-            },
-        )
-        return obj
-
-    return fetch_from_portal(cache_key, sync_user, ttl=300)
 
 
 # ========================================================
@@ -251,6 +220,9 @@ def get_or_sync_staff_registered_courses(
 
     # 2️⃣ Sync DB safely
     with transaction.atomic():
+        academic_session, _ = AcademicSession.objects.get_or_create(name=session)
+        academic_semester, _ = Semester.objects.get_or_create(name=semester)
+
         for raw_course in raw_courses:
             course_obj, _ = CourseCache.objects.update_or_create(
                 course_external_id=raw_course["id"],
@@ -260,19 +232,39 @@ def get_or_sync_staff_registered_courses(
                 },
             )
 
+            offering, _ = CourseOffering.objects.update_or_create(
+                course=course_obj,
+                session=academic_session,
+                semester=academic_semester,
+                programme_type_code=programme_type_code,
+                defaults={'status': 'active'},
+            )
+
             enrollment, _ = StaffAssignedCourse.objects.update_or_create(
+                staff_external_id=staff_external_id,
+                course_offering=offering,
+                defaults={
+                    'course': course_obj,
+                    'programme_type_code': programme_type_code,
+                    'role': 'INSTRUCTOR',
+                },
+            )
+
+            StaffAssignedCourse.objects.filter(
                 staff_external_id=staff_external_id,
                 course=course_obj,
                 programme_type_code=programme_type_code,
-                defaults={"role": "INSTRUCTOR"},
-            )
+                course_offering__isnull=True,
+            ).delete()
 
             assignments.append(enrollment)
 
         current_course_ids = [assignment.course_id for assignment in assignments]
         stale_assignments = StaffAssignedCourse.objects.filter(
             staff_external_id=staff_external_id,
-            programme_type_code=programme_type_code,
+            course_offering__session=academic_session,
+            course_offering__semester=academic_semester,
+            course_offering__programme_type_code=programme_type_code,
         )
         if current_course_ids:
             stale_assignments = stale_assignments.exclude(course_id__in=current_course_ids)

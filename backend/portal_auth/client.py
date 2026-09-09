@@ -23,9 +23,6 @@ def _response_body_for_log(response, limit: int = 2000) -> str:
 
 
 class PortalClient:
-    def __init__(self, token: str | None = None):
-        self.token = token
-
     @staticmethod
     def _lms_base_url() -> str:
         base_url = settings.PORTAL_SYNC_BASE_URL.rstrip("/")
@@ -127,29 +124,6 @@ class PortalClient:
         )
         return data
 
-    def get_current_user(self) -> dict:
-        url = f"{settings.PORTAL_API_BASE_URL.rstrip('/')}/api/get-current-user"
-        headers = {"Authorization": f"Bearer {self.token}"}
-
-        try:
-            resp = requests.get(url, headers=headers, timeout=10)
-
-            if resp.status_code in (401, 403):
-                raise PermissionError("Unauthorized or forbidden from portal")
-
-            resp.raise_for_status()
-            data = resp.json()
-
-            if "user" not in data:
-                raise ValueError("Invalid portal response: missing 'user'")
-
-            return data["user"]
-
-        except requests.Timeout:
-            raise TimeoutError("Portal request timed out")
-        except requests.RequestException as e:
-            raise RuntimeError(f"Portal error: {e}")
-        
     def get_student_registered_courses(
         self,
         *,

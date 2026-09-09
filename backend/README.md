@@ -8,7 +8,7 @@ Production-ready Learning Management System with Zoom integration, classroom man
 - Assignment and submission tracking
 - Student portal synchronization
 - Celery-based async task processing
-- JWT authentication
+- Authentik OIDC authentication with secure Django sessions
 - Auto-generated API documentation
 
 ## Tech Stack
@@ -259,7 +259,7 @@ Once running, access interactive API documentation:
 - **OpenAPI Schema**: http://localhost:8000/api/schema/
 - **Frontend integration contract**: [`Integration_Workflow.md`](Integration_Workflow.md)
 
-Key student endpoints require a portal bearer token with the `PORTAL_STUDENTS` role (or normalized `STUDENT` alias) and an explicit academic period:
+Key student endpoints require an Authentik-backed LMS session with the normalized `STUDENT` role and an explicit academic period:
 
 ```http
 GET /api/dashboard/students/?session=2025%2F2026&semester=First%20Semester

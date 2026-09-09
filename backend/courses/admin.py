@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AcademicSession, CourseCache, Semester, StaffAssignedCourse, StudentRegisteredCourse
+from .models import AcademicSession, CourseCache, CourseOffering, Semester, StaffAssignedCourse, StudentRegisteredCourse
 
 
 @admin.register(AcademicSession)
@@ -23,9 +23,16 @@ class CourseCacheAdmin(admin.ModelAdmin):
 
 @admin.register(StaffAssignedCourse)
 class StaffRegisteredCourseAdmin(admin.ModelAdmin):
-    list_display = ('staff_external_id', 'course', 'programme_type_code', 'role', 'created_at')
+    list_display = ('staff_external_id', 'course', 'course_offering', 'programme_type_code', 'role', 'created_at')
     search_fields = ('staff_external_id', 'course__course_title')
     list_filter = ('programme_type_code', 'role', 'created_at')
+
+
+@admin.register(CourseOffering)
+class CourseOfferingAdmin(admin.ModelAdmin):
+    list_display = ('course', 'session', 'semester', 'programme_type_code', 'status', 'last_synced_at')
+    list_filter = ('session', 'semester', 'programme_type_code', 'status')
+    search_fields = ('course__course_code', 'course__course_title')
 
 @admin.register(StudentRegisteredCourse)
 class StudentRegisteredCourseAdmin(admin.ModelAdmin):

@@ -11,7 +11,6 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -23,7 +22,6 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -35,9 +33,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -48,9 +44,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -62,9 +56,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -80,9 +72,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -97,7 +87,6 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -109,7 +98,6 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -141,9 +129,7 @@ paths:
       tags:
       - Global - Content
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -151,6 +137,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedLearningContentList'
+          description: ''
+    post:
+      operationId: api_content_create
+      description: List learning content with filtering.
+      tags:
+      - Global - Content
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnifiedLearningContentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UnifiedLearningContentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UnifiedLearningContentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnifiedLearningContent'
           description: ''
   /api/content/{id}/:
     get:
@@ -166,9 +179,74 @@ paths:
       tags:
       - Global - Content
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningContent'
+          description: ''
+    put:
+      operationId: api_content_update
+      description: Retrieve or delete specific learning content.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Global - Content
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LearningContentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LearningContentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LearningContentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningContent'
+          description: ''
+    patch:
+      operationId: api_content_partial_update
+      description: Retrieve or delete specific learning content.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Global - Content
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLearningContentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLearningContentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLearningContentRequest'
+      security:
+      - cookieAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -190,9 +268,7 @@ paths:
       tags:
       - Global - Content
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -225,9 +301,7 @@ paths:
               required:
               - action
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -252,9 +326,7 @@ paths:
               $ref: '#/components/schemas/YouTubeVideoRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -289,9 +361,7 @@ paths:
       tags:
       - Admin - Content Logs
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -333,9 +403,7 @@ paths:
       tags:
       - Student - Content
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -344,6 +412,216 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedLearningContentList'
           description: ''
+  /api/content/course/{course_id}/modules/:
+    get:
+      operationId: api_content_course_modules_list
+      description: Return the available module/content structure for an enrolled student.
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: string
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Student - Content
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStudentCourseModuleList'
+          description: ''
+  /api/content/modules/:
+    get:
+      operationId: api_content_modules_list
+      description: List or create ordered learning modules.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Staff - Course Modules
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCourseModuleList'
+          description: ''
+    post:
+      operationId: api_content_modules_create
+      description: List or create ordered learning modules.
+      tags:
+      - Staff - Course Modules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseModuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseModuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseModuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseModule'
+          description: ''
+  /api/content/modules/{id}/:
+    get:
+      operationId: api_content_modules_retrieve
+      description: Retrieve, update, or delete one learning module.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Course Modules
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseModuleDetail'
+          description: ''
+    put:
+      operationId: api_content_modules_update
+      description: Retrieve, update, or delete one learning module.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Course Modules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseModuleDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseModuleDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseModuleDetailRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseModuleDetail'
+          description: ''
+    patch:
+      operationId: api_content_modules_partial_update
+      description: Retrieve, update, or delete one learning module.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Course Modules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseModuleDetailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseModuleDetailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseModuleDetailRequest'
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseModuleDetail'
+          description: ''
+    delete:
+      operationId: api_content_modules_destroy
+      description: Retrieve, update, or delete one learning module.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Staff - Course Modules
+      security:
+      - cookieAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/content/statistics/:
     get:
       operationId: api_content_statistics_retrieve
@@ -359,9 +637,7 @@ paths:
       tags:
       - Staff - Content Stats
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -396,9 +672,7 @@ paths:
       tags:
       - Admin - Storage Settings
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -424,9 +698,7 @@ paths:
             schema:
               $ref: '#/components/schemas/StorageSettingsRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -453,9 +725,7 @@ paths:
             schema:
               $ref: '#/components/schemas/StorageSettingsRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -477,9 +747,7 @@ paths:
       tags:
       - Admin - Storage Settings
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -511,9 +779,7 @@ paths:
             schema:
               $ref: '#/components/schemas/StorageSettingsRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -545,9 +811,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedStorageSettingsRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -568,9 +832,7 @@ paths:
       tags:
       - Admin - Storage Settings
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -583,9 +845,7 @@ paths:
       tags:
       - Admin - Storage Settings
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -602,9 +862,7 @@ paths:
       tags:
       - Admin - Storage Settings
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -627,9 +885,7 @@ paths:
               $ref: '#/components/schemas/LearningContentUploadRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -665,9 +921,7 @@ paths:
       tags:
       - Global - Courses
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -691,9 +945,7 @@ paths:
       tags:
       - Global - Courses
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -730,9 +982,7 @@ paths:
       tags:
       - Staff - Dashboard
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -770,9 +1020,7 @@ paths:
       tags:
       - Staff - Dashboard
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -799,9 +1047,7 @@ paths:
       tags:
       - Student - Dashboard
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -821,9 +1067,7 @@ paths:
       tags:
       - Staff - Dashboard
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -847,9 +1091,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -879,9 +1121,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -911,9 +1151,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -943,9 +1181,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -989,9 +1225,7 @@ paths:
       tags:
       - Notifications - In-App
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1016,9 +1250,7 @@ paths:
       tags:
       - Notifications - In-App
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1043,9 +1275,7 @@ paths:
       tags:
       - Notifications - In-App
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1063,9 +1293,7 @@ paths:
       tags:
       - Notifications - In-App
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1083,9 +1311,7 @@ paths:
       tags:
       - Notifications - In-App
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1147,9 +1373,7 @@ paths:
       tags:
       - Admin - Notifications
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1173,9 +1397,7 @@ paths:
       tags:
       - Admin - Notifications
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1212,9 +1434,7 @@ paths:
       tags:
       - Admin - Notifications
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1242,9 +1462,7 @@ paths:
             schema:
               $ref: '#/components/schemas/EmailConfigurationRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1270,9 +1488,7 @@ paths:
       tags:
       - Admin - Notifications
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1308,9 +1524,7 @@ paths:
             schema:
               $ref: '#/components/schemas/EmailConfigurationRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1346,9 +1560,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedEmailConfigurationRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1374,9 +1586,7 @@ paths:
       tags:
       - Admin - Notifications
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -1401,9 +1611,7 @@ paths:
       tags:
       - Admin - Notifications
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1442,9 +1650,7 @@ paths:
               $ref: '#/components/schemas/TestEmailRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1474,9 +1680,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1506,9 +1710,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1538,9 +1740,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1576,9 +1776,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1604,9 +1802,7 @@ paths:
               $ref: '#/components/schemas/SemesterRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1628,9 +1824,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1663,9 +1857,7 @@ paths:
               $ref: '#/components/schemas/SemesterRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1697,9 +1889,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSemesterRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1720,9 +1910,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -1752,9 +1940,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1780,9 +1966,7 @@ paths:
               $ref: '#/components/schemas/AcademicSessionRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1804,9 +1988,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1839,9 +2021,7 @@ paths:
               $ref: '#/components/schemas/AcademicSessionRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1873,9 +2053,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedAcademicSessionRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1896,9 +2074,7 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -1931,9 +2107,7 @@ paths:
       tags:
       - Staff - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1962,9 +2136,7 @@ paths:
               $ref: '#/components/schemas/AssignmentWriteRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1987,9 +2159,7 @@ paths:
       tags:
       - Staff - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2023,9 +2193,7 @@ paths:
               $ref: '#/components/schemas/AssignmentWriteRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2058,9 +2226,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedAssignmentWriteRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2082,9 +2248,7 @@ paths:
       tags:
       - Staff - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -2105,9 +2269,7 @@ paths:
       tags:
       - Staff - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2138,9 +2300,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2163,9 +2323,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2207,9 +2365,7 @@ paths:
               $ref: '#/components/schemas/ManualGradeRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2240,9 +2396,7 @@ paths:
       tags:
       - Staff - Question Bank
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2269,9 +2423,7 @@ paths:
               $ref: '#/components/schemas/QuestionCategoryRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -2294,9 +2446,7 @@ paths:
       tags:
       - Staff - Question Bank
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2330,9 +2480,7 @@ paths:
               $ref: '#/components/schemas/QuestionCategoryRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2365,9 +2513,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedQuestionCategoryRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2389,9 +2535,7 @@ paths:
       tags:
       - Staff - Question Bank
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -2422,9 +2566,7 @@ paths:
       tags:
       - Staff - Question Bank
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2451,9 +2593,7 @@ paths:
               $ref: '#/components/schemas/QuestionCreateUpdateRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -2476,9 +2616,7 @@ paths:
       tags:
       - Staff - Question Bank
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2512,9 +2650,7 @@ paths:
               $ref: '#/components/schemas/QuestionCreateUpdateRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2547,9 +2683,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedQuestionCreateUpdateRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2571,9 +2705,7 @@ paths:
       tags:
       - Staff - Question Bank
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -2604,9 +2736,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2633,9 +2763,7 @@ paths:
               $ref: '#/components/schemas/QuizRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -2658,9 +2786,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2694,9 +2820,7 @@ paths:
               $ref: '#/components/schemas/QuizRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2729,9 +2853,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedQuizRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2753,9 +2875,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -2776,9 +2896,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2809,9 +2927,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2838,9 +2954,7 @@ paths:
               $ref: '#/components/schemas/QuizQuestionSlotRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -2863,9 +2977,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2899,9 +3011,7 @@ paths:
               $ref: '#/components/schemas/QuizQuestionSlotRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2934,9 +3044,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedQuizQuestionSlotRequest'
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2958,9 +3066,7 @@ paths:
       tags:
       - Staff - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -2991,9 +3097,7 @@ paths:
       tags:
       - Staff - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3016,9 +3120,7 @@ paths:
       tags:
       - Staff - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3054,9 +3156,7 @@ paths:
               $ref: '#/components/schemas/GradeAssignmentRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3103,9 +3203,7 @@ paths:
       tags:
       - Student - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3140,9 +3238,7 @@ paths:
       tags:
       - Student - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3177,9 +3273,7 @@ paths:
       tags:
       - Student - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3202,9 +3296,7 @@ paths:
       tags:
       - Student - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3251,9 +3343,7 @@ paths:
       tags:
       - Student - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3288,9 +3378,7 @@ paths:
       tags:
       - Student - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3320,9 +3408,7 @@ paths:
       tags:
       - Student - Quizzes
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3364,9 +3450,7 @@ paths:
               $ref: '#/components/schemas/SubmitResponseRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3398,9 +3482,7 @@ paths:
               $ref: '#/components/schemas/StartQuizRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -3435,9 +3517,7 @@ paths:
       tags:
       - Student - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3460,9 +3540,7 @@ paths:
       tags:
       - Student - Assignments
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3498,9 +3576,7 @@ paths:
               $ref: '#/components/schemas/SubmitAssignmentRequest'
         required: true
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3535,9 +3611,7 @@ paths:
               - session
               - semester
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -3552,80 +3626,17 @@ paths:
       tags:
       - api
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
           description: No response body
-  /api/token/:
-    post:
-      operationId: api_token_create
-      description: |-
-        Takes a set of user credentials and returns an access and refresh JSON web
-        token pair to prove the authentication of those credentials.
-      tags:
-      - Global - Authentication
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenObtainPair'
-          description: ''
-  /api/token/refresh/:
-    post:
-      operationId: api_token_refresh_create
-      description: |-
-        Takes a refresh type JSON web token and returns an access type JSON web
-        token if the refresh token is valid.
-      tags:
-      - Global - Authentication
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-        required: true
-      security:
-      - bearerAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenRefresh'
-          description: ''
   /auth/login:
     get:
       operationId: auth_login_retrieve
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -3637,7 +3648,6 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -3649,9 +3659,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3662,9 +3670,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3676,9 +3682,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3694,9 +3698,7 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - jwtAuth: []
       - cookieAuth: []
-      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -3711,7 +3713,6 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -3723,7 +3724,6 @@ paths:
       tags:
       - Global - Authentication
       security:
-      - bearerAuth: []
       - cookieAuth: []
       - {}
       responses:
@@ -3772,7 +3772,7 @@ components:
           readOnly: true
         content_type:
           allOf:
-          - $ref: '#/components/schemas/AssignmentContentContentTypeEnum'
+          - $ref: '#/components/schemas/ContentTypeEnum'
           readOnly: true
         url:
           type: string
@@ -3788,16 +3788,6 @@ components:
       - id
       - title
       - url
-    AssignmentContentContentTypeEnum:
-      enum:
-      - instruction
-      - resource
-      - example
-      type: string
-      description: |-
-        * `instruction` - Instruction
-        * `resource` - Resource
-        * `example` - Example
     AssignmentRead:
       type: object
       properties:
@@ -4142,9 +4132,6 @@ components:
           type: integer
         total_size:
           type: integer
-        by_type:
-          type: object
-          additionalProperties: {}
         by_backend:
           type: object
           additionalProperties: {}
@@ -4153,10 +4140,19 @@ components:
           items: {}
       required:
       - by_backend
-      - by_type
       - most_downloaded
       - total_contents
       - total_size
+    ContentTypeEnum:
+      enum:
+      - instruction
+      - resource
+      - example
+      type: string
+      description: |-
+        * `instruction` - Instruction
+        * `resource` - Resource
+        * `example` - Example
     CourseCache:
       type: object
       properties:
@@ -4184,6 +4180,204 @@ components:
       - course_external_id
       - course_title
       - updated_at
+    CourseModule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_external_id:
+          type: integer
+          readOnly: true
+        course_title:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_published:
+          type: boolean
+        available_from:
+          type: string
+          format: date-time
+          nullable: true
+        available_until:
+          type: string
+          format: date-time
+          nullable: true
+        is_available:
+          type: boolean
+          readOnly: true
+        content_count:
+          type: integer
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content_count
+      - course_external_id
+      - course_title
+      - created_at
+      - created_by
+      - created_by_name
+      - id
+      - is_available
+      - title
+      - updated_at
+    CourseModuleDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_external_id:
+          type: integer
+          readOnly: true
+        course_title:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_published:
+          type: boolean
+        available_from:
+          type: string
+          format: date-time
+          nullable: true
+        available_until:
+          type: string
+          format: date-time
+          nullable: true
+        is_available:
+          type: boolean
+          readOnly: true
+        content_count:
+          type: integer
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        contents:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningContent'
+          readOnly: true
+      required:
+      - content_count
+      - contents
+      - course_external_id
+      - course_title
+      - created_at
+      - created_by
+      - created_by_name
+      - id
+      - is_available
+      - title
+      - updated_at
+    CourseModuleDetailRequest:
+      type: object
+      properties:
+        course_id:
+          type: string
+          writeOnly: true
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_published:
+          type: boolean
+        available_from:
+          type: string
+          format: date-time
+          nullable: true
+        available_until:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - course_id
+      - title
+    CourseModuleRequest:
+      type: object
+      properties:
+        course_id:
+          type: string
+          writeOnly: true
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_published:
+          type: boolean
+        available_from:
+          type: string
+          format: date-time
+          nullable: true
+        available_until:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - course_id
+      - title
     Department:
       type: object
       properties:
@@ -4458,24 +4652,44 @@ components:
           readOnly: true
         component:
           type: string
+          readOnly: true
           description: Component name (similar to Moodle components).
-          maxLength: 100
-        content_type:
-          $ref: '#/components/schemas/LearningContentContentTypeEnum'
         course_external_id:
           type: integer
           readOnly: true
         course_title:
           type: string
           readOnly: true
+        module:
+          type: string
+          format: uuid
+          nullable: true
+          description: Course module containing this item. Null preserves legacy ungrouped
+            content.
+        module_title:
+          type: string
+          readOnly: true
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Display order within the module.
         title:
           type: string
           maxLength: 512
-        description:
+        text_content:
           type: string
+        external_url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2048
+          - type: string
+            maxLength: 0
         original_filename:
           type: string
-          maxLength: 512
+          readOnly: true
         file_size:
           type: integer
           readOnly: true
@@ -4502,6 +4716,7 @@ components:
           readOnly: true
         uploaded_by:
           type: integer
+          readOnly: true
           nullable: true
         uploaded_by_name:
           type: string
@@ -4523,7 +4738,7 @@ components:
           format: date-time
           readOnly: true
       required:
-      - content_type
+      - component
       - course_external_id
       - course_title
       - created_at
@@ -4534,37 +4749,48 @@ components:
       - is_document
       - is_video
       - mime_type
+      - module_title
       - original_filename
       - storage_backend
       - title
       - updated_at
+      - uploaded_by
       - uploaded_by_external_id
       - uploaded_by_name
       - url
-    LearningContentContentTypeEnum:
-      enum:
-      - note
-      - video
-      - resource
-      - assignment
-      type: string
-      description: |-
-        * `note` - Lecture Note
-        * `video` - Video Lecture
-        * `resource` - Resource
-        * `assignment` - Assignment
-    LearningContentUploadContentTypeEnum:
-      enum:
-      - note
-      - video
-      - resource
-      - assignment
-      type: string
-      description: |-
-        * `note` - note
-        * `video` - video
-        * `resource` - resource
-        * `assignment` - assignment
+    LearningContentRequest:
+      type: object
+      description: Serializer for learning content metadata.
+      properties:
+        module:
+          type: string
+          format: uuid
+          nullable: true
+          description: Course module containing this item. Null preserves legacy ungrouped
+            content.
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Display order within the module.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 512
+        text_content:
+          type: string
+        external_url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2048
+          - type: string
+            maxLength: 0
+        is_published:
+          type: boolean
+      required:
+      - title
     LearningContentUploadRequest:
       type: object
       description: |-
@@ -4579,13 +4805,20 @@ components:
           type: string
           minLength: 1
           description: Course external_id (e.g., 'CS101') or UUID
-        content_type:
-          $ref: '#/components/schemas/LearningContentUploadContentTypeEnum'
         title:
           type: string
           maxLength: 512
-        description:
+        module_id:
           type: string
+          format: uuid
+          nullable: true
+        order:
+          type: integer
+          minimum: 0
+          default: 0
+        is_published:
+          type: boolean
+          default: true
         storage_backend:
           nullable: true
           description: |-
@@ -4596,13 +4829,24 @@ components:
             * `cloudinary` - cloudinary
             * `youtube` - youtube
           oneOf:
-          - $ref: '#/components/schemas/StorageBackendEnum'
+          - $ref: '#/components/schemas/LearningContentUploadStorageBackendEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
       required:
-      - content_type
       - course_id
       - file
+    LearningContentUploadStorageBackendEnum:
+      enum:
+      - local
+      - s3
+      - cloudinary
+      - youtube
+      type: string
+      description: |-
+        * `local` - local
+        * `s3` - s3
+        * `cloudinary` - cloudinary
+        * `youtube` - youtube
     LevelEnum:
       enum:
       - '100'
@@ -4829,6 +5073,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CourseCache'
+    PaginatedCourseModuleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseModule'
     PaginatedEmailConfigurationList:
       type: object
       required:
@@ -5082,6 +5349,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StorageSettings'
+    PaginatedStudentCourseModuleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentCourseModule'
     PatchedAcademicSessionRequest:
       type: object
       properties:
@@ -5129,6 +5419,34 @@ components:
           maximum: 9223372036854775807
           minimum: 0
           format: int64
+    PatchedCourseModuleDetailRequest:
+      type: object
+      properties:
+        course_id:
+          type: string
+          writeOnly: true
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_published:
+          type: boolean
+        available_from:
+          type: string
+          format: date-time
+          nullable: true
+        available_until:
+          type: string
+          format: date-time
+          nullable: true
     PatchedEmailConfigurationRequest:
       type: object
       description: Serializer for managing email backend configurations.
@@ -5149,6 +5467,37 @@ components:
         config:
           description: Non-sensitive settings only. Currently supports from_email.
             Credentials must be set through environment variables.
+    PatchedLearningContentRequest:
+      type: object
+      description: Serializer for learning content metadata.
+      properties:
+        module:
+          type: string
+          format: uuid
+          nullable: true
+          description: Course module containing this item. Null preserves legacy ungrouped
+            content.
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Display order within the module.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 512
+        text_content:
+          type: string
+        external_url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 2048
+          - type: string
+            maxLength: 0
+        is_published:
+          type: boolean
     PatchedQuestionCategoryRequest:
       type: object
       description: Serializer for question categories
@@ -6258,18 +6607,6 @@ components:
         * `in_progress` - In Progress
         * `finished` - Finished
         * `abandoned` - Abandoned
-    StorageBackendEnum:
-      enum:
-      - local
-      - s3
-      - cloudinary
-      - youtube
-      type: string
-      description: |-
-        * `local` - local
-        * `s3` - s3
-        * `cloudinary` - cloudinary
-        * `youtube` - youtube
     StorageSettings:
       type: object
       description: |-
@@ -6339,6 +6676,48 @@ components:
         is_active:
           type: boolean
           description: Only one configuration can be active.
+    StudentCourseModule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_external_id:
+          type: integer
+          readOnly: true
+        course_title:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        available_from:
+          type: string
+          format: date-time
+          nullable: true
+        available_until:
+          type: string
+          format: date-time
+          nullable: true
+        contents:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningContent'
+          readOnly: true
+      required:
+      - contents
+      - course_external_id
+      - course_title
+      - id
+      - title
     SubmitAssignmentRequest:
       type: object
       properties:
@@ -6411,51 +6790,99 @@ components:
       - detail
       - recipient
       - success
-    TokenObtainPair:
+    UnifiedLearningContent:
       type: object
+      description: Create one lesson with any combination of text, file, and link
+        content.
       properties:
-        access:
+        course_id:
           type: string
-          readOnly: true
-        refresh:
+        module_id:
           type: string
-          readOnly: true
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          maxLength: 512
+        text_content:
+          type: string
+          default: ''
+        url:
+          oneOf:
+          - type: string
+            format: uri
+          - type: string
+            maxLength: 0
+        file:
+          type: string
+          format: uri
+          nullable: true
+        order:
+          type: integer
+          minimum: 0
+          default: 0
+        is_published:
+          type: boolean
+          default: true
+        storage_backend:
+          oneOf:
+          - $ref: '#/components/schemas/UnifiedLearningContentStorageBackendEnum'
+          - $ref: '#/components/schemas/BlankEnum'
       required:
-      - access
-      - refresh
-    TokenObtainPairRequest:
+      - course_id
+      - title
+    UnifiedLearningContentRequest:
       type: object
+      description: Create one lesson with any combination of text, file, and link
+        content.
       properties:
-        username:
+        course_id:
           type: string
-          writeOnly: true
           minLength: 1
-        password:
+        module_id:
           type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - password
-      - username
-    TokenRefresh:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-        refresh:
-          type: string
-      required:
-      - access
-      - refresh
-    TokenRefreshRequest:
-      type: object
-      properties:
-        refresh:
+          format: uuid
+          nullable: true
+        title:
           type: string
           minLength: 1
+          maxLength: 512
+        text_content:
+          type: string
+          default: ''
+        url:
+          oneOf:
+          - type: string
+            format: uri
+          - type: string
+            maxLength: 0
+        file:
+          type: string
+          format: binary
+        order:
+          type: integer
+          minimum: 0
+          default: 0
+        is_published:
+          type: boolean
+          default: true
+        storage_backend:
+          oneOf:
+          - $ref: '#/components/schemas/UnifiedLearningContentStorageBackendEnum'
+          - $ref: '#/components/schemas/BlankEnum'
       required:
-      - refresh
+      - course_id
+      - title
+    UnifiedLearningContentStorageBackendEnum:
+      enum:
+      - local
+      - s3
+      - cloudinary
+      type: string
+      description: |-
+        * `local` - local
+        * `s3` - s3
+        * `cloudinary` - cloudinary
     UnreadCountResponse:
       type: object
       properties:
@@ -6482,24 +6909,24 @@ components:
           type: string
           minLength: 1
           maxLength: 512
-        description:
+        module_id:
           type: string
+          format: uuid
+          nullable: true
+        order:
+          type: integer
+          minimum: 0
+          default: 0
+        is_published:
+          type: boolean
+          default: true
       required:
       - course_id
       - title
       - video_url
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: JWT token obtained from /api/token/ endpoint
     cookieAuth:
       type: apiKey
       in: cookie
       name: sessionid
-      description: Session cookie from Django admin login
-    jwtAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+      description: Authentik-backed LMS session cookie

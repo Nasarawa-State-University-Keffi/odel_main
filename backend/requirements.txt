@@ -7,7 +7,6 @@ channels-redis>=4.2.0
 daphne>=4.0.0
 
 # Authentication & JWT
-djangorestframework-simplejwt>=5.3
 PyJWT>=2.8
 cryptography>=42.0
 

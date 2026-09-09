@@ -6,15 +6,17 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lms.settings')
 django_asgi_app = get_asgi_application()
 
 from channels.routing import ProtocolTypeRouter, URLRouter
-from notifications.auth_middleware import JwtAuthMiddleware
+from channels.sessions import SessionMiddlewareStack
+from notifications.auth_middleware import PortalSessionAuthMiddleware
 from notifications.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": JwtAuthMiddleware(
-        URLRouter(
-            websocket_urlpatterns
+    "websocket": SessionMiddlewareStack(
+        PortalSessionAuthMiddleware(
+            URLRouter(
+                websocket_urlpatterns
+            )
         )
     ),
 })
-

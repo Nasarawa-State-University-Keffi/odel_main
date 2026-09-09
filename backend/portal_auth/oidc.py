@@ -21,6 +21,7 @@ ROLE_ALIASES = {
     "PORTAL_SUPER_ADMINS": "SUPER_ADMIN",
     "PORTAL_STAFF": "STAFF",
     "PORTAL_STUDENTS": "STUDENT",
+    "PORTAL_USERS": "STUDENT",
 }
 
 
@@ -174,11 +175,14 @@ def get_roles_from_claims(claims):
 
 
 def get_external_id_from_claims(claims):
+    portal_user_id = claims.get("portal_user_id") or claims.get("portalUserId")
     username = claims.get("preferred_username")
     email = claims.get("email")
-    external_id = username or email
+    external_id = portal_user_id or username or email
     if not external_id:
-        raise OIDCAuthenticationError("OIDC identity is missing preferred_username and email")
+        raise OIDCAuthenticationError(
+            "OIDC identity is missing portal_user_id, preferred_username, and email"
+        )
     return str(external_id)
 
 

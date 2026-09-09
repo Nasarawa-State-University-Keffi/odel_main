@@ -9,8 +9,8 @@ from .models import PortalUser
 from .client import PortalClient
 from .exceptions import PortalLMSUnavailable
 from .oidc import OIDC_SESSION_KEY, sync_user_from_claims
-from .services import get_or_sync_student_registered_courses
-from courses.models import CourseCache, StudentRegisteredCourse
+from .services import get_or_sync_staff_registered_courses, get_or_sync_student_registered_courses
+from courses.models import CourseCache, CourseOffering, StaffAssignedCourse, StudentRegisteredCourse
 
 
 @override_settings(
@@ -176,7 +176,7 @@ class OIDCUserMappingTests(TestCase):
             ],
         })
 
-        self.assertEqual(user.roles, ["PORTAL_USERS", "ADMIN", "STAFF"])
+        self.assertEqual(user.roles, ["STUDENT", "ADMIN", "STAFF"])
         self.assertTrue(user.is_staff)
 
     def test_sync_user_from_claims_prefers_preferred_username(self):
@@ -196,6 +196,17 @@ class OIDCUserMappingTests(TestCase):
         self.assertEqual(user.last_name, "Doe")
         self.assertEqual(user.roles, ["STUDENT"])
         self.assertFalse(user.is_staff)
+
+    def test_sync_user_from_claims_prefers_portal_user_id(self):
+        user = sync_user_from_claims({
+            "portal_user_id": "SS0001",
+            "preferred_username": "lecturer@example.edu.ng",
+            "email": "lecturer@example.edu.ng",
+            "groups": ["PORTAL_STAFF"],
+        })
+
+        self.assertEqual(user.external_id, "SS0001")
+        self.assertEqual(user.roles, ["STAFF"])
 
 
 @override_settings(
@@ -321,6 +332,32 @@ class PortalLMSClientTests(TestCase):
         self.assertEqual(enrollments[0].session, "2025/2026")
         self.assertEqual(enrollments[0].semester, "First Semester")
         self.assertFalse(StudentRegisteredCourse.objects.filter(course=stale_course).exists())
+
+    @patch("portal_auth.services.PortalClient.get_staff_assigned_courses")
+    def test_staff_course_sync_preserves_separate_term_offerings(self, get_courses):
+        get_courses.return_value = [
+            {"id": 42, "courseCode": "CSC401", "title": "Software Engineering"}
+        ]
+
+        first_term = get_or_sync_staff_registered_courses(
+            staff_external_id="SS0001",
+            programme_type_code="ug",
+            session="2025-2026",
+            semester="First-Semester",
+        )
+        second_term = get_or_sync_staff_registered_courses(
+            staff_external_id="SS0001",
+            programme_type_code="UG",
+            session="2025/2026",
+            semester="Second Semester",
+        )
+
+        self.assertNotEqual(
+            first_term[0].course_offering_id,
+            second_term[0].course_offering_id,
+        )
+        self.assertEqual(CourseOffering.objects.count(), 2)
+        self.assertEqual(StaffAssignedCourse.objects.count(), 2)
 
 
 class HealthCheckTests(TestCase):
