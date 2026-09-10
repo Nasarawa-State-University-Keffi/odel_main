@@ -219,6 +219,9 @@ class StaffQuerySetMixin:
             return queryset
         elif model == Question:
             queryset = Question.objects.filter(category__course__in=assigned_courses).select_related('category').prefetch_related('answers')
+            course_id = self.request.query_params.get('course')
+            if course_id:
+                queryset = queryset.filter(category__course__course_external_id=course_id)
             category_id = self.request.query_params.get('category')
             if category_id:
                 queryset = queryset.filter(category_id=category_id)

@@ -670,6 +670,23 @@ class QuizAPITests(APITestCase):
         self.assertIn('id', response.data)
         self.assertEqual(response.data['state'], 'in_progress')
 
+    def test_cannot_start_quiz_without_linked_question_slots(self):
+        """A quiz shell must have question-bank slots before an attempt exists."""
+        self.quiz.quiz_questions.all().delete()
+        self.client.force_authenticate(user=self.student)
+
+        response = self.client.post(
+            f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
+            {'session': '2025/2026', 'semester': 'First Semester'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('no linked questions', response.data['message'])
+        self.assertFalse(
+            QuizAttempt.objects.filter(quiz=self.quiz, user_external_id=self.student.external_id).exists()
+        )
+
     def test_active_attempt_never_exposes_answer_keys_or_grading(self):
         """Students may restore work, but cannot inspect correctness before submission."""
         self.client.force_authenticate(user=self.student)
@@ -966,6 +983,51 @@ class QuestionAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['name'], 'Q1')
+
+    def test_question_bank_filters_categories_and_questions_by_course(self):
+        other_course = CourseCache.objects.create(
+            course_external_id=202,
+            course_title='Other Test Course',
+            course_code='TEST202',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=other_course,
+            role='instructor',
+        )
+        other_category = QuestionCategory.objects.create(
+            course=other_course,
+            name='Other Course Category',
+        )
+        Question.objects.create(
+            category=self.category,
+            qtype='shortanswer',
+            name='Current Course Question',
+            question_text='Question for the current course',
+            default_mark=Decimal('5.00'),
+        )
+        Question.objects.create(
+            category=other_category,
+            qtype='shortanswer',
+            name='Other Course Question',
+            question_text='Question for another course',
+            default_mark=Decimal('5.00'),
+        )
+
+        self.client.force_authenticate(user=self.instructor)
+        categories_response = self.client.get(
+            f'/api/staff/assessment/question-bank/categories/?course={self.course.course_external_id}'
+        )
+        questions_response = self.client.get(
+            f'/api/staff/assessment/question-bank/questions/?course={self.course.course_external_id}'
+        )
+
+        self.assertEqual(categories_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(categories_response.data['count'], 1)
+        self.assertEqual(categories_response.data['results'][0]['name'], self.category.name)
+        self.assertEqual(questions_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(questions_response.data['count'], 1)
+        self.assertEqual(questions_response.data['results'][0]['name'], 'Current Course Question')
 
 
 class IntegrationTests(TestCase):

@@ -64,6 +64,18 @@ class QuizService:
         Raises:
             ValidationError: If user has active attempt or exceeded max attempts
         """
+        # Resolve the slot list before creating an attempt. A Quiz is a shell;
+        # only its QuizQuestion slots make it answerable.
+        question_list = list(
+            QuizQuestion.objects.filter(quiz=quiz)
+            .select_related('question')
+            .order_by('order', 'id')
+        )
+        if not question_list:
+            raise ValidationError(
+                "This quiz has no linked questions yet. Please contact your lecturer."
+            )
+
         # Check for active attempts
         active_attempt = QuizAttempt.objects.select_for_update().filter(
             quiz=quiz,
@@ -113,11 +125,7 @@ class QuizService:
             state='in_progress'
         )
         
-        # Create question attempts for all quiz questions
-        quiz_questions = QuizQuestion.objects.filter(quiz=quiz).select_related('question').order_by('order', 'id')
-        
         # Optionally shuffle questions
-        question_list = list(quiz_questions)
         if quiz.shuffle_questions:
             random.shuffle(question_list)
         
