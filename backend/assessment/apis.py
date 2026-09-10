@@ -4,6 +4,7 @@ API Views for the Assessment app - Moodle-style Quiz System
 REFACTORED: Separated Student and Staff endpoints with unified queryset logic.
 """
 import csv
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -499,7 +500,10 @@ class StudentQuizStartView(APIView):
     @extend_schema(
         summary="Start quiz attempt (students)",
         request=StartQuizSerializer,
-        responses={201: QuizAttemptSerializer},
+        responses={
+            201: QuizAttemptSerializer,
+            400: OpenApiResponse(description="The quiz is not currently available or the attempt limit was reached."),
+        },
         tags=['Student - Quizzes']
     )
     def post(self, request, pk=None):
@@ -515,8 +519,9 @@ class StudentQuizStartView(APIView):
         try:
             attempt = QuizService.start_attempt(quiz=quiz, user_external_id=user_external_id)
             return Response(QuizAttemptSerializer(attempt).data, status=status.HTTP_201_CREATED)
-        except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, DjangoValidationError) as exc:
+            message = exc.messages[0] if isinstance(exc, DjangoValidationError) and exc.messages else str(exc)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StudentQuizSubmitResponseView(APIView):

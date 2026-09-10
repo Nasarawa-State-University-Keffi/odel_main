@@ -12,6 +12,7 @@ Tests cover:
 CORRECTED VERSION - All tests should pass
 """
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from django.test import TestCase
@@ -583,6 +584,24 @@ class QuizAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('id', response.data)
         self.assertEqual(response.data['state'], 'in_progress')
+
+    def test_start_closed_quiz_returns_validation_response(self):
+        """A closed quiz is a client-visible availability error, not a server error."""
+        self.client.force_authenticate(user=self.student)
+        self.quiz.time_close = timezone.now() - timedelta(minutes=1)
+        self.quiz.save(update_fields=['time_close'])
+
+        response = self.client.post(
+            f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
+            {'session': '2025/2026', 'semester': 'First Semester'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Quiz closed at', response.data['message'])
+        self.assertFalse(
+            QuizAttempt.objects.filter(quiz=self.quiz, user_external_id=self.student.external_id).exists()
+        )
     
     def test_submit_response_via_api(self):
         """Test submitting a question response via API"""
