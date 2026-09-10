@@ -3,6 +3,7 @@ Quiz Service
 
 Handles quiz attempt lifecycle: starting, submitting responses, finishing, and grading.
 """
+from datetime import timedelta
 from typing import Dict, Any, Optional
 from decimal import Decimal
 from django.db import transaction
@@ -25,6 +26,29 @@ class QuizService:
     """
 
     @staticmethod
+    def get_attempt_deadline(attempt: QuizAttempt):
+        """Return the earliest server-enforced deadline for an attempt."""
+        deadlines = []
+        if attempt.quiz.time_limit:
+            deadlines.append(attempt.started_at + timedelta(seconds=attempt.quiz.time_limit))
+        if attempt.quiz.time_close:
+            deadlines.append(attempt.quiz.time_close)
+        return min(deadlines) if deadlines else None
+
+    @staticmethod
+    def is_attempt_expired(attempt: QuizAttempt, *, now=None) -> bool:
+        deadline = QuizService.get_attempt_deadline(attempt)
+        return bool(deadline and (now or timezone.now()) >= deadline)
+
+    @staticmethod
+    def expire_attempt_if_needed(attempt: QuizAttempt, *, now=None) -> bool:
+        """Finish an expired active attempt and report whether it was expired."""
+        if attempt.state != 'in_progress' or not QuizService.is_attempt_expired(attempt, now=now):
+            return False
+        QuizService.finish_attempt(attempt)
+        return True
+
+    @staticmethod
     @transaction.atomic
     def start_attempt(quiz: Quiz, user_external_id: str) -> QuizAttempt:
         """
@@ -41,12 +65,15 @@ class QuizService:
             ValidationError: If user has active attempt or exceeded max attempts
         """
         # Check for active attempts
-        active_attempt = QuizAttempt.objects.filter(
+        active_attempt = QuizAttempt.objects.select_for_update().filter(
             quiz=quiz,
             user_external_id=user_external_id,
             state='in_progress'
         ).first()
         
+        if active_attempt and QuizService.expire_attempt_if_needed(active_attempt):
+            active_attempt = None
+
         if active_attempt:
             raise ValidationError(
                 f"You already have an active attempt for this quiz (started {active_attempt.started_at})"
@@ -87,17 +114,18 @@ class QuizService:
         )
         
         # Create question attempts for all quiz questions
-        quiz_questions = QuizQuestion.objects.filter(quiz=quiz).select_related('question')
+        quiz_questions = QuizQuestion.objects.filter(quiz=quiz).select_related('question').order_by('order', 'id')
         
         # Optionally shuffle questions
         question_list = list(quiz_questions)
         if quiz.shuffle_questions:
             random.shuffle(question_list)
         
-        for quiz_question in question_list:
+        for display_order, quiz_question in enumerate(question_list, start=1):
             QuestionAttempt.objects.create(
                 quiz_attempt=attempt,
                 question=quiz_question.question,
+                display_order=display_order,
                 response={}
             )
         
@@ -128,13 +156,9 @@ class QuizService:
         if attempt.state != 'in_progress':
             raise ValidationError(f"Cannot submit to {attempt.state} attempt")
         
-        # Check time limit
-        if attempt.quiz.time_limit:
-            elapsed = (timezone.now() - attempt.started_at).total_seconds()
-            if elapsed > attempt.quiz.time_limit:
-                # Auto-finish the attempt
-                QuizService.finish_attempt(attempt)
-                raise ValidationError("Time limit exceeded - attempt has been automatically submitted")
+        # Enforce both the per-attempt limit and the quiz closing time.
+        if QuizService.expire_attempt_if_needed(attempt):
+            raise ValidationError("The quiz deadline has passed and your attempt was submitted automatically")
         
         # Validate question belongs to quiz
         quiz_question = QuizQuestion.objects.filter(

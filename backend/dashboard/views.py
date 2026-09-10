@@ -125,6 +125,7 @@ class StudentDashboardView(APIView):
 
         pending_quizzes = Quiz.objects.filter(
             course_id__in=course_ids,
+            is_published=True,
             time_close__gt=now,
         )
 
@@ -406,6 +407,7 @@ class StudentDetailDashboardView(APIView):
         now = timezone.now()
         pending_quizzes = Quiz.objects.filter(
             course_id__in=course_ids,
+            is_published=True,
             time_close__gt=now,
         )
         upcoming_assignments = Assignment.objects.filter(

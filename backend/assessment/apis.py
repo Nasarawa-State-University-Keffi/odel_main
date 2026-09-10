@@ -35,7 +35,7 @@ from .serializers import (
     AssignmentContentUploadSerializer, AssignmentSubmissionFileUploadSerializer,
     QuestionCategorySerializer, QuestionTypeAvailabilitySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
     QuizSerializer, QuizDetailSerializer, QuizQuestionSlotSerializer,
-    QuizAttemptSerializer, QuizAttemptDetailSerializer,
+    QuizAttemptSerializer, QuizAttemptDetailSerializer, StudentQuizAttemptSerializer, StudentQuizAttemptDetailSerializer,
     StartQuizSerializer, SubmitResponseSerializer, ManualGradeSerializer, StartAssignmentSubmissionSerializer,
     SubmitAssignmentSerializer, GradeAssignmentSerializer, GradeSerializer
 )
@@ -125,7 +125,10 @@ class StudentQuerySetMixin:
             return queryset
         elif model == Quiz:
             registered_courses = get_student_registered_course_ids(self.request)
-            queryset = Quiz.objects.filter(course_id__in=registered_courses).select_related("course")
+            queryset = Quiz.objects.filter(
+                course_id__in=registered_courses,
+                is_published=True,
+            ).select_related("course")
             course_id = self.request.query_params.get('course')
             if course_id:
                 queryset = queryset.filter(course__course_external_id=course_id)
@@ -293,7 +296,7 @@ class StudentSubmissionCreateView(APIView):
                     AssignmentSubmissionSerializer(submission).data,
                     status=status.HTTP_201_CREATED
                 )
-        except ValueError as e:
+        except (ValueError, DjangoValidationError) as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': 'Failed to create submission'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -358,7 +361,7 @@ class StudentSubmissionSubmitView(APIView):
                 'submission_id': str(submission.id),
                 'submitted_at': submission.submitted_at
             })
-        except ValueError as e:
+        except (ValueError, DjangoValidationError) as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -511,7 +514,7 @@ class StudentQuizStartView(APIView):
         serializer.is_valid(raise_exception=True)
         registered_course_ids = get_student_registered_course_ids(request, source='data')
         quiz = get_object_or_404(
-            Quiz.objects.filter(course_id__in=registered_course_ids),
+            Quiz.objects.filter(course_id__in=registered_course_ids, is_published=True),
             id=pk,
         )
         user_external_id = request.user.external_id
@@ -540,9 +543,7 @@ class StudentQuizSubmitResponseView(APIView):
                         value={
                             'success': True,
                             'question_attempt_id': '550e8400-e29b-41d4-a716-446655440000',
-                            'fraction': 1.0,
-                            'score': 5.0,
-                            'feedback': 'Correct answer!'
+                            'message': 'Response saved.'
                         }
                     )
                 ]
@@ -573,11 +574,9 @@ class StudentQuizSubmitResponseView(APIView):
             return Response({
                 'success': True,
                 'question_attempt_id': str(question_attempt.id),
-                'fraction': float(question_attempt.fraction),
-                'score': float(question_attempt.score),
-                'feedback': question_attempt.feedback
+                'message': 'Response saved.',
             })
-        except ValueError as e:
+        except (ValueError, DjangoValidationError) as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -600,8 +599,8 @@ class StudentQuizFinishView(APIView):
             
         try:
             QuizService.finish_attempt(attempt)
-            return Response(QuizAttemptDetailSerializer(attempt).data)
-        except ValueError as e:
+            return Response(StudentQuizAttemptDetailSerializer(attempt).data)
+        except (ValueError, DjangoValidationError) as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -613,14 +612,14 @@ class StudentQuizFinishView(APIView):
 @extend_schema(tags=['Student - Quizzes'])
 class StudentAttemptListView(StudentQuerySetMixin, generics.ListAPIView):
     """List my quiz attempts (students)"""
-    serializer_class = QuizAttemptSerializer
+    serializer_class = StudentQuizAttemptSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 
 @extend_schema(tags=['Student - Quizzes'])
 class StudentAttemptDetailView(StudentQuerySetMixin, generics.RetrieveAPIView):
     """Detail of a specific quiz attempt (students)"""
-    serializer_class = QuizAttemptDetailSerializer
+    serializer_class = StudentQuizAttemptDetailSerializer
     permission_classes = [IsAuthenticated, IsPortalStudent]
 
 # ==========================================
@@ -632,6 +631,15 @@ class StaffQuizListCreateView(StaffQuerySetMixin, generics.ListCreateAPIView):
     """List/Create quizzes (staff)"""
     serializer_class = QuizSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    def perform_create(self, serializer):
+        course = serializer.validated_data['course']
+        if not StaffAssignedCourse.objects.filter(
+            staff_external_id=self.request.user.external_id,
+            course=course,
+        ).exists():
+            raise ValidationError({'course_id': 'You are not assigned to this course.'})
+        serializer.save()
 
 
 @extend_schema(tags=['Staff - Quizzes'])
@@ -682,6 +690,11 @@ class StaffQuizManualGradeView(APIView):
     )
     def post(self, request, pk=None, question_attempt_id=None):
         question_attempt = get_object_or_404(QuestionAttempt, id=question_attempt_id, quiz_attempt_id=pk)
+        if not StaffAssignedCourse.objects.filter(
+            staff_external_id=request.user.external_id,
+            course=question_attempt.quiz_attempt.quiz.course,
+        ).exists():
+            return Response({'error': 'You do not have permission to grade this quiz.'}, status=status.HTTP_403_FORBIDDEN)
         
         serializer = ManualGradeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -745,6 +758,15 @@ class StaffQuizQuestionListCreateView(StaffQuerySetMixin, generics.ListCreateAPI
     """List/Create quiz question slots (staff)"""
     serializer_class = QuizQuestionSlotSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    def perform_create(self, serializer):
+        quiz = serializer.validated_data['quiz']
+        if not StaffAssignedCourse.objects.filter(
+            staff_external_id=self.request.user.external_id,
+            course=quiz.course,
+        ).exists():
+            raise ValidationError({'quiz': 'You are not assigned to this course.'})
+        serializer.save()
 
 
 @extend_schema(tags=['Staff - Quizzes'])

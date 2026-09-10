@@ -315,6 +315,7 @@ class QuizServiceTests(TestCase):
         self.quiz = Quiz.objects.create(
             course=self.course,
             name='Test Quiz',
+            is_published=True,
             time_limit=3600,
             max_grade=Decimal('100.00'),
             max_attempts=3
@@ -527,6 +528,7 @@ class QuizAPITests(APITestCase):
         self.quiz = Quiz.objects.create(
             course=self.course,
             name='Test Quiz',
+            is_published=True,
             time_limit=3600,
             max_grade=Decimal('100.00'),
             max_attempts=3
@@ -584,6 +586,24 @@ class QuizAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('id', response.data)
         self.assertEqual(response.data['state'], 'in_progress')
+
+    def test_active_attempt_never_exposes_answer_keys_or_grading(self):
+        """Students may restore work, but cannot inspect correctness before submission."""
+        self.client.force_authenticate(user=self.student)
+        start_response = self.client.post(
+            f'/api/student/assessment/quizzes/{self.quiz.id}/start/',
+            {'session': '2025/2026', 'semester': 'First Semester'},
+            format='json',
+        )
+
+        response = self.client.get(f'/api/student/assessment/attempts/{start_response.data["id"]}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        question_attempt = response.data['question_attempts'][0]
+        self.assertIsNone(question_attempt['correct_answer'])
+        self.assertIsNone(question_attempt['fraction'])
+        self.assertIsNone(question_attempt['score'])
+        self.assertNotIn('fraction', question_attempt['question']['answers'][0])
 
     def test_start_closed_quiz_returns_validation_response(self):
         """A closed quiz is a client-visible availability error, not a server error."""

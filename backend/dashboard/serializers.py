@@ -27,7 +27,7 @@ class CourseSummarySerializer(serializers.ModelSerializer):
             course=course,
             is_published=True,
         ).values_list('id', flat=True)
-        quiz_ids = Quiz.objects.filter(course=course).values_list('id', flat=True)
+        quiz_ids = Quiz.objects.filter(course=course, is_published=True).values_list('id', flat=True)
 
         total = content_ids.count() + assignment_ids.count() + quiz_ids.count()
         if total == 0:

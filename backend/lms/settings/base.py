@@ -206,6 +206,12 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+CELERY_BEAT_SCHEDULE = {
+    'expire-due-quiz-attempts': {
+        'task': 'assessment.expire_due_quiz_attempts',
+        'schedule': 60.0,
+    },
+}
 
 # Logging Configuration
 # LOGGING = {

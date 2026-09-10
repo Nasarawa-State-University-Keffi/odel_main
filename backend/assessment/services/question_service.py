@@ -164,6 +164,8 @@ class QuestionService:
         # Avoid circular import by importing here
         from .quiz_service import QuizService
         quiz_attempt = question_attempt.quiz_attempt
-        QuizService.calculate_final_grade(quiz_attempt)
+        if quiz_attempt.state == 'finished':
+            quiz_attempt.total_score = QuizService.calculate_final_grade(quiz_attempt)
+            quiz_attempt.save(update_fields=['total_score'])
         
         return question_attempt

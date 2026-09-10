@@ -35,7 +35,6 @@ class Assignment(models.Model):
 
     title = models.CharField(max_length=512)
     description = models.TextField(blank=True)
-
     open_at = models.DateTimeField()
     due_at = models.DateTimeField()
     close_at = models.DateTimeField(null=True, blank=True)
@@ -524,6 +523,10 @@ class Quiz(models.Model):
     course = models.ForeignKey('courses.CourseCache', on_delete=models.CASCADE, related_name='quizzes')
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    is_published = models.BooleanField(
+        default=False,
+        help_text="Only published quizzes are visible to enrolled students"
+    )
     time_open = models.DateTimeField(null=True, blank=True, help_text="When quiz becomes available")
     time_close = models.DateTimeField(null=True, blank=True, help_text="When quiz closes")
     time_limit = models.IntegerField(
@@ -631,6 +634,10 @@ class QuestionAttempt(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     quiz_attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE, related_name='question_attempts')
     question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name='attempts')
+    display_order = models.PositiveIntegerField(
+        default=0,
+        help_text="Question position for this specific attempt"
+    )
     response = JSONField(default=dict, help_text="Student response (structure depends on question type)")
     fraction = models.DecimalField(
         max_digits=3, 
@@ -651,7 +658,7 @@ class QuestionAttempt(models.Model):
     feedback = models.TextField(blank=True, help_text="Specific feedback for this attempt")
 
     class Meta:
-        ordering = ['quiz_attempt', 'question']
+        ordering = ['quiz_attempt', 'display_order', 'id']
         unique_together = [['quiz_attempt', 'question']]
         verbose_name = 'Question Attempt'
         verbose_name_plural = 'Question Attempts'

@@ -356,6 +356,15 @@ class QuizQuestionSlotSerializer(serializers.ModelSerializer):
         model = QuizQuestion
         fields = ['id', 'quiz', 'question', 'question_name', 'question_type', 'order', 'max_mark']
 
+    def validate(self, attrs):
+        quiz = attrs.get('quiz') or getattr(self.instance, 'quiz', None)
+        question = attrs.get('question') or getattr(self.instance, 'question', None)
+        if quiz and question and question.category.course_id != quiz.course_id:
+            raise serializers.ValidationError({
+                'question': 'Questions can only be added to quizzes in the same course.'
+            })
+        return attrs
+
 
 class BaseQuizSerializer(serializers.ModelSerializer, QuizMetricsMixin):
     """Base quiz serializer common to list and detail views."""
@@ -367,7 +376,7 @@ class BaseQuizSerializer(serializers.ModelSerializer, QuizMetricsMixin):
         model = Quiz
         fields = [
             'id', 'course_external_id', 'name', 'description', 'time_open', 'time_close',
-            'time_limit', 'max_grade', 'shuffle_questions', 'max_attempts',
+            'time_limit', 'max_grade', 'shuffle_questions', 'max_attempts', 'is_published',
             'show_feedback', 'questions_count', 'total_marks', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -462,13 +471,14 @@ class QuestionAttemptDetailSerializer(serializers.ModelSerializer):
 class QuizAttemptSerializer(serializers.ModelSerializer):
     quiz_name = serializers.CharField(source='quiz.name', read_only=True)
     time_taken_seconds = serializers.SerializerMethodField()
+    deadline_at = serializers.SerializerMethodField()
     
     class Meta:
         model = QuizAttempt
         fields = [
             'id', 'quiz', 'quiz_name', 'user_external_id',
             'attempt_number', 'state', 'started_at', 'finished_at',
-            'total_score', 'time_taken_seconds'
+            'total_score', 'time_taken_seconds', 'deadline_at'
         ]
         read_only_fields = ['started_at', 'finished_at', 'total_score', 'state']
     
@@ -476,6 +486,11 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
         if obj.finished_at:
             return int((obj.finished_at - obj.started_at).total_seconds())
         return None
+
+    def get_deadline_at(self, obj):
+        from .services import QuizService
+        deadline = QuizService.get_attempt_deadline(obj)
+        return deadline.isoformat() if deadline else None
 
 
 class QuizAttemptDetailSerializer(serializers.ModelSerializer):
@@ -501,6 +516,103 @@ class QuizAttemptDetailSerializer(serializers.ModelSerializer):
     def get_summary(self, obj) -> dict:
         from .services import QuizService
         return QuizService.get_attempt_summary(obj)
+
+
+class StudentQuestionAttemptSerializer(serializers.ModelSerializer):
+    """A student's attempt view. Never reveal grading data while it is active."""
+    question = QuestionPublicSerializer(read_only=True)
+    max_mark = serializers.SerializerMethodField()
+    fraction = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
+    feedback = serializers.SerializerMethodField()
+    correct_answer = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuestionAttempt
+        fields = [
+            'id', 'question', 'display_order', 'response', 'max_mark',
+            'fraction', 'score', 'feedback', 'correct_answer',
+            'graded_at', 'manually_graded'
+        ]
+
+    def get_max_mark(self, obj) -> float:
+        quiz_question = QuizQuestion.objects.filter(
+            quiz=obj.quiz_attempt.quiz, question=obj.question
+        ).first()
+        return float(quiz_question.max_mark) if quiz_question else 0.0
+
+    def _can_show_feedback(self, obj) -> bool:
+        return obj.quiz_attempt.state == 'finished' and obj.quiz_attempt.quiz.show_feedback
+
+    def get_fraction(self, obj):
+        return float(obj.fraction) if self._can_show_feedback(obj) and obj.fraction is not None else None
+
+    def get_score(self, obj):
+        return float(obj.score) if self._can_show_feedback(obj) and obj.score is not None else None
+
+    def get_feedback(self, obj):
+        return obj.feedback if self._can_show_feedback(obj) else ''
+
+    def get_correct_answer(self, obj):
+        if not self._can_show_feedback(obj):
+            return None
+        from .services import QuestionService
+        return QuestionService.get_correct_answer(obj.question)
+
+
+class StudentQuizAttemptDetailSerializer(serializers.ModelSerializer):
+    """Student-safe detail view for both in-progress and completed attempts."""
+    quiz = QuizSerializer(read_only=True)
+    question_attempts = StudentQuestionAttemptSerializer(many=True, read_only=True)
+    deadline_at = serializers.SerializerMethodField()
+    time_taken_seconds = serializers.SerializerMethodField()
+    total_score = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuizAttempt
+        fields = [
+            'id', 'quiz', 'attempt_number', 'state', 'started_at', 'finished_at',
+            'total_score', 'deadline_at', 'time_taken_seconds', 'question_attempts'
+        ]
+
+    def get_deadline_at(self, obj):
+        from .services import QuizService
+        deadline = QuizService.get_attempt_deadline(obj)
+        return deadline.isoformat() if deadline else None
+
+    def get_time_taken_seconds(self, obj):
+        if obj.finished_at:
+            return int((obj.finished_at - obj.started_at).total_seconds())
+        return None
+
+    def get_total_score(self, obj):
+        if obj.state != 'finished' or not obj.quiz.show_feedback or obj.total_score is None:
+            return None
+        return float(obj.total_score)
+
+
+class StudentQuizAttemptSerializer(serializers.ModelSerializer):
+    """Student-safe summary that honours a quiz's feedback visibility setting."""
+    quiz_name = serializers.CharField(source='quiz.name', read_only=True)
+    total_score = serializers.SerializerMethodField()
+    deadline_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuizAttempt
+        fields = [
+            'id', 'quiz', 'quiz_name', 'attempt_number', 'state', 'started_at',
+            'finished_at', 'total_score', 'deadline_at'
+        ]
+
+    def get_total_score(self, obj):
+        if obj.state != 'finished' or not obj.quiz.show_feedback or obj.total_score is None:
+            return None
+        return float(obj.total_score)
+
+    def get_deadline_at(self, obj):
+        from .services import QuizService
+        deadline = QuizService.get_attempt_deadline(obj)
+        return deadline.isoformat() if deadline else None
 
 
 # ==========================================

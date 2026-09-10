@@ -253,6 +253,7 @@ class StudentAssignmentAccessTests(TestCase):
         current_quiz = Quiz.objects.create(
             course=self.current_course,
             name='Current quiz',
+            is_published=True,
         )
         other_quiz = Quiz.objects.create(
             course=self.other_course,

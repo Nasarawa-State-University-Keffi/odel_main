@@ -106,6 +106,7 @@ class InstructorDashboardErrorTests(TestCase):
         Quiz.objects.create(
             course=course,
             name='Upcoming quiz',
+            is_published=True,
             time_close=timezone.now() + timezone.timedelta(days=1),
         )
         Assignment.objects.create(
