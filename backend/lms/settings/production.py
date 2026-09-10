@@ -82,7 +82,6 @@ SESSION_CACHE_ALIAS = 'default'
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
-SESSION_COOKIE_AGE = 86400  # 24 hours
 
 # Security Settings - MUST be enabled in production
 SECURE_SSL_REDIRECT = True

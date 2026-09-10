@@ -3,6 +3,10 @@ from .models import PortalUser
 
 
 class PortalSessionAuthentication(SessionAuthentication):
+    def authenticate_header(self, request):
+        """Make missing/expired sessions produce 401 instead of permission-denied 403."""
+        return "Session"
+
     def authenticate(self, request):
         portal_user_id = request.session.get("portal_user_id")
         if not portal_user_id:

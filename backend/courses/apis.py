@@ -43,3 +43,4 @@ class SemesterViewSet(AdminManagedLookupViewSet):
 class CourseCacheViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CourseCache.objects.all()
     serializer_class = CourseCacheSerializer
+    lookup_field = 'course_external_id'

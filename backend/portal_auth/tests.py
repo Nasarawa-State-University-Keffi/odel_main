@@ -55,6 +55,7 @@ class OIDCAuthTests(TestCase):
 
     @patch("portal_auth.views.validate_id_token")
     @patch("portal_auth.views.exchange_code_for_tokens")
+    @override_settings(SESSION_COOKIE_AGE=28800)
     def test_callback_syncs_user_sets_session_and_redirects(self, exchange_code, validate_id_token):
         session = self.client.session
         session[OIDC_SESSION_KEY] = {"state": "expected", "nonce": "nonce", "code_verifier": "verifier"}
@@ -85,6 +86,12 @@ class OIDCAuthTests(TestCase):
         self.assertTrue(user.is_staff)
         self.assertEqual(self.client.session["portal_user_id"], user.id)
         self.assertNotIn(OIDC_SESSION_KEY, self.client.session)
+        self.assertEqual(int(response.cookies["sessionid"]["max-age"]), 28800)
+
+    def test_missing_session_is_an_authentication_failure(self):
+        response = self.client.get("/auth/me")
+
+        self.assertEqual(response.status_code, 401)
 
     def test_me_returns_session_user(self):
         user = PortalUser.objects.create(

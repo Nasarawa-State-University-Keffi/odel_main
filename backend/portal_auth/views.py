@@ -1,5 +1,4 @@
 import logging
-import time
 
 import jwt
 import requests
@@ -103,9 +102,10 @@ class OIDCCallbackView(APIView):
             request.session.pop(OIDC_SESSION_KEY, None)
 
         request.session["portal_user_id"] = user.id
-        token_expiry = claims.get("exp")
-        if token_expiry:
-            request.session.set_expiry(max(1, int(token_expiry) - int(time.time())))
+        # The ID token is validated only to establish the LMS session. Its short
+        # lifetime must not become the lifetime of the browser's LMS session;
+        # Authentik's SSO session and Django's application session are separate.
+        request.session.set_expiry(settings.SESSION_COOKIE_AGE)
         request.session.modified = True
 
         return redirect(getattr(settings, "OIDC_LOGIN_REDIRECT_URL", "/dashboard"))

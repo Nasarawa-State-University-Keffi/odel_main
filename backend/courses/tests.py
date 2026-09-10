@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from dashboard.views import resolve_academic_period
 from portal_auth.models import PortalUser
 
-from .models import AcademicSession, Semester
+from .models import AcademicSession, CourseCache, Semester
 
 
 class AcademicPeriodTests(TestCase):
@@ -38,6 +38,20 @@ class AcademicPeriodTests(TestCase):
             semesters_response.json()['results'],
             [{'id': self.semester.id, 'name': 'First Semester'}],
         )
+
+    def test_frontend_can_retrieve_course_by_portal_id(self):
+        course = CourseCache.objects.create(
+            course_external_id=4242,
+            course_code='CSC 401',
+            course_title='Software Engineering',
+            department_name='Computer Science',
+        )
+
+        response = self.client.get(f'/api/courses/{course.course_external_id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['course_external_id'], 4242)
+        self.assertEqual(response.json()['course_code'], 'CSC 401')
 
     def test_dashboard_period_resolution_uses_canonical_names(self):
         session, semester = resolve_academic_period('2025-2026', 'first-semester')
