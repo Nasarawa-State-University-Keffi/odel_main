@@ -24,6 +24,7 @@ from portal_auth.models import PortalUser
 from courses.models import (
     AcademicSession,
     CourseCache,
+    CourseOffering,
     Semester,
     StudentRegisteredCourse,
     StaffAssignedCourse,
@@ -459,6 +460,88 @@ class QuizServiceTests(TestCase):
         self.assertEqual(summary['total_questions'], 1)
         self.assertEqual(summary['answered_questions'], 1)
         self.assertEqual(summary['graded_questions'], 1)
+
+
+class StaffAssignmentContextAPITests(APITestCase):
+    """Assignment lists must stay within the teaching period selected by staff."""
+
+    def setUp(self):
+        self.instructor = PortalUser.objects.create(
+            external_id='assignment_instructor',
+            full_name='Assignment Instructor',
+            is_staff=True,
+        )
+        self.session = AcademicSession.objects.create(name='2025/2026')
+        self.first_semester = Semester.objects.create(name='First Semester')
+        self.second_semester = Semester.objects.create(name='Second Semester')
+        self.first_course = CourseCache.objects.create(
+            course_external_id=401,
+            course_title='First Semester Course',
+            course_code='FIRST401',
+        )
+        self.second_course = CourseCache.objects.create(
+            course_external_id=402,
+            course_title='Second Semester Course',
+            course_code='SECOND402',
+        )
+        first_offering = CourseOffering.objects.create(
+            course=self.first_course,
+            session=self.session,
+            semester=self.first_semester,
+            programme_type_code='ODEL',
+        )
+        second_offering = CourseOffering.objects.create(
+            course=self.second_course,
+            session=self.session,
+            semester=self.second_semester,
+            programme_type_code='ODEL',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=self.first_course,
+            course_offering=first_offering,
+            programme_type_code='ODEL',
+            role='INSTRUCTOR',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=self.second_course,
+            course_offering=second_offering,
+            programme_type_code='ODEL',
+            role='INSTRUCTOR',
+        )
+        Assignment.objects.create(
+            course=self.first_course,
+            title='First semester assignment',
+            open_at=timezone.now(),
+            due_at=timezone.now() + timedelta(days=7),
+            created_by=self.instructor,
+        )
+        Assignment.objects.create(
+            course=self.second_course,
+            title='Second semester assignment',
+            open_at=timezone.now(),
+            due_at=timezone.now() + timedelta(days=7),
+            created_by=self.instructor,
+        )
+        self.client.force_authenticate(user=self.instructor)
+
+    def test_assignment_list_requires_a_complete_teaching_context(self):
+        response = self.client.get('/api/staff/assessment/assignments/')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('programme_type_code, session, and semester are required', response.data['detail'])
+
+    def test_assignment_list_is_limited_to_the_selected_teaching_context(self):
+        response = self.client.get('/api/staff/assessment/assignments/', {
+            'programme_type_code': 'ODEL',
+            'session': '2025/2026',
+            'semester': 'First Semester',
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['title'], 'First semester assignment')
 
 
 class QuizAPITests(APITestCase):

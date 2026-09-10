@@ -90,6 +90,37 @@ def get_student_registered_course_ids(request, *, source='query'):
     request._registered_course_ids = course_ids
     return course_ids
 
+
+def get_staff_assigned_course_ids(request, *, require_context=False):
+    """Return the staff member's assigned courses, optionally for one teaching period."""
+    programme_type_code = request.query_params.get('programme_type_code')
+    session = request.query_params.get('session')
+    semester = request.query_params.get('semester')
+    supplied_context = (programme_type_code, session, semester)
+
+    if require_context and not all(supplied_context):
+        raise ValidationError({
+            'detail': 'programme_type_code, session, and semester are required',
+        })
+
+    assignments = StaffAssignedCourse.objects.filter(
+        staff_external_id=request.user.external_id,
+    )
+    if any(supplied_context):
+        if not all(supplied_context):
+            raise ValidationError({
+                'detail': 'programme_type_code, session, and semester must be supplied together',
+            })
+
+        session, semester = resolve_academic_period(session, semester)
+        assignments = assignments.filter(
+            programme_type_code__iexact=programme_type_code.strip(),
+            course_offering__session__name=session,
+            course_offering__semester__name=semester,
+        )
+
+    return assignments.values_list('course_id', flat=True)
+
 class StudentQuerySetMixin:
     def get_queryset(self):
         student_id = self.request.user.external_id
@@ -146,13 +177,18 @@ class StudentQuerySetMixin:
 
 class StaffQuerySetMixin:
     def get_queryset(self):
-        staff_id = self.request.user.external_id
-        assigned_courses = StaffAssignedCourse.objects.filter(
-            staff_external_id=staff_id
-        ).values_list('course', flat=True)
-        
         serializer_class = self.get_serializer_class()
-        model = serializer_class.Meta.model        
+        model = serializer_class.Meta.model
+        is_assignment_list = (
+            model == Assignment
+            and self.request.method == 'GET'
+            and not self.kwargs.get('pk')
+        )
+        assigned_courses = get_staff_assigned_course_ids(
+            self.request,
+            require_context=is_assignment_list,
+        )
+
         if model == Assignment:
             return Assignment.objects.filter(course__in=assigned_courses).select_related("course")
         elif model == AssignmentSubmission:
