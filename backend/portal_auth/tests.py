@@ -183,7 +183,7 @@ class OIDCUserMappingTests(TestCase):
             ],
         })
 
-        self.assertEqual(user.roles, ["STUDENT", "ADMIN", "STAFF"])
+        self.assertEqual(user.roles, ["ADMIN", "STAFF"])
         self.assertTrue(user.is_staff)
 
     def test_sync_user_from_claims_prefers_preferred_username(self):
@@ -214,6 +214,15 @@ class OIDCUserMappingTests(TestCase):
 
         self.assertEqual(user.external_id, "SS0001")
         self.assertEqual(user.roles, ["STAFF"])
+
+    def test_sync_user_from_claims_gives_staff_precedence_over_portal_users(self):
+        user = sync_user_from_claims({
+            "preferred_username": "staff001",
+            "groups": ["PORTAL_USERS", "PORTAL_STAFF"],
+        })
+
+        self.assertEqual(user.roles, ["STAFF"])
+        self.assertTrue(user.is_staff)
 
 
 @override_settings(

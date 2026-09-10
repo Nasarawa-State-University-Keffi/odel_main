@@ -204,6 +204,14 @@ def sync_user_from_claims(claims):
     external_id = get_external_id_from_claims(claims)
     roles = get_roles_from_claims(claims)
     normalized_roles = {str(role).upper() for role in roles}
+    is_staff = bool(STAFF_ROLES & normalized_roles)
+
+    # PORTAL_USERS is a broad portal membership and is mapped to STUDENT for
+    # learners. A member who is also a staff/admin must use the staff portal,
+    # rather than receiving both conflicting application roles.
+    if is_staff:
+        roles = [role for role in roles if str(role).upper() != "STUDENT"]
+
     programme = resolve_programme(claims)
 
     user, _ = PortalUser.objects.update_or_create(
@@ -214,7 +222,7 @@ def sync_user_from_claims(claims):
             "first_name": claims.get("given_name") or "",
             "last_name": claims.get("family_name") or "",
             "roles": roles,
-            "is_staff": bool(STAFF_ROLES & normalized_roles),
+            "is_staff": is_staff,
             "is_active": True,
             **({'programme': programme} if programme else {}),
         },
