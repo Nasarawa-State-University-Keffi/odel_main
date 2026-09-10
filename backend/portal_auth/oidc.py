@@ -14,6 +14,7 @@ from .services import STAFF_ROLES, resolve_programme
 
 
 OIDC_SESSION_KEY = "oidc_login"
+OIDC_ID_TOKEN_SESSION_KEY = "oidc_id_token"
 
 ROLE_ALIASES = {
     "ADMIN": "ADMIN",
@@ -83,6 +84,24 @@ def get_provider_metadata():
 
     cache.set(cache_key, metadata, 3600)
     return metadata
+
+
+def build_end_session_url(id_token_hint=""):
+    """Build Authentik's RP-initiated logout URL from provider discovery."""
+    metadata = get_provider_metadata()
+    endpoint = metadata.get("end_session_endpoint")
+    if not endpoint:
+        raise OIDCConfigurationError("OIDC discovery metadata missing: end_session_endpoint")
+
+    params = {"client_id": get_oidc_setting("AUTHENTIK_CLIENT_ID")}
+    if id_token_hint:
+        params["id_token_hint"] = id_token_hint
+
+    post_logout_redirect_uri = getattr(settings, "OIDC_LOGOUT_REDIRECT_URL", "")
+    if post_logout_redirect_uri:
+        params["post_logout_redirect_uri"] = post_logout_redirect_uri
+
+    return f"{endpoint}?{urlencode(params)}"
 
 
 def generate_pkce_pair():

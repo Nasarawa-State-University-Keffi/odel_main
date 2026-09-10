@@ -92,6 +92,7 @@ AUTHENTIK_CLIENT_SECRET=<authentik-client-secret>
 AUTHENTIK_REDIRECT_URI=https://api.example.edu.ng/auth/oidc/callback
 AUTHENTIK_SCOPES=openid profile email
 OIDC_LOGIN_REDIRECT_URL=https://lms.example.edu.ng/dashboard
+OIDC_LOGOUT_REDIRECT_URL=https://lms.example.edu.ng/login
 ```
 
 For same-domain, different-subdomain deployment:
@@ -109,7 +110,25 @@ CORS_ALLOWED_ORIGINS=https://lms.example.edu.ng
 CSRF_TRUSTED_ORIGINS=https://lms.example.edu.ng
 AUTHENTIK_REDIRECT_URI=https://api.example.edu.ng/auth/oidc/callback
 OIDC_LOGIN_REDIRECT_URL=https://lms.example.edu.ng/dashboard
+OIDC_LOGOUT_REDIRECT_URL=https://lms.example.edu.ng/login
 ```
+
+## Authentik single logout
+
+LMS logout first invalidates its Django session, then redirects the browser to
+Authentik's discovered OIDC end-session endpoint. Set the following Dokploy
+environment variable to the public frontend login page:
+
+```env
+OIDC_LOGOUT_REDIRECT_URL=https://lms.example.edu.ng/login
+```
+
+In Authentik, add the `default-invalidation-logout` User Logout stage to
+`default-provider-invalidation-flow` (or to a custom invalidation flow assigned
+to the LMS OAuth2 provider). This is the Authentik-side step that ends the
+central Authentik browser session when logout starts from LMS. If Authentik
+validates post-logout redirects for the provider, also allow the same login URL
+in that provider's redirect URI configuration.
 
 ## Startup Behavior
 

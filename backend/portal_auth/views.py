@@ -15,9 +15,11 @@ from rest_framework import status
 from .serializers import PortalUserSerializer
 from .oidc import (
     OIDC_SESSION_KEY,
+    OIDC_ID_TOKEN_SESSION_KEY,
     OIDCAuthenticationError,
     OIDCConfigurationError,
     build_authorization_url,
+    build_end_session_url,
     exchange_code_for_tokens,
     sync_user_from_claims,
     validate_id_token,
@@ -102,6 +104,9 @@ class OIDCCallbackView(APIView):
             request.session.pop(OIDC_SESSION_KEY, None)
 
         request.session["portal_user_id"] = user.id
+        # Keep the ID token server-side only. Authentik uses it as a trusted hint
+        # when the browser starts RP-initiated logout later.
+        request.session[OIDC_ID_TOKEN_SESSION_KEY] = id_token
         # The ID token is validated only to establish the LMS session. Its short
         # lifetime must not become the lifetime of the browser's LMS session;
         # Authentik's SSO session and Django's application session are separate.
@@ -116,5 +121,14 @@ class OIDCLogoutView(APIView):
 
     @extend_schema(tags=['Global - Authentication'])
     def post(self, request):
+        id_token_hint = request.session.get(OIDC_ID_TOKEN_SESSION_KEY, "")
+        logout_url = None
+        try:
+            logout_url = build_end_session_url(id_token_hint)
+        except (OIDCConfigurationError, requests.RequestException):
+            # Local LMS logout must still succeed if Authentik discovery is
+            # temporarily unavailable. The client will safely return to /login.
+            logger.warning("Could not build Authentik end-session URL", exc_info=True)
+
         request.session.flush()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({"logout_url": logout_url}, status=status.HTTP_200_OK)

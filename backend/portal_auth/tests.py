@@ -1,4 +1,5 @@
 from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, urlparse
 
 from django.test import TestCase, override_settings
 import jwt
@@ -8,7 +9,12 @@ from rest_framework.test import APIClient
 from .models import PortalUser
 from .client import PortalClient
 from .exceptions import PortalLMSUnavailable
-from .oidc import OIDC_SESSION_KEY, sync_user_from_claims
+from .oidc import (
+    OIDC_ID_TOKEN_SESSION_KEY,
+    OIDC_SESSION_KEY,
+    build_end_session_url,
+    sync_user_from_claims,
+)
 from .services import get_or_sync_staff_registered_courses, get_or_sync_student_registered_courses
 from courses.models import CourseCache, CourseOffering, StaffAssignedCourse, StudentRegisteredCourse
 
@@ -19,6 +25,7 @@ from courses.models import CourseCache, CourseOffering, StaffAssignedCourse, Stu
     AUTHENTIK_CLIENT_SECRET="secret",
     AUTHENTIK_REDIRECT_URI="https://lms.example.edu.ng/auth/oidc/callback",
     OIDC_LOGIN_REDIRECT_URL="/dashboard",
+    OIDC_LOGOUT_REDIRECT_URL="https://lms.example.edu.ng/login",
 )
 class OIDCAuthTests(TestCase):
     def setUp(self):
@@ -85,6 +92,7 @@ class OIDCAuthTests(TestCase):
         self.assertEqual(user.roles, ["STAFF", "teacher"])
         self.assertTrue(user.is_staff)
         self.assertEqual(self.client.session["portal_user_id"], user.id)
+        self.assertEqual(self.client.session[OIDC_ID_TOKEN_SESSION_KEY], "header.payload.signature")
         self.assertNotIn(OIDC_SESSION_KEY, self.client.session)
         self.assertEqual(int(response.cookies["sessionid"]["max-age"]), 28800)
 
@@ -117,16 +125,22 @@ class OIDCAuthTests(TestCase):
         self.assertEqual(response.json()["roles"], ["teacher"])
         self.assertTrue(response.json()["csrfToken"])
 
-    def test_logout_clears_session(self):
+    @patch("portal_auth.views.build_end_session_url")
+    def test_logout_clears_session_and_returns_authentik_end_session_url(self, end_session_url):
         user = PortalUser.objects.create(external_id="staff001", full_name="John Doe")
         session = self.client.session
         session["portal_user_id"] = user.id
+        session[OIDC_ID_TOKEN_SESSION_KEY] = "header.payload.signature"
         session.save()
+        end_session_url.return_value = "https://auth.example.edu.ng/application/o/lms/end-session/?client_id=lms-client"
 
         response = self.client.post("/auth/logout")
 
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["logout_url"], end_session_url.return_value)
+        end_session_url.assert_called_once_with("header.payload.signature")
         self.assertNotIn("portal_user_id", self.client.session)
+        self.assertNotIn(OIDC_ID_TOKEN_SESSION_KEY, self.client.session)
 
     def test_logout_requires_csrf_for_session_authentication(self):
         user = PortalUser.objects.create(external_id="staff001", full_name="John Doe")
@@ -139,7 +153,8 @@ class OIDCAuthTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_logout_accepts_csrf_token_from_me_response(self):
+    @patch("portal_auth.views.build_end_session_url", return_value="https://auth.example.edu.ng/end-session/")
+    def test_logout_accepts_csrf_token_from_me_response(self, _end_session_url):
         user = PortalUser.objects.create(external_id="staff001", full_name="John Doe")
         client = APIClient(enforce_csrf_checks=True)
         session = client.session
@@ -151,8 +166,21 @@ class OIDCAuthTests(TestCase):
 
         response = client.post("/auth/logout", HTTP_X_CSRFTOKEN=csrf_token)
 
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, 200)
         self.assertNotIn("portal_user_id", client.session)
+
+    @patch("portal_auth.oidc.get_provider_metadata")
+    def test_end_session_url_contains_registered_logout_callback(self, metadata):
+        metadata.return_value = {
+            "end_session_endpoint": "https://auth.example.edu.ng/application/o/lms/end-session/",
+        }
+
+        logout_url = build_end_session_url("header.payload.signature")
+        parsed = parse_qs(urlparse(logout_url).query)
+
+        self.assertEqual(parsed["client_id"], ["lms-client"])
+        self.assertEqual(parsed["id_token_hint"], ["header.payload.signature"])
+        self.assertEqual(parsed["post_logout_redirect_uri"], ["https://lms.example.edu.ng/login"])
 
     @patch("portal_auth.views.validate_id_token")
     @patch("portal_auth.views.exchange_code_for_tokens")
