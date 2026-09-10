@@ -316,3 +316,53 @@ class ContentAccessLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.action} - {self.content.title}"
+
+
+class LessonComment(models.Model):
+    """A course-scoped discussion message attached to one lesson."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    content = models.ForeignKey(
+        LearningContent,
+        on_delete=models.CASCADE,
+        related_name='lesson_comments',
+    )
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        related_name='replies',
+        null=True,
+        blank=True,
+    )
+    author = models.ForeignKey(
+        PortalUser,
+        on_delete=models.SET_NULL,
+        related_name='lesson_comments',
+        null=True,
+        blank=True,
+    )
+    body = models.TextField(max_length=4000)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(
+                fields=['content', 'parent', 'created_at'],
+                name='lesson_comment_thread_idx',
+            ),
+        ]
+
+    def clean(self):
+        if self.parent_id and self.parent.content_id != self.content_id:
+            raise ValidationError({
+                'parent': 'Replies must belong to a comment on the same lesson.'
+            })
+        if self.parent_id and self.parent.parent_id:
+            raise ValidationError({
+                'parent': 'Replies can only be one level deep.'
+            })
+
+    def __str__(self):
+        return f"Comment on {self.content.title} by {self.author or 'former user'}"

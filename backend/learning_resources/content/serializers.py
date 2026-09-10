@@ -6,7 +6,13 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from drf_spectacular.utils import extend_schema_field
 
-from .models import CourseModule, LearningContent, StorageSettings, ContentAccessLog
+from .models import (
+    CourseModule,
+    LearningContent,
+    StorageSettings,
+    ContentAccessLog,
+    LessonComment,
+)
 from courses.models import CourseCache
 
 
@@ -96,6 +102,65 @@ class LearningContentSerializer(serializers.ModelSerializer):
                 'module': 'The selected module belongs to a different course.'
             })
         return attrs
+
+
+class LessonCommentSerializer(serializers.ModelSerializer):
+    """Serialize one discussion comment and its direct replies."""
+
+    author_name = serializers.SerializerMethodField()
+    author_profile_picture = serializers.SerializerMethodField()
+    author_is_staff = serializers.SerializerMethodField()
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LessonComment
+        fields = [
+            'id', 'parent', 'body', 'author', 'author_name',
+            'author_profile_picture', 'author_is_staff', 'replies',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'author', 'author_name', 'author_profile_picture',
+            'author_is_staff', 'replies', 'created_at', 'updated_at',
+        ]
+
+    def validate_body(self, value):
+        body = value.strip()
+        if not body:
+            raise serializers.ValidationError('Write a comment before posting.')
+        return body
+
+    def validate(self, attrs):
+        parent = attrs.get('parent')
+        content = self.context.get('content')
+        if not parent:
+            return attrs
+        if content and parent.content_id != content.id:
+            raise serializers.ValidationError({
+                'parent': 'This comment belongs to a different lesson.'
+            })
+        if parent.parent_id:
+            raise serializers.ValidationError({
+                'parent': 'Replies can only be one level deep.'
+            })
+        return attrs
+
+    def get_author_name(self, obj):
+        return obj.author.full_name if obj.author else None
+
+    def get_author_profile_picture(self, obj):
+        if not obj.author or not obj.author.profile_picture:
+            return None
+        return obj.author.profile_picture
+
+    def get_author_is_staff(self, obj):
+        return bool(obj.author and obj.author.is_staff)
+
+    def get_replies(self, obj):
+        if obj.parent_id:
+            return []
+        replies = obj.replies.select_related('author').order_by('created_at')
+        return LessonCommentSerializer(replies, many=True, context=self.context).data
 
 
 # ==========================================================

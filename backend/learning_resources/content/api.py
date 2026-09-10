@@ -17,7 +17,13 @@ from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
-from .models import CourseModule, LearningContent, StorageSettings, ContentAccessLog
+from .models import (
+    CourseModule,
+    LearningContent,
+    StorageSettings,
+    ContentAccessLog,
+    LessonComment,
+)
 from .serializers import (
     CourseModuleSerializer,
     CourseModuleDetailSerializer,
@@ -29,6 +35,7 @@ from .serializers import (
     StorageSettingsSerializer,
     ContentAccessLogSerializer,
     ContentStatisticsSerializer,
+    LessonCommentSerializer,
     resolve_course_identifier,
 )
 from .services import (
@@ -393,6 +400,58 @@ class LearningContentLogAccessAPIView(views.APIView):
         )
         
         return Response({'status': 'logged'})
+
+
+@extend_schema(tags=['Lesson Discussion'])
+class LessonDiscussionAPIView(generics.ListCreateAPIView):
+    """List or add comments for a lesson available to the current user."""
+
+    serializer_class = LessonCommentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_content(self):
+        if not hasattr(self, '_content'):
+            self._content = get_object_or_404(
+                LearningContent.objects.select_related('course', 'module'),
+                pk=self.kwargs['pk'],
+            )
+            self._ensure_discussion_access(self._content)
+        return self._content
+
+    def _ensure_discussion_access(self, content):
+        if self.request.user.is_staff:
+            return
+
+        if not content.is_published:
+            raise PermissionDenied('This lesson is not available for discussion.')
+
+        is_enrolled = StudentRegisteredCourse.objects.filter(
+            student_external=self.request.user,
+            course=content.course,
+        ).exists()
+        if not is_enrolled:
+            raise PermissionDenied('You are not enrolled in this course.')
+
+        module = content.module
+        if module and not module.is_available:
+            raise PermissionDenied('This lesson is not currently available.')
+
+    def get_queryset(self):
+        content = self.get_content()
+        return LessonComment.objects.filter(
+            content=content,
+            parent__isnull=True,
+        ).select_related('author').prefetch_related(
+            'replies__author',
+        ).order_by('created_at')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['content'] = self.get_content()
+        return context
+
+    def perform_create(self, serializer):
+        serializer.save(content=self.get_content(), author=self.request.user)
 
 
 @extend_schema(tags=['Staff - Content Stats'])

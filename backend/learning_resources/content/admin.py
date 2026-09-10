@@ -7,7 +7,13 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .models import CourseModule, StorageSettings, LearningContent, ContentAccessLog
+from .models import (
+    CourseModule,
+    StorageSettings,
+    LearningContent,
+    ContentAccessLog,
+    LessonComment,
+)
 
 
 @admin.register(CourseModule)
@@ -291,4 +297,24 @@ class ContentAccessLogAdmin(admin.ModelAdmin):
     
     def has_change_permission(self, request, obj=None):
         """Make logs read-only."""
+        return False
+
+
+@admin.register(LessonComment)
+class LessonCommentAdmin(admin.ModelAdmin):
+    """Moderation view for lesson discussions."""
+
+    list_display = ['short_body', 'content', 'author', 'parent', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['body', 'content__title', 'author__full_name']
+    readonly_fields = ['id', 'content', 'parent', 'author', 'body', 'created_at', 'updated_at']
+
+    def short_body(self, obj):
+        return obj.body[:90] + ('…' if len(obj.body) > 90 else '')
+    short_body.short_description = 'Comment'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
         return False

@@ -16,7 +16,13 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
 from courses.models import CourseCache, StudentRegisteredCourse
-from .models import CourseModule, LearningContent, StorageSettings, ContentAccessLog
+from .models import (
+    CourseModule,
+    LearningContent,
+    StorageSettings,
+    ContentAccessLog,
+    LessonComment,
+)
 from .services import upload_learning_content, upload_youtube_video, delete_learning_content
 from learning_resources.storage.base import StorageException
 
@@ -828,3 +834,89 @@ class ErrorHandlingTestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Storage full', str(response.data))
+
+
+class LessonDiscussionAPITestCase(APITestCase):
+    """Students and lecturers can safely discuss an available lesson."""
+
+    def setUp(self):
+        self.staff = PortalUser.objects.create(
+            external_id='discussion-staff',
+            full_name='Dr. Amina Lecturer',
+            is_staff=True,
+            roles=['STAFF'],
+        )
+        self.student = PortalUser.objects.create(
+            external_id='discussion-student',
+            full_name='Musa Student',
+            roles=['STUDENT'],
+        )
+        self.outsider = PortalUser.objects.create(
+            external_id='discussion-outsider',
+            full_name='Outside Student',
+            roles=['STUDENT'],
+        )
+        self.course = CourseCache.objects.create(
+            course_external_id=610,
+            course_title='Discussion Design',
+            course_code='DISC610',
+        )
+        StudentRegisteredCourse.objects.create(
+            student_external=self.student,
+            course=self.course,
+            session='2025/2026',
+            semester='First',
+        )
+        self.lesson = LearningContent.objects.create(
+            course=self.course,
+            title='Welcome lesson',
+            storage_path='courses/610/welcome.txt',
+            original_filename='welcome.txt',
+            storage_backend='text',
+            text_content='Welcome to the discussion.',
+            uploaded_by=self.staff,
+        )
+
+    @property
+    def discussion_url(self):
+        return f'/api/content/{self.lesson.id}/discussion/'
+
+    def test_enrolled_student_can_comment_and_staff_can_reply(self):
+        self.client.force_authenticate(user=self.student)
+        comment_response = self.client.post(
+            self.discussion_url,
+            {'body': 'Could you clarify the first example?'},
+            format='json',
+        )
+
+        self.assertEqual(comment_response.status_code, status.HTTP_201_CREATED)
+        comment = LessonComment.objects.get(pk=comment_response.data['id'])
+        self.assertEqual(comment.author, self.student)
+
+        self.client.force_authenticate(user=self.staff)
+        reply_response = self.client.post(
+            self.discussion_url,
+            {'body': 'Certainly — it introduces the core idea.', 'parent': str(comment.id)},
+            format='json',
+        )
+        self.assertEqual(reply_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(reply_response.data['author_is_staff'])
+
+        self.client.force_authenticate(user=self.student)
+        list_response = self.client.get(self.discussion_url)
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data['count'], 1)
+        self.assertEqual(len(list_response.data['results'][0]['replies']), 1)
+        self.assertTrue(list_response.data['results'][0]['replies'][0]['author_is_staff'])
+
+    def test_outsider_cannot_read_or_post_to_discussion(self):
+        self.client.force_authenticate(user=self.outsider)
+        response = self.client.get(self.discussion_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.post(
+            self.discussion_url,
+            {'body': 'I should not be able to post here.'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
