@@ -96,6 +96,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    # The image healthcheck probes Django on port 8000, but a Celery worker
+    # does not expose HTTP. Its Redis connection and process lifecycle are
+    # the relevant health signals, so disable the inherited HTTP probe.
+    healthcheck:
+      disable: true
 
   celery_beat:
     build:
@@ -114,6 +119,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    # Celery Beat likewise runs no HTTP server and would fail the image probe.
+    healthcheck:
+      disable: true
 
 volumes:
   redis_data:
