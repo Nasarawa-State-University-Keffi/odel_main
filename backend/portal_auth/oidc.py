@@ -16,10 +16,14 @@ from .services import STAFF_ROLES, resolve_programme
 OIDC_SESSION_KEY = "oidc_login"
 
 ROLE_ALIASES = {
+    "ADMIN": "ADMIN",
     "PORTAL_ADMIN": "ADMIN",
     "PORTAL_ADMINS": "ADMIN",
+    "SUPER_ADMIN": "SUPER_ADMIN",
     "PORTAL_SUPER_ADMINS": "SUPER_ADMIN",
+    "STAFF": "STAFF",
     "PORTAL_STAFF": "STAFF",
+    "STUDENT": "STUDENT",
     "PORTAL_STUDENTS": "STUDENT",
     "PORTAL_USERS": "STUDENT",
 }
