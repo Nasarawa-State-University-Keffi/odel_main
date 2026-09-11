@@ -366,3 +366,135 @@ class LessonComment(models.Model):
 
     def __str__(self):
         return f"Comment on {self.content.title} by {self.author or 'former user'}"
+
+
+class StudyGroup(models.Model):
+    """A student-owned collaboration space for one course in one teaching period."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(
+        CourseCache,
+        on_delete=models.CASCADE,
+        related_name='study_groups',
+    )
+    session = models.CharField(max_length=50, db_index=True)
+    semester = models.CharField(max_length=100, db_index=True)
+    name = models.CharField(max_length=120)
+    description = models.TextField(max_length=1200, blank=True)
+    join_code = models.CharField(max_length=12, unique=True, db_index=True)
+    is_open = models.BooleanField(default=True)
+    member_limit = models.PositiveIntegerField(default=20)
+    created_by = models.ForeignKey(
+        PortalUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_study_groups',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['course', 'session', 'semester'], name='study_group_course_period_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.course.course_code}: {self.name}"
+
+
+class StudyGroupMembership(models.Model):
+    ROLE_CHOICES = (('owner', 'Owner'), ('member', 'Member'))
+
+    group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, related_name='memberships')
+    user = models.ForeignKey(PortalUser, on_delete=models.CASCADE, related_name='study_group_memberships')
+    role = models.CharField(max_length=12, choices=ROLE_CHOICES, default='member')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['group', 'user'], name='unique_study_group_member'),
+        ]
+        ordering = ['joined_at']
+
+
+class StudyGroupMaterial(models.Model):
+    """A file or a reference shared privately with study-group members."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, related_name='materials')
+    title = models.CharField(max_length=255)
+    description = models.TextField(max_length=1000, blank=True)
+    external_url = models.URLField(max_length=2048, blank=True)
+    storage_path = models.CharField(max_length=512, blank=True)
+    original_filename = models.CharField(max_length=512, blank=True)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    mime_type = models.CharField(max_length=100, blank=True)
+    storage_backend = models.CharField(max_length=20, default='local')
+    uploaded_by = models.ForeignKey(
+        PortalUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='shared_study_group_materials',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @property
+    def url(self):
+        if self.external_url:
+            return self.external_url
+        if not self.storage_path:
+            return ''
+        from learning_resources.storage import get_storage_engine
+        try:
+            return get_storage_engine(self.storage_backend).url(self.storage_path)
+        except Exception:
+            return ''
+
+
+class StudyGroupComment(models.Model):
+    """One-level threaded conversation for a study group or one of its materials."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, related_name='comments')
+    material = models.ForeignKey(
+        StudyGroupMaterial,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        null=True,
+        blank=True,
+    )
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        related_name='replies',
+        null=True,
+        blank=True,
+    )
+    author = models.ForeignKey(
+        PortalUser,
+        on_delete=models.SET_NULL,
+        related_name='study_group_comments',
+        null=True,
+        blank=True,
+    )
+    body = models.TextField(max_length=4000)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['group', 'material', 'parent', 'created_at'], name='study_group_comment_idx'),
+        ]
+
+    def clean(self):
+        if self.material_id and self.material.group_id != self.group_id:
+            raise ValidationError({'material': 'This material does not belong to the study group.'})
+        if self.parent_id and self.parent.group_id != self.group_id:
+            raise ValidationError({'parent': 'Replies must belong to the same study group.'})
+        if self.parent_id and self.parent.parent_id:
+            raise ValidationError({'parent': 'Replies can only be one level deep.'})

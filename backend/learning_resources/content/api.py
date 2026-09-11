@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, SAFE_METHODS
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -23,6 +23,10 @@ from .models import (
     StorageSettings,
     ContentAccessLog,
     LessonComment,
+    StudyGroup,
+    StudyGroupMembership,
+    StudyGroupMaterial,
+    StudyGroupComment,
 )
 from .serializers import (
     CourseModuleSerializer,
@@ -36,6 +40,11 @@ from .serializers import (
     ContentAccessLogSerializer,
     ContentStatisticsSerializer,
     LessonCommentSerializer,
+    StudyGroupSerializer,
+    StudyGroupCreateSerializer,
+    StudyGroupMaterialSerializer,
+    StudyGroupMaterialCreateSerializer,
+    StudyGroupCommentSerializer,
     resolve_course_identifier,
 )
 from .services import (
@@ -47,7 +56,40 @@ from .services import (
     log_content_access
 )
 from courses.models import CourseCache, StudentRegisteredCourse
+from courses.services import resolve_academic_period
+from learning_resources.storage import get_storage_engine
 from portal_auth.permissions import IsPortalStaff
+from uuid import uuid4
+from pathlib import Path
+
+
+def _require_student(request):
+    if request.user.is_staff:
+        raise PermissionDenied('Study groups are available to students only.')
+
+
+def _required_period(request):
+    session = request.query_params.get('session') or request.data.get('session')
+    semester = request.query_params.get('semester') or request.data.get('semester')
+    if not session or not semester:
+        raise ValidationError({'detail': 'session and semester are required'})
+    return resolve_academic_period(session, semester)
+
+
+def _ensure_group_member(request, group):
+    _require_student(request)
+    is_registered = StudentRegisteredCourse.objects.filter(
+        student_external=request.user,
+        course=group.course,
+        session=group.session,
+        semester=group.semester,
+    ).exists()
+    if not is_registered:
+        raise PermissionDenied('You are not registered for this course in the study group period.')
+    membership = StudyGroupMembership.objects.filter(group=group, user=request.user).first()
+    if not membership:
+        raise PermissionDenied('Join this study group before accessing its workspace.')
+    return membership
 
 
 @extend_schema(tags=['Staff - Course Modules'])
@@ -452,6 +494,196 @@ class LessonDiscussionAPIView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(content=self.get_content(), author=self.request.user)
+
+
+@extend_schema(tags=['Student - Study Groups'])
+class StudyGroupListCreateAPIView(generics.ListCreateAPIView):
+    """Discover or create course-and-term scoped student study groups."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        return StudyGroupCreateSerializer if self.request.method == 'POST' else StudyGroupSerializer
+
+    def get_queryset(self):
+        _require_student(self.request)
+        session, semester = _required_period(self.request)
+        enrolled_courses = StudentRegisteredCourse.objects.filter(
+            student_external=self.request.user,
+            session=session,
+            semester=semester,
+        ).values_list('course_id', flat=True)
+        membership_prefetch = Prefetch(
+            'memberships',
+            queryset=StudyGroupMembership.objects.filter(user=self.request.user),
+            to_attr='current_user_memberships',
+        )
+        return StudyGroup.objects.filter(
+            course_id__in=enrolled_courses,
+            session=session,
+            semester=semester,
+        ).select_related('course', 'created_by').annotate(
+            member_count=Count('memberships'),
+        ).prefetch_related(membership_prefetch)
+
+    def perform_create(self, serializer):
+        _require_student(self.request)
+        course = serializer.validated_data['course_id']
+        session, semester = _required_period(self.request)
+        is_registered = StudentRegisteredCourse.objects.filter(
+            student_external=self.request.user,
+            course=course,
+            session=session,
+            semester=semester,
+        ).exists()
+        if not is_registered:
+            raise PermissionDenied('You can only create study groups for your registered courses.')
+
+        group = StudyGroup.objects.create(
+            course=course,
+            session=session,
+            semester=semester,
+            name=serializer.validated_data['name'],
+            description=serializer.validated_data.get('description', ''),
+            member_limit=serializer.validated_data['member_limit'],
+            join_code=uuid4().hex[:10].upper(),
+            created_by=self.request.user,
+        )
+        StudyGroupMembership.objects.create(group=group, user=self.request.user, role='owner')
+        self.instance = group
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            StudyGroupSerializer(self.instance, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@extend_schema(tags=['Student - Study Groups'])
+class StudyGroupDetailAPIView(generics.RetrieveDestroyAPIView):
+    serializer_class = StudyGroupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        _require_student(self.request)
+        membership_prefetch = Prefetch(
+            'memberships',
+            queryset=StudyGroupMembership.objects.filter(user=self.request.user),
+            to_attr='current_user_memberships',
+        )
+        return StudyGroup.objects.select_related('course', 'created_by').annotate(
+            member_count=Count('memberships'),
+        ).prefetch_related(membership_prefetch)
+
+    def get_object(self):
+        group = super().get_object()
+        self.membership = _ensure_group_member(self.request, group)
+        return group
+
+    def perform_destroy(self, instance):
+        if self.membership.role != 'owner':
+            raise PermissionDenied('Only the group owner can delete this study group.')
+        instance.delete()
+
+
+@extend_schema(tags=['Student - Study Groups'])
+class StudyGroupJoinAPIView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        _require_student(request)
+        group = get_object_or_404(StudyGroup.objects.select_related('course'), pk=pk)
+        is_registered = StudentRegisteredCourse.objects.filter(
+            student_external=request.user,
+            course=group.course,
+            session=group.session,
+            semester=group.semester,
+        ).exists()
+        if not is_registered:
+            raise PermissionDenied('You must be registered for this course to join its study group.')
+        if not group.is_open:
+            raise PermissionDenied('This study group is not accepting new members.')
+        membership, created = StudyGroupMembership.objects.get_or_create(
+            group=group,
+            user=request.user,
+            defaults={'role': 'member'},
+        )
+        if created and group.memberships.count() > group.member_limit:
+            membership.delete()
+            raise ValidationError({'detail': 'This study group has reached its member limit.'})
+        return Response(StudyGroupSerializer(group, context={'request': request}).data)
+
+
+@extend_schema(tags=['Student - Study Groups'])
+class StudyGroupMaterialListCreateAPIView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_group(self, request, pk):
+        group = get_object_or_404(StudyGroup, pk=pk)
+        _ensure_group_member(request, group)
+        return group
+
+    def get(self, request, pk):
+        group = self.get_group(request, pk)
+        materials = group.materials.select_related('uploaded_by').all()
+        return Response(StudyGroupMaterialSerializer(materials, many=True, context={'request': request}).data)
+
+    def post(self, request, pk):
+        group = self.get_group(request, pk)
+        serializer = StudyGroupMaterialCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file_obj = serializer.validated_data.get('file')
+        storage_path = ''
+        backend = 'local'
+        if file_obj:
+            backend_engine = get_storage_engine()
+            backend = backend_engine.__class__.__name__.replace('StorageEngine', '').lower()
+            filename = Path(file_obj.name).name
+            storage_path = f"study-groups/{group.id}/{uuid4().hex}_{filename}"
+            backend_engine.save(file_obj, storage_path)
+        material = StudyGroupMaterial.objects.create(
+            group=group,
+            title=serializer.validated_data.get('title') or (file_obj.name if file_obj else serializer.validated_data['external_url']),
+            description=serializer.validated_data.get('description', ''),
+            external_url=serializer.validated_data.get('external_url', ''),
+            storage_path=storage_path,
+            original_filename=Path(file_obj.name).name if file_obj else '',
+            file_size=file_obj.size if file_obj else None,
+            mime_type=getattr(file_obj, 'content_type', '') if file_obj else '',
+            storage_backend=backend,
+            uploaded_by=request.user,
+        )
+        return Response(StudyGroupMaterialSerializer(material, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(tags=['Student - Study Groups'])
+class StudyGroupCommentListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = StudyGroupCommentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_group(self):
+        if not hasattr(self, '_group'):
+            self._group = get_object_or_404(StudyGroup, pk=self.kwargs['pk'])
+            _ensure_group_member(self.request, self._group)
+        return self._group
+
+    def get_queryset(self):
+        group = self.get_group()
+        material_id = self.request.query_params.get('material')
+        queryset = StudyGroupComment.objects.filter(group=group, parent__isnull=True).select_related('author').prefetch_related('replies__author')
+        return queryset.filter(material_id=material_id) if material_id else queryset
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['group'] = self.get_group()
+        return context
+
+    def perform_create(self, serializer):
+        serializer.save(group=self.get_group(), author=self.request.user)
 
 
 @extend_schema(tags=['Staff - Content Stats'])

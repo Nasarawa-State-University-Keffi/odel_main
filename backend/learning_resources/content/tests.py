@@ -15,13 +15,16 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
-from courses.models import CourseCache, StudentRegisteredCourse
+from courses.models import AcademicSession, CourseCache, Semester, StudentRegisteredCourse
 from .models import (
     CourseModule,
     LearningContent,
     StorageSettings,
     ContentAccessLog,
     LessonComment,
+    StudyGroup,
+    StudyGroupComment,
+    StudyGroupMaterial,
 )
 from .services import upload_learning_content, upload_youtube_video, delete_learning_content
 from learning_resources.storage.base import StorageException
@@ -919,4 +922,108 @@ class LessonDiscussionAPITestCase(APITestCase):
             {'body': 'I should not be able to post here.'},
             format='json',
         )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class StudyGroupAPITestCase(APITestCase):
+    """Study groups are private, course-and-period scoped student workspaces."""
+
+    session_name = '2025/2026'
+    semester_name = 'First'
+
+    def setUp(self):
+        AcademicSession.objects.create(name=self.session_name)
+        Semester.objects.create(name=self.semester_name)
+        self.owner = PortalUser.objects.create(
+            external_id='study-group-owner',
+            full_name='Halima Student',
+            roles=['STUDENT'],
+        )
+        self.member = PortalUser.objects.create(
+            external_id='study-group-member',
+            full_name='Ibrahim Student',
+            roles=['STUDENT'],
+        )
+        self.staff = PortalUser.objects.create(
+            external_id='study-group-staff',
+            full_name='Study Group Lecturer',
+            roles=['STAFF'],
+            is_staff=True,
+        )
+        self.course = CourseCache.objects.create(
+            course_external_id=720,
+            course_title='Collaborative Learning',
+            course_code='COL720',
+        )
+        for student in (self.owner, self.member):
+            StudentRegisteredCourse.objects.create(
+                student_external=student,
+                course=self.course,
+                session=self.session_name,
+                semester=self.semester_name,
+            )
+
+    @property
+    def groups_url(self):
+        return f'/api/content/study-groups/?session={self.session_name}&semester={self.semester_name}'
+
+    def test_registered_students_can_create_join_and_collaborate(self):
+        self.client.force_authenticate(user=self.owner)
+        create_response = self.client.post('/api/content/study-groups/', {
+            'course_id': self.course.course_external_id,
+            'session': self.session_name,
+            'semester': self.semester_name,
+            'name': 'COL720 Revision Circle',
+            'description': 'Share notes before our exam.',
+            'member_limit': 4,
+        }, format='json')
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        group = StudyGroup.objects.get(pk=create_response.data['id'])
+        self.assertTrue(create_response.data['is_owner'])
+        self.assertEqual(group.memberships.count(), 1)
+
+        self.client.force_authenticate(user=self.member)
+        list_response = self.client.get(self.groups_url)
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data['count'], 1)
+        self.assertFalse(list_response.data['results'][0]['is_member'])
+
+        join_response = self.client.post(f'/api/content/study-groups/{group.id}/join/', {}, format='json')
+        self.assertEqual(join_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(join_response.data['is_member'])
+
+        material_response = self.client.post(
+            f'/api/content/study-groups/{group.id}/materials/',
+            {'title': 'Helpful reading', 'external_url': 'https://example.com/reading'},
+            format='json',
+        )
+        self.assertEqual(material_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(StudyGroupMaterial.objects.filter(group=group).count(), 1)
+
+        comment_response = self.client.post(
+            f'/api/content/study-groups/{group.id}/comments/',
+            {'body': 'Can we review chapter three together?'},
+            format='json',
+        )
+        self.assertEqual(comment_response.status_code, status.HTTP_201_CREATED)
+        comment = StudyGroupComment.objects.get(pk=comment_response.data['id'])
+
+        self.client.force_authenticate(user=self.owner)
+        reply_response = self.client.post(
+            f'/api/content/study-groups/{group.id}/comments/',
+            {'body': 'Yes, I will post a summary tonight.', 'parent': str(comment.id)},
+            format='json',
+        )
+        self.assertEqual(reply_response.status_code, status.HTTP_201_CREATED)
+
+        comments_response = self.client.get(f'/api/content/study-groups/{group.id}/comments/')
+        self.assertEqual(comments_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(comments_response.data['count'], 1)
+        self.assertEqual(len(comments_response.data['results'][0]['replies']), 1)
+
+    def test_staff_cannot_access_student_study_groups(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(self.groups_url)
+
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

@@ -12,6 +12,10 @@ from .models import (
     StorageSettings,
     ContentAccessLog,
     LessonComment,
+    StudyGroup,
+    StudyGroupMembership,
+    StudyGroupMaterial,
+    StudyGroupComment,
 )
 from courses.models import CourseCache
 
@@ -161,6 +165,135 @@ class LessonCommentSerializer(serializers.ModelSerializer):
             return []
         replies = obj.replies.select_related('author').order_by('created_at')
         return LessonCommentSerializer(replies, many=True, context=self.context).data
+
+
+class StudyGroupSerializer(serializers.ModelSerializer):
+    course_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
+    course_code = serializers.CharField(source='course.course_code', read_only=True)
+    course_title = serializers.CharField(source='course.course_title', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    member_count = serializers.SerializerMethodField()
+    is_member = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
+    join_code = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudyGroup
+        fields = [
+            'id', 'course_id', 'course_code', 'course_title', 'session', 'semester',
+            'name', 'description', 'is_open', 'member_limit', 'member_count',
+            'is_member', 'is_owner', 'join_code', 'created_by_name', 'created_at', 'updated_at',
+        ]
+
+    def _membership(self, obj):
+        memberships = getattr(obj, 'current_user_memberships', None)
+        if memberships is not None:
+            return memberships[0] if memberships else None
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        return StudyGroupMembership.objects.filter(group=obj, user=request.user).first()
+
+    def get_member_count(self, obj):
+        return getattr(obj, 'member_count', None) or obj.memberships.count()
+
+    def get_is_member(self, obj):
+        return bool(self._membership(obj))
+
+    def get_is_owner(self, obj):
+        membership = self._membership(obj)
+        return bool(membership and membership.role == 'owner')
+
+    def get_join_code(self, obj):
+        return obj.join_code if self._membership(obj) else None
+
+
+class StudyGroupCreateSerializer(serializers.Serializer):
+    course_id = serializers.CharField()
+    session = serializers.CharField(max_length=50)
+    semester = serializers.CharField(max_length=100)
+    name = serializers.CharField(max_length=120)
+    description = serializers.CharField(max_length=1200, required=False, allow_blank=True)
+    member_limit = serializers.IntegerField(min_value=2, max_value=100, default=20)
+
+    def validate_course_id(self, value):
+        course = resolve_course_identifier(value)
+        if not course:
+            raise serializers.ValidationError('Course not found.')
+        return course
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Give your study group a name.')
+        return value
+
+
+class StudyGroupMaterialSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+    uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
+
+    class Meta:
+        model = StudyGroupMaterial
+        fields = [
+            'id', 'title', 'description', 'external_url', 'original_filename', 'file_size',
+            'mime_type', 'url', 'uploaded_by_name', 'created_at',
+        ]
+
+    def get_url(self, obj):
+        raw_url = obj.url
+        if not raw_url:
+            return ''
+        if raw_url.startswith(('http://', 'https://')):
+            return raw_url
+        request = self.context.get('request')
+        return request.build_absolute_uri(raw_url) if request else raw_url
+
+
+class StudyGroupMaterialCreateSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    description = serializers.CharField(max_length=1000, required=False, allow_blank=True)
+    external_url = serializers.URLField(required=False, allow_blank=True)
+    file = serializers.FileField(required=False)
+
+    def validate(self, attrs):
+        if not attrs.get('file') and not attrs.get('external_url'):
+            raise serializers.ValidationError('Attach a file or provide a link to share.')
+        return attrs
+
+
+class StudyGroupCommentSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source='author.full_name', read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudyGroupComment
+        fields = ['id', 'material', 'parent', 'body', 'author_name', 'replies', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'author_name', 'replies', 'created_at', 'updated_at']
+
+    def validate_body(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Write a message before posting.')
+        return value
+
+    def validate(self, attrs):
+        group = self.context.get('group')
+        material = attrs.get('material')
+        parent = attrs.get('parent')
+        if material and group and material.group_id != group.id:
+            raise serializers.ValidationError({'material': 'This material belongs to another group.'})
+        if parent and group and parent.group_id != group.id:
+            raise serializers.ValidationError({'parent': 'This reply belongs to another group.'})
+        if parent and parent.parent_id:
+            raise serializers.ValidationError({'parent': 'Replies can only be one level deep.'})
+        return attrs
+
+    def get_replies(self, obj):
+        if obj.parent_id:
+            return []
+        replies = obj.replies.select_related('author').order_by('created_at')
+        return StudyGroupCommentSerializer(replies, many=True, context=self.context).data
 
 
 # ==========================================================

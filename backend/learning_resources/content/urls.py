@@ -21,6 +21,11 @@ from .api import (
     ContentAccessLogListAPIView,
     CourseContentAPIView,
     LessonDiscussionAPIView,
+    StudyGroupListCreateAPIView,
+    StudyGroupDetailAPIView,
+    StudyGroupJoinAPIView,
+    StudyGroupMaterialListCreateAPIView,
+    StudyGroupCommentListCreateAPIView,
 )
 
 urlpatterns = [
@@ -38,6 +43,13 @@ urlpatterns = [
     path('<uuid:pk>/', LearningContentDetailAPIView.as_view(), name='content-detail'),
     path('<uuid:pk>/log-access/', LearningContentLogAccessAPIView.as_view(), name='content-log-access'),
     path('<uuid:pk>/discussion/', LessonDiscussionAPIView.as_view(), name='lesson-discussion'),
+
+    # Student study groups
+    path('study-groups/', StudyGroupListCreateAPIView.as_view(), name='study-group-list-create'),
+    path('study-groups/<uuid:pk>/', StudyGroupDetailAPIView.as_view(), name='study-group-detail'),
+    path('study-groups/<uuid:pk>/join/', StudyGroupJoinAPIView.as_view(), name='study-group-join'),
+    path('study-groups/<uuid:pk>/materials/', StudyGroupMaterialListCreateAPIView.as_view(), name='study-group-materials'),
+    path('study-groups/<uuid:pk>/comments/', StudyGroupCommentListCreateAPIView.as_view(), name='study-group-comments'),
 
     # Storage Settings
     path('storage-settings/', StorageSettingsListCreateAPIView.as_view(), name='storage-settings-list'),
