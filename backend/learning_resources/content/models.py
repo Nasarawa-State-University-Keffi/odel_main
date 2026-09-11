@@ -498,3 +498,27 @@ class StudyGroupComment(models.Model):
             raise ValidationError({'parent': 'Replies must belong to the same study group.'})
         if self.parent_id and self.parent.parent_id:
             raise ValidationError({'parent': 'Replies can only be one level deep.'})
+
+
+class StudyGroupCommentMention(models.Model):
+    """A group member explicitly mentioned in a study-group discussion post."""
+
+    comment = models.ForeignKey(
+        StudyGroupComment,
+        on_delete=models.CASCADE,
+        related_name='mention_records',
+    )
+    mentioned_user = models.ForeignKey(
+        PortalUser,
+        on_delete=models.CASCADE,
+        related_name='study_group_mentions',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['comment', 'mentioned_user'],
+                name='unique_study_group_comment_mention',
+            ),
+        ]

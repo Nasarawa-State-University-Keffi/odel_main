@@ -115,6 +115,12 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
+# Study-group resources are intended for notes and small course materials. Keep
+# this independent from server-wide request limits so deployments can tune it.
+STUDY_GROUP_MAX_UPLOAD_SIZE_BYTES = int(
+    os.environ.get('STUDY_GROUP_MAX_UPLOAD_SIZE_BYTES', 3 * 1024 * 1024)
+)
+
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

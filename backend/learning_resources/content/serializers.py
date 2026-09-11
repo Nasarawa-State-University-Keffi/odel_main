@@ -3,6 +3,7 @@ Serializers for the LMS learning-content API.
 """
 
 from rest_framework import serializers
+from django.conf import settings
 from django.contrib.auth.models import User
 from drf_spectacular.utils import extend_schema_field
 
@@ -16,8 +17,10 @@ from .models import (
     StudyGroupMembership,
     StudyGroupMaterial,
     StudyGroupComment,
+    StudyGroupCommentMention,
 )
 from courses.models import CourseCache
+from portal_auth.models import PortalUser
 
 
 def resolve_course_identifier(value):
@@ -167,6 +170,16 @@ class LessonCommentSerializer(serializers.ModelSerializer):
         return LessonCommentSerializer(replies, many=True, context=self.context).data
 
 
+class StudyGroupMemberSerializer(serializers.ModelSerializer):
+    external_id = serializers.CharField(source='user.external_id', read_only=True)
+    full_name = serializers.CharField(source='user.full_name', read_only=True)
+    profile_picture = serializers.URLField(source='user.profile_picture', read_only=True, allow_null=True)
+
+    class Meta:
+        model = StudyGroupMembership
+        fields = ['external_id', 'full_name', 'profile_picture', 'role']
+
+
 class StudyGroupSerializer(serializers.ModelSerializer):
     course_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
     course_code = serializers.CharField(source='course.course_code', read_only=True)
@@ -176,13 +189,14 @@ class StudyGroupSerializer(serializers.ModelSerializer):
     is_member = serializers.SerializerMethodField()
     is_owner = serializers.SerializerMethodField()
     join_code = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
 
     class Meta:
         model = StudyGroup
         fields = [
             'id', 'course_id', 'course_code', 'course_title', 'session', 'semester',
             'name', 'description', 'is_open', 'member_limit', 'member_count',
-            'is_member', 'is_owner', 'join_code', 'created_by_name', 'created_at', 'updated_at',
+            'is_member', 'is_owner', 'join_code', 'members', 'created_by_name', 'created_at', 'updated_at',
         ]
 
     def _membership(self, obj):
@@ -206,6 +220,12 @@ class StudyGroupSerializer(serializers.ModelSerializer):
 
     def get_join_code(self, obj):
         return obj.join_code if self._membership(obj) else None
+
+    def get_members(self, obj):
+        if not self._membership(obj):
+            return []
+        memberships = obj.memberships.select_related('user').order_by('joined_at')
+        return StudyGroupMemberSerializer(memberships, many=True, context=self.context).data
 
 
 class StudyGroupCreateSerializer(serializers.Serializer):
@@ -256,6 +276,16 @@ class StudyGroupMaterialCreateSerializer(serializers.Serializer):
     external_url = serializers.URLField(required=False, allow_blank=True)
     file = serializers.FileField(required=False)
 
+    def validate_file(self, value):
+        max_size = settings.STUDY_GROUP_MAX_UPLOAD_SIZE_BYTES
+        if value.size > max_size:
+            max_size_mb = max_size / (1024 * 1024)
+            display_limit = f'{max_size_mb:g} MB'
+            raise serializers.ValidationError(
+                f'Files must be {display_limit} or smaller.'
+            )
+        return value
+
     def validate(self, attrs):
         if not attrs.get('file') and not attrs.get('external_url'):
             raise serializers.ValidationError('Attach a file or provide a link to share.')
@@ -265,11 +295,21 @@ class StudyGroupMaterialCreateSerializer(serializers.Serializer):
 class StudyGroupCommentSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.full_name', read_only=True)
     replies = serializers.SerializerMethodField()
+    mentions = serializers.SerializerMethodField()
+    mention_external_ids = serializers.ListField(
+        child=serializers.CharField(max_length=255),
+        required=False,
+        write_only=True,
+        allow_empty=True,
+    )
 
     class Meta:
         model = StudyGroupComment
-        fields = ['id', 'material', 'parent', 'body', 'author_name', 'replies', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'author_name', 'replies', 'created_at', 'updated_at']
+        fields = [
+            'id', 'material', 'parent', 'body', 'author_name', 'mentions',
+            'mention_external_ids', 'replies', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'author_name', 'mentions', 'replies', 'created_at', 'updated_at']
 
     def validate_body(self, value):
         value = value.strip()
@@ -287,12 +327,51 @@ class StudyGroupCommentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'parent': 'This reply belongs to another group.'})
         if parent and parent.parent_id:
             raise serializers.ValidationError({'parent': 'Replies can only be one level deep.'})
+        mention_external_ids = list(dict.fromkeys(attrs.get('mention_external_ids', [])))
+        if mention_external_ids and group:
+            mentioned_users = PortalUser.objects.filter(external_id__in=mention_external_ids)
+            found_ids = set(mentioned_users.values_list('external_id', flat=True))
+            unknown_ids = sorted(set(mention_external_ids) - found_ids)
+            if unknown_ids:
+                raise serializers.ValidationError({'mention_external_ids': 'One or more mentioned students could not be found.'})
+            message = attrs.get('body', '').casefold()
+            if any(f'@{user.full_name}'.casefold() not in message for user in mentioned_users):
+                raise serializers.ValidationError({'mention_external_ids': 'Each mention must appear in the message.'})
+            member_ids = set(StudyGroupMembership.objects.filter(
+                group=group,
+                user__in=mentioned_users,
+            ).values_list('user__external_id', flat=True))
+            if member_ids != set(mention_external_ids):
+                raise serializers.ValidationError({'mention_external_ids': 'You can only mention members of this study group.'})
+        attrs['mention_external_ids'] = mention_external_ids
         return attrs
+
+    def create(self, validated_data):
+        mention_external_ids = validated_data.pop('mention_external_ids', [])
+        comment = StudyGroupComment.objects.create(**validated_data)
+        mentioned_users = PortalUser.objects.filter(external_id__in=mention_external_ids)
+        StudyGroupCommentMention.objects.bulk_create([
+            StudyGroupCommentMention(comment=comment, mentioned_user=user)
+            for user in mentioned_users
+        ])
+        return comment
+
+    def get_mentions(self, obj):
+        records = obj.mention_records.select_related('mentioned_user').all()
+        return [
+            {
+                'external_id': record.mentioned_user.external_id,
+                'full_name': record.mentioned_user.full_name,
+            }
+            for record in records
+        ]
 
     def get_replies(self, obj):
         if obj.parent_id:
             return []
-        replies = obj.replies.select_related('author').order_by('created_at')
+        replies = obj.replies.select_related('author').prefetch_related(
+            'mention_records__mentioned_user',
+        ).order_by('created_at')
         return StudyGroupCommentSerializer(replies, many=True, context=self.context).data
 
 

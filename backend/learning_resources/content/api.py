@@ -686,7 +686,14 @@ class StudyGroupCommentListCreateAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         group = self.get_group()
         material_id = self.request.query_params.get('material')
-        queryset = StudyGroupComment.objects.filter(group=group, parent__isnull=True).select_related('author').prefetch_related('replies__author')
+        queryset = StudyGroupComment.objects.filter(
+            group=group,
+            parent__isnull=True,
+        ).select_related('author').prefetch_related(
+            'mention_records__mentioned_user',
+            'replies__author',
+            'replies__mention_records__mentioned_user',
+        )
         return queryset.filter(material_id=material_id) if material_id else queryset
 
     def get_serializer_context(self):

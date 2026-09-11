@@ -24,6 +24,7 @@ from .models import (
     LessonComment,
     StudyGroup,
     StudyGroupComment,
+    StudyGroupCommentMention,
     StudyGroupMaterial,
 )
 from .services import upload_learning_content, upload_youtube_video, delete_learning_content
@@ -1007,11 +1008,33 @@ class StudyGroupAPITestCase(APITestCase):
 
         comment_response = self.client.post(
             f'/api/content/study-groups/{group.id}/comments/',
-            {'body': 'Can we review chapter three together?'},
+            {
+                'body': 'Can we review chapter three together, @Halima Student?',
+                'mention_external_ids': [self.owner.external_id],
+            },
             format='json',
         )
         self.assertEqual(comment_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(comment_response.data['mentions'], [{
+            'external_id': self.owner.external_id,
+            'full_name': self.owner.full_name,
+        }])
         comment = StudyGroupComment.objects.get(pk=comment_response.data['id'])
+        self.assertTrue(StudyGroupCommentMention.objects.filter(
+            comment=comment,
+            mentioned_user=self.owner,
+        ).exists())
+
+        invalid_mention_response = self.client.post(
+            f'/api/content/study-groups/{group.id}/comments/',
+            {
+                'body': 'Can I mention a lecturer who is not in this group?',
+                'mention_external_ids': [self.staff.external_id],
+            },
+            format='json',
+        )
+        self.assertEqual(invalid_mention_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('mention_external_ids', invalid_mention_response.data)
 
         self.client.force_authenticate(user=self.owner)
         reply_response = self.client.post(
@@ -1024,6 +1047,10 @@ class StudyGroupAPITestCase(APITestCase):
         comments_response = self.client.get(f'/api/content/study-groups/{group.id}/comments/')
         self.assertEqual(comments_response.status_code, status.HTTP_200_OK)
         self.assertEqual(comments_response.data['count'], 1)
+        self.assertEqual(comments_response.data['results'][0]['mentions'], [{
+            'external_id': self.owner.external_id,
+            'full_name': self.owner.full_name,
+        }])
         self.assertEqual(len(comments_response.data['results'][0]['replies']), 1)
 
     def test_staff_cannot_access_student_study_groups(self):
@@ -1031,3 +1058,23 @@ class StudyGroupAPITestCase(APITestCase):
         response = self.client.get(self.groups_url)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @override_settings(STUDY_GROUP_MAX_UPLOAD_SIZE_BYTES=16)
+    def test_study_group_rejects_files_larger_than_the_configured_limit(self):
+        self.client.force_authenticate(user=self.owner)
+        group_response = self.client.post('/api/content/study-groups/', {
+            'course_id': self.course.course_external_id,
+            'session': self.session_name,
+            'semester': self.semester_name,
+            'name': 'COL720 File Limit Group',
+        }, format='json')
+
+        response = self.client.post(
+            f'/api/content/study-groups/{group_response.data["id"]}/materials/',
+            {'file': SimpleUploadedFile('oversized.pdf', b'x' * 17)},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Files must be', str(response.data))
+        self.assertEqual(StudyGroupMaterial.objects.count(), 0)
