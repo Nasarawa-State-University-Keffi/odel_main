@@ -580,11 +580,23 @@ class StudyGroupDetailAPIView(generics.RetrieveDestroyAPIView):
 
     def get_object(self):
         group = super().get_object()
-        self.membership = _ensure_group_member(self.request, group)
+        _require_student(self.request)
+        is_registered = StudentRegisteredCourse.objects.filter(
+            student_external=self.request.user,
+            course=group.course,
+            session=group.session,
+            semester=group.semester,
+        ).exists()
+        if not is_registered:
+            raise PermissionDenied('You are not registered for this course in the study group period.')
+        self.membership = StudyGroupMembership.objects.filter(
+            group=group,
+            user=self.request.user,
+        ).first()
         return group
 
     def perform_destroy(self, instance):
-        if self.membership.role != 'owner':
+        if not self.membership or self.membership.role != 'owner':
             raise PermissionDenied('Only the group owner can delete this study group.')
         instance.delete()
 

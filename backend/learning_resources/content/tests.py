@@ -989,6 +989,10 @@ class StudyGroupAPITestCase(APITestCase):
         self.assertEqual(list_response.data['count'], 1)
         self.assertFalse(list_response.data['results'][0]['is_member'])
 
+        invitation_response = self.client.get(f'/api/content/study-groups/{group.id}/')
+        self.assertEqual(invitation_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(invitation_response.data['is_member'])
+
         join_response = self.client.post(f'/api/content/study-groups/{group.id}/join/', {}, format='json')
         self.assertEqual(join_response.status_code, status.HTTP_200_OK)
         self.assertTrue(join_response.data['is_member'])
