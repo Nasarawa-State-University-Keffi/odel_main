@@ -455,11 +455,12 @@ class BaseQuizSerializer(serializers.ModelSerializer, QuizMetricsMixin):
     questions_count = serializers.SerializerMethodField()
     total_marks = serializers.SerializerMethodField()
     course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
+    course_code = serializers.CharField(source='course.course_code', read_only=True)
 
     class Meta:
         model = Quiz
         fields = [
-            'id', 'course_external_id', 'name', 'description', 'time_open', 'time_close',
+            'id', 'course_external_id', 'course_code', 'name', 'description', 'time_open', 'time_close',
             'time_limit', 'max_grade', 'shuffle_questions', 'max_attempts', 'is_published',
             'show_feedback', 'questions_count', 'total_marks', 'created_at', 'updated_at'
         ]
