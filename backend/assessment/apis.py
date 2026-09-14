@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Avg, Count, Prefetch, Q
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import status, generics
@@ -28,13 +28,14 @@ from portal_auth.services import get_or_sync_student_registered_courses
 
 from .models import (
     Assignment, AssignmentSubmission, AssignmentContent, AssignmentSubmissionFile,
-    QuestionCategory, QuestionTypeAvailability, Question, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
+    QuestionCategory, QuestionTypeAvailability, Question, QuestionAnswer, Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
     Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentQuestionAttempt,
 )
 from .serializers import (
     AssignmentReadSerializer, AssignmentWriteSerializer, AssignmentContentSerializer, AssignmentSubmissionSerializer, AssignmentSubmissionFileSerializer,
     AssignmentContentUploadSerializer, AssignmentSubmissionFileUploadSerializer,
     QuestionCategorySerializer, QuestionTypeAvailabilitySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
+    CopyAssessmentQuestionsSerializer,
     QuizSerializer, QuizDetailSerializer, QuizQuestionSlotSerializer,
     QuizAttemptSerializer, QuizAttemptDetailSerializer, StudentQuizAttemptSerializer, StudentQuizAttemptDetailSerializer,
     AssessmentSerializer, AssessmentDetailSerializer, AssessmentQuestionSlotSerializer,
@@ -948,6 +949,90 @@ class StaffQuizAttemptDetailView(StaffQuerySetMixin, generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
 
+@extend_schema(tags=['Staff - Quizzes'])
+class StaffQuizGradebookView(APIView):
+    """Paginated, staff-scoped attempt gradebook for one quiz."""
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @extend_schema(
+        summary='Quiz participants and grades (staff)',
+        parameters=[
+            OpenApiParameter(name='page', type=int, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='search', type=str, location=OpenApiParameter.QUERY, description='Student name, email, or portal ID.'),
+            OpenApiParameter(name='state', type=str, location=OpenApiParameter.QUERY, enum=['in_progress', 'finished', 'abandoned']),
+            OpenApiParameter(name='ordering', type=str, location=OpenApiParameter.QUERY, enum=['started_at', '-started_at', 'total_score', '-total_score']),
+        ],
+        responses={200: QuizAttemptSerializer(many=True), 403: OpenApiResponse(description='Staff member is not assigned to this quiz course.')},
+    )
+    def get(self, request, pk=None):
+        quiz = get_object_or_404(Quiz.objects.select_related('course'), id=pk)
+        if not StaffAssignedCourse.objects.filter(
+            staff_external_id=request.user.external_id,
+            course=quiz.course,
+        ).exists():
+            return Response({'detail': 'You are not assigned to this course.'}, status=status.HTTP_403_FORBIDDEN)
+
+        attempts = QuizAttempt.objects.filter(quiz=quiz).select_related('quiz')
+        participant_ids = list(attempts.values_list('user_external_id', flat=True).distinct())
+        participant_directory = {
+            user.external_id: user
+            for user in PortalUser.objects.filter(external_id__in=participant_ids).only('external_id', 'full_name', 'email')
+        }
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            matched_ids = [
+                user.external_id
+                for user in participant_directory.values()
+                if search.casefold() in user.external_id.casefold()
+                or search.casefold() in user.full_name.casefold()
+                or search.casefold() in (user.email or '').casefold()
+            ]
+            attempts = attempts.filter(Q(user_external_id__in=matched_ids) | Q(user_external_id__icontains=search))
+
+        state_filter = request.query_params.get('state')
+        if state_filter in {'in_progress', 'finished', 'abandoned'}:
+            attempts = attempts.filter(state=state_filter)
+
+        ordering = request.query_params.get('ordering', '-started_at')
+        if ordering not in {'started_at', '-started_at', 'total_score', '-total_score'}:
+            ordering = '-started_at'
+        attempts = attempts.order_by(ordering, '-started_at')
+
+        summary = attempts.aggregate(
+            attempt_count=Count('id'),
+            completed_count=Count('id', filter=Q(state='finished')),
+            in_progress_count=Count('id', filter=Q(state='in_progress')),
+            average_score=Avg('total_score', filter=Q(state='finished')),
+        )
+
+        paginator = self.paginator
+        page = paginator.paginate_queryset(attempts, request, view=self)
+        serializer = QuizAttemptSerializer(page, many=True, context={'participant_directory': participant_directory})
+        response = paginator.get_paginated_response(serializer.data)
+        response.data['summary'] = {
+            'attempt_count': summary['attempt_count'],
+            'completed_count': summary['completed_count'],
+            'in_progress_count': summary['in_progress_count'],
+            'average_score': float(summary['average_score']) if summary['average_score'] is not None else None,
+            'max_grade': float(quiz.max_grade),
+        }
+        return response
+
+    @property
+    def paginator(self):
+        if not hasattr(self, '_paginator'):
+            from rest_framework.pagination import PageNumberPagination
+
+            class QuizGradebookPagination(PageNumberPagination):
+                page_size = 20
+                page_size_query_param = 'page_size'
+                max_page_size = 100
+
+            self._paginator = QuizGradebookPagination()
+        return self._paginator
+
+
 class StaffQuizManualGradeView(APIView):
     """Manually grade a question attempt (staff)"""
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
@@ -1206,6 +1291,90 @@ class StaffQuestionDetailView(StaffQuestionBankMixin, StaffQuerySetMixin, generi
         if self.request.method in ['PUT', 'PATCH']:
             return QuestionCreateUpdateSerializer
         return QuestionSerializer
+
+
+@extend_schema(tags=['Staff - Question Bank'])
+class StaffCopyAssessmentQuestionsView(APIView):
+    """Duplicate assessment-bank questions into one quiz-bank category.
+
+    The source questions are never changed.  The target category and every
+    source question must belong to a course assigned to the current staff
+    member, and sources must be from the same course as the target.
+    """
+
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @extend_schema(request=CopyAssessmentQuestionsSerializer, responses={201: QuestionSerializer(many=True)})
+    @transaction.atomic
+    def post(self, request, pk):
+        assigned_course_ids = get_staff_assigned_course_ids(request)
+        target_category = get_object_or_404(
+            QuestionCategory.objects.select_related('course'),
+            pk=pk,
+            bank='quiz',
+            course_id__in=assigned_course_ids,
+        )
+
+        request_serializer = CopyAssessmentQuestionsSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+        source_ids = request_serializer.validated_data['question_ids']
+        source_questions = list(
+            Question.objects.filter(
+                id__in=source_ids,
+                category__bank='assessment',
+                category__course=target_category.course,
+            )
+            .prefetch_related('answers')
+        )
+        sources_by_id = {str(question.id): question for question in source_questions}
+        unavailable_ids = [str(question_id) for question_id in source_ids if str(question_id) not in sources_by_id]
+        if unavailable_ids:
+            raise ValidationError({
+                'question_ids': 'Each selected question must come from this course’s assessment question bank.',
+            })
+        incompatible_questions = [
+            question.name
+            for question in source_questions
+            if not QuestionTypeAvailability.is_question_type_allowed(
+                level=target_category.level,
+                question_type=question.qtype,
+            )
+        ]
+        if incompatible_questions:
+            raise ValidationError({
+                'question_ids': 'The selected question types are not enabled for this quiz category’s level.',
+            })
+
+        copied_questions = []
+        for source_id in source_ids:
+            source_question = sources_by_id[str(source_id)]
+            copied_question = Question.objects.create(
+                category=target_category,
+                qtype=source_question.qtype,
+                name=source_question.name,
+                question_text=source_question.question_text,
+                general_feedback=source_question.general_feedback,
+                default_mark=source_question.default_mark,
+                penalty=source_question.penalty,
+            )
+            QuestionAnswer.objects.bulk_create([
+                QuestionAnswer(
+                    question=copied_question,
+                    answer_text=answer.answer_text,
+                    fraction=answer.fraction,
+                    feedback=answer.feedback,
+                    order=answer.order,
+                )
+                for answer in source_question.answers.all()
+            ])
+            copied_questions.append(copied_question)
+
+        serialized = QuestionSerializer(
+            copied_questions,
+            many=True,
+            context={'request': request, 'question_bank': 'quiz'},
+        )
+        return Response(serialized.data, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(tags=['Staff - Assessment Question Bank'])

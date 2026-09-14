@@ -129,6 +129,33 @@ class QuestionTypePluginTests(TestCase):
         response = {'selected': [str(ans1.id), str(ans2.id)]}
         fraction = handler.grade(question, response)
         self.assertEqual(fraction, Decimal('1.0'))
+
+    def test_single_choice_accepts_one_option_and_rejects_multiple_answers(self):
+        question = Question.objects.create(
+            category=self.category,
+            qtype='singlechoice',
+            name='Single answer question',
+            question_text='Which planet is known as the Red Planet?',
+            default_mark=Decimal('5.00'),
+        )
+        correct = QuestionAnswer.objects.create(
+            question=question, answer_text='Mars', fraction=Decimal('1.00'), order=1,
+        )
+        incorrect = QuestionAnswer.objects.create(
+            question=question, answer_text='Venus', fraction=Decimal('0.00'), order=2,
+        )
+        handler = get_question_type_handler('singlechoice')
+
+        valid, _ = handler.validate_response(question, {'selected': str(correct.id)})
+        self.assertTrue(valid)
+        self.assertEqual(handler.grade(question, {'selected': str(correct.id)}), Decimal('1.0'))
+        self.assertEqual(handler.grade(question, {'selected': str(incorrect.id)}), Decimal('0.0'))
+
+        valid, message = handler.validate_response(
+            question, {'selected': [str(correct.id), str(incorrect.id)]},
+        )
+        self.assertFalse(valid)
+        self.assertIn('one answer ID', message)
     
     def test_true_false_question(self):
         """Test true/false question type"""
@@ -265,6 +292,7 @@ class QuestionServiceTests(TestCase):
     def test_validate_question_type(self):
         """Test question type validation"""
         self.assertTrue(QuestionService.validate_question_type('multichoice'))
+        self.assertTrue(QuestionService.validate_question_type('singlechoice'))
         self.assertTrue(QuestionService.validate_question_type('truefalse'))
         self.assertTrue(QuestionService.validate_question_type('shortanswer'))
         self.assertTrue(QuestionService.validate_question_type('essay'))
@@ -827,6 +855,32 @@ class QuizAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['id'], str(attempt.id))
+
+    def test_staff_can_view_paginated_quiz_gradebook(self):
+        """Staff gradebook exposes participant details only for assigned-course quizzes."""
+        finished_attempt = QuizService.start_attempt(
+            quiz=self.quiz,
+            user_external_id=self.student.external_id,
+        )
+        QuizService.submit_response(
+            attempt=finished_attempt,
+            question=self.question,
+            response={'text': '4'},
+        )
+        QuizService.finish_attempt(finished_attempt)
+
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.get(
+            f'/api/staff/assessment/quizzes/{self.quiz.id}/gradebook/',
+            {'search': 'Student One', 'page_size': 10},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['summary']['completed_count'], 1)
+        self.assertEqual(response.data['results'][0]['participant_name'], 'Student One')
+        self.assertEqual(response.data['results'][0]['participant_email'], None)
+        self.assertEqual(float(response.data['results'][0]['max_grade']), 100.0)
     
     def test_manual_grading(self):
         """Test manual grading via API (instructor only)"""
@@ -1386,6 +1440,88 @@ class QuestionAPITests(APITestCase):
         self.assertEqual(questions_response.status_code, status.HTTP_200_OK)
         self.assertEqual(questions_response.data['count'], 1)
         self.assertEqual(questions_response.data['results'][0]['name'], 'Current Course Question')
+
+    def test_staff_can_copy_same_course_assessment_questions_to_quiz_category(self):
+        source_category = QuestionCategory.objects.create(
+            course=self.course,
+            bank='assessment',
+            name='Assessment source',
+        )
+        source_question = Question.objects.create(
+            category=source_category,
+            qtype='singlechoice',
+            name='Copied question',
+            question_text='Which option is correct?',
+            general_feedback='Review the topic notes.',
+            default_mark=Decimal('2.00'),
+            penalty=Decimal('0.33'),
+        )
+        QuestionAnswer.objects.create(
+            question=source_question,
+            answer_text='Correct option',
+            fraction=Decimal('1.00'),
+            feedback='Exactly right.',
+            order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=source_question,
+            answer_text='Incorrect option',
+            fraction=Decimal('0.00'),
+            feedback='Try again.',
+            order=2,
+        )
+
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.post(
+            f'/api/staff/assessment/question-bank/categories/{self.category.id}/copy-from-assessment/',
+            {'question_ids': [str(source_question.id)]},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(response.data), 1)
+        copied_question = Question.objects.get(id=response.data[0]['id'])
+        self.assertNotEqual(copied_question.id, source_question.id)
+        self.assertEqual(copied_question.category, self.category)
+        self.assertEqual(copied_question.qtype, source_question.qtype)
+        self.assertEqual(copied_question.question_text, source_question.question_text)
+        self.assertEqual(copied_question.answers.count(), 2)
+        self.assertEqual(copied_question.answers.first().answer_text, 'Correct option')
+        self.assertEqual(source_question.category, source_category)
+
+    def test_copy_rejects_assessment_question_from_another_course(self):
+        other_course = CourseCache.objects.create(
+            course_external_id=202,
+            course_title='Other Test Course',
+            course_code='TEST202',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=other_course,
+            role='instructor',
+        )
+        other_category = QuestionCategory.objects.create(
+            course=other_course,
+            bank='assessment',
+            name='Other assessment source',
+        )
+        other_question = Question.objects.create(
+            category=other_category,
+            qtype='shortanswer',
+            name='Other course question',
+            question_text='Not available for this target.',
+            default_mark=Decimal('1.00'),
+        )
+
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.post(
+            f'/api/staff/assessment/question-bank/categories/{self.category.id}/copy-from-assessment/',
+            {'question_ids': [str(other_question.id)]},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Question.objects.filter(category=self.category).count(), 0)
 
 
 class IntegrationTests(TestCase):

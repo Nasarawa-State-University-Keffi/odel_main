@@ -6,6 +6,7 @@ Each question type implements validation, grading, and answer extraction logic.
 """
 from .base import BaseQuestionType
 from .multichoice import MultipleChoiceQuestionType
+from .singlechoice import SingleChoiceQuestionType
 from .truefalse import TrueFalseQuestionType
 from .shortanswer import ShortAnswerQuestionType
 from .essay import EssayQuestionType
@@ -13,6 +14,7 @@ from .essay import EssayQuestionType
 # Plugin Registry
 QUESTION_TYPE_REGISTRY = {
     'multichoice': MultipleChoiceQuestionType(),
+    'singlechoice': SingleChoiceQuestionType(),
     'truefalse': TrueFalseQuestionType(),
     'shortanswer': ShortAnswerQuestionType(),
     'essay': EssayQuestionType(),

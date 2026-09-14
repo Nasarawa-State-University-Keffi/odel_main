@@ -11,6 +11,7 @@ from drf_spectacular.utils import extend_schema_field
 
 from courses.models import CourseCache, StaffAssignedCourse
 from courses.serializers import CourseCacheSerializer
+from portal_auth.models import PortalUser
 from .models import (
     Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
     QuestionCategory, QuestionTypeAvailability, Question, QuestionAnswer,
@@ -298,6 +299,21 @@ class QuestionAnswerCreateSerializer(serializers.ModelSerializer):
         fields = ['answer_text', 'fraction', 'feedback', 'order']
 
 
+class CopyAssessmentQuestionsSerializer(serializers.Serializer):
+    """Validates a batch of assessment-bank questions to duplicate into a quiz category."""
+
+    question_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        help_text='Assessment question IDs to copy into the selected quiz category.',
+    )
+
+    def validate_question_ids(self, value):
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError('Each assessment question can be selected only once.')
+        return value
+
+
 class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
     answers = QuestionAnswerCreateSerializer(many=True, required=False)
     
@@ -311,6 +327,7 @@ class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         category = attrs.get('category') or (self.instance.category if self.instance else None)
         qtype = attrs.get('qtype') or (self.instance.qtype if self.instance else None)
+        answers_data = attrs.get('answers')
         expected_bank = self.context.get('question_bank')
         if expected_bank and category and category.bank != expected_bank:
             raise serializers.ValidationError({
@@ -328,6 +345,20 @@ class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
                     f"Available types: {', '.join([dict(Question.QUESTION_TYPES).get(t, t) for t in available_types]) if available_types else 'None'}."
                 )
                 raise serializers.ValidationError({'qtype': error_msg})
+
+        if qtype == 'singlechoice':
+            answers = answers_data
+            if answers is None and self.instance:
+                answers = list(self.instance.answers.all())
+            if answers is not None:
+                fractions = [
+                    Decimal(str(answer.get('fraction') if isinstance(answer, dict) else answer.fraction))
+                    for answer in answers
+                ]
+                if len(fractions) < 2:
+                    raise serializers.ValidationError({'answers': 'Single choice questions require at least two answer options.'})
+                if fractions.count(Decimal('1')) != 1 or any(fraction not in {Decimal('0'), Decimal('1')} for fraction in fractions):
+                    raise serializers.ValidationError({'answers': 'Single choice questions need exactly one 100% correct option; every other option must be incorrect.'})
         
         return super().validate(attrs)
     
@@ -623,13 +654,16 @@ class QuestionAttemptDetailSerializer(serializers.ModelSerializer):
 
 class QuizAttemptSerializer(serializers.ModelSerializer):
     quiz_name = serializers.CharField(source='quiz.name', read_only=True)
+    participant_name = serializers.SerializerMethodField()
+    participant_email = serializers.SerializerMethodField()
+    max_grade = serializers.DecimalField(source='quiz.max_grade', max_digits=10, decimal_places=2, read_only=True)
     time_taken_seconds = serializers.SerializerMethodField()
     deadline_at = serializers.SerializerMethodField()
     
     class Meta:
         model = QuizAttempt
         fields = [
-            'id', 'quiz', 'quiz_name', 'user_external_id',
+            'id', 'quiz', 'quiz_name', 'user_external_id', 'participant_name', 'participant_email', 'max_grade',
             'attempt_number', 'state', 'started_at', 'finished_at',
             'total_score', 'time_taken_seconds', 'deadline_at'
         ]
@@ -639,6 +673,21 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
         if obj.finished_at:
             return int((obj.finished_at - obj.started_at).total_seconds())
         return None
+
+    def _participant(self, obj):
+        """Use the list view's directory cache when available, then fall back safely."""
+        directory = self.context.get('participant_directory')
+        if directory is not None:
+            return directory.get(obj.user_external_id)
+        return PortalUser.objects.filter(external_id=obj.user_external_id).only('full_name', 'email').first()
+
+    def get_participant_name(self, obj):
+        participant = self._participant(obj)
+        return participant.full_name if participant else obj.user_external_id
+
+    def get_participant_email(self, obj):
+        participant = self._participant(obj)
+        return participant.email if participant else None
 
     def get_deadline_at(self, obj):
         from .services import QuizService
@@ -650,13 +699,15 @@ class QuizAttemptDetailSerializer(serializers.ModelSerializer):
     """Detailed quiz attempt with all question attempts"""
     quiz = QuizSerializer(read_only=True)
     question_attempts = QuestionAttemptDetailSerializer(many=True, read_only=True)
+    participant_name = serializers.SerializerMethodField()
+    participant_email = serializers.SerializerMethodField()
     time_taken_seconds = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
     
     class Meta:
         model = QuizAttempt
         fields = [
-            'id', 'quiz', 'user_external_id', 'attempt_number',
+            'id', 'quiz', 'user_external_id', 'participant_name', 'participant_email', 'attempt_number',
             'state', 'started_at', 'finished_at', 'total_score',
             'time_taken_seconds', 'question_attempts', 'summary'
         ]
@@ -665,6 +716,14 @@ class QuizAttemptDetailSerializer(serializers.ModelSerializer):
         if obj.finished_at:
             return int((obj.finished_at - obj.started_at).total_seconds())
         return None
+
+    def get_participant_name(self, obj):
+        participant = PortalUser.objects.filter(external_id=obj.user_external_id).only('full_name').first()
+        return participant.full_name if participant else obj.user_external_id
+
+    def get_participant_email(self, obj):
+        participant = PortalUser.objects.filter(external_id=obj.user_external_id).only('email').first()
+        return participant.email if participant else None
     
     def get_summary(self, obj) -> dict:
         from .services import QuizService

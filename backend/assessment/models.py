@@ -325,6 +325,7 @@ class QuestionTypeAvailability(models.Model):
     
     QUESTION_TYPE_CHOICES = (
         ('multichoice', 'Multiple Choice'),
+        ('singlechoice', 'Single Choice'),
         ('truefalse', 'True/False'),
         ('shortanswer', 'Short Answer'),
         ('essay', 'Essay'),
@@ -422,13 +423,15 @@ class Question(models.Model):
     Questions are independent of quizzes and can be reused across multiple quizzes.
     
     Question Types:
-    - multichoice: Multiple choice with single or multiple correct answers
+    - multichoice: Multiple-select question with one or more correct answers
+    - singlechoice: One answer may be selected from several options
     - truefalse: True/False question
     - shortanswer: Short text answer with exact or partial matching
     - essay: Long-form answer requiring manual grading
     """
     QUESTION_TYPES = (
         ('multichoice', 'Multiple Choice'),
+        ('singlechoice', 'Single Choice'),
         ('truefalse', 'True/False'),
         ('shortanswer', 'Short Answer'),
         ('essay', 'Essay'),

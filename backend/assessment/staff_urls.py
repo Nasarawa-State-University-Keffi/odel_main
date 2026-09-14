@@ -13,6 +13,7 @@ urlpatterns = [
     
     # Question Bank
     path('question-bank/categories/', apis.StaffQuestionCategoryListCreateView.as_view(), name='staff-category-list-create'),
+    path('question-bank/categories/<uuid:pk>/copy-from-assessment/', apis.StaffCopyAssessmentQuestionsView.as_view(), name='staff-category-copy-from-assessment'),
     path('question-bank/categories/<uuid:pk>/', apis.StaffQuestionCategoryDetailView.as_view(), name='staff-category-detail'),
     path('question-bank/questions/', apis.StaffQuestionListCreateView.as_view(), name='staff-question-list-create'),
     path('question-bank/questions/<uuid:pk>/', apis.StaffQuestionDetailView.as_view(), name='staff-question-detail'),
@@ -26,6 +27,7 @@ urlpatterns = [
     # Quizzes
     path('quizzes/', apis.StaffQuizListCreateView.as_view(), name='staff-quiz-list-create'),
     path('quizzes/<uuid:pk>/', apis.StaffQuizDetailView.as_view(), name='staff-quiz-detail'),
+    path('quizzes/<uuid:pk>/gradebook/', apis.StaffQuizGradebookView.as_view(), name='staff-quiz-gradebook'),
     path('quizzes/questions/', apis.StaffQuizQuestionListCreateView.as_view(), name='staff-quiz-question-list-create'),
     path('quizzes/questions/<uuid:pk>/', apis.StaffQuizQuestionDetailView.as_view(), name='staff-quiz-question-detail'),
 
