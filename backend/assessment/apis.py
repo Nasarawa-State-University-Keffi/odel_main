@@ -934,6 +934,14 @@ class StaffQuizDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroyAPIV
     serializer_class = QuizSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
 
+    def get_serializer_class(self):
+        # The staff detail screen needs the linked slots, not just the list
+        # metrics. Keep the write serializer for updates because it resolves
+        # the optional course_id payload.
+        if self.request.method == 'GET':
+            return QuizDetailSerializer
+        return QuizSerializer
+
 
 @extend_schema(tags=['Staff - Quizzes'])
 class StaffQuizAttemptListView(StaffQuerySetMixin, generics.ListAPIView):

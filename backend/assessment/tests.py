@@ -694,6 +694,17 @@ class QuizAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['name'], 'Test Quiz')
+
+    def test_staff_quiz_detail_includes_linked_question_slots(self):
+        """The staff detail response powers the question-management screen."""
+        self.client.force_authenticate(user=self.instructor)
+
+        response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['course_code'], self.course.course_code)
+        self.assertEqual(len(response.data['quiz_questions']), 1)
+        self.assertEqual(response.data['quiz_questions'][0]['question'], str(self.question.id))
     
     def test_create_quiz_instructor_only(self):
         """Test that only instructors can create quizzes"""
