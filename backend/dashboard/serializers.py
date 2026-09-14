@@ -3,6 +3,7 @@ from rest_framework import serializers
 from courses.models import CourseCache, StaffAssignedCourse
 from assessment.models import Assignment, AssignmentSubmission, Quiz, QuizAttempt
 from learning_resources.content.models import ContentAccessLog, LearningContent
+from portal_auth.models import PortalUser
 
 
 
@@ -77,3 +78,15 @@ class AssignmentSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
         fields = ["id", "title", "open_at", "due_at", "close_at", "allow_late_submission"]
+
+
+class AdminDirectoryUserSerializer(serializers.ModelSerializer):
+    """Safe identity details used by the administrator-only people directories."""
+
+    class Meta:
+        model = PortalUser
+        fields = [
+            'external_id', 'full_name', 'first_name', 'last_name', 'email',
+            'level', 'roles', 'programme', 'is_staff', 'is_active',
+            'profile_picture', 'last_synced_at',
+        ]

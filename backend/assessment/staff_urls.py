@@ -49,4 +49,6 @@ urlpatterns = [
     # Exports
     path('assignments/<uuid:pk>/export/', apis.StaffAssignmentExportView.as_view(), name='staff-assignment-export'),
     path('quizzes/<uuid:pk>/export/', apis.StaffQuizExportView.as_view(), name='staff-quiz-export'),
+    path('quizzes/<uuid:pk>/report/', apis.StaffQuizReportExportView.as_view(), name='staff-quiz-report-export'),
+    path('assessments/<uuid:pk>/report/', apis.StaffAssessmentReportExportView.as_view(), name='staff-assessment-report-export'),
 ]

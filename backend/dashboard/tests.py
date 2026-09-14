@@ -4,11 +4,13 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from assessment.models import Assignment, Quiz
+from assessment.models import Assessment, AssessmentAttempt, Assignment, Quiz, QuizAttempt
 from courses.models import (
     AcademicSession,
     CourseCache,
+    CourseOffering,
     Semester,
+    StaffAssignedCourse,
     StudentRegisteredCourse,
 )
 from portal_auth.exceptions import PortalLMSUnavailable
@@ -217,3 +219,76 @@ class StudentDashboardAvailabilityTests(TestCase):
             {assignment['title'] for assignment in response.data['upcoming_assignments']},
             {'Open assignment', 'Late-window assignment'},
         )
+
+
+class AdminDashboardTests(TestCase):
+    def setUp(self):
+        self.admin = PortalUser.objects.create(
+            external_id='admin001', full_name='Portal Admin', roles=['PORTAL_ADMINS'], is_staff=True,
+        )
+        self.staff = PortalUser.objects.create(
+            external_id='staff001', full_name='Lecturer One', roles=['PORTAL_STAFF'], is_staff=True,
+        )
+        self.student = PortalUser.objects.create(
+            external_id='student001', full_name='Student One', roles=['PORTAL_STUDENTS'], level='200',
+        )
+        self.session = AcademicSession.objects.create(name='2025/2026')
+        self.semester = Semester.objects.create(name='First Semester')
+        self.course = CourseCache.objects.create(course_external_id=501, course_code='CSC501', course_title='Admin Metrics')
+        self.offering = CourseOffering.objects.create(
+            course=self.course, session=self.session, semester=self.semester, programme_type_code='ODEL', status='active',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.staff.external_id, course=self.course, course_offering=self.offering,
+            programme_type_code='ODEL', role='instructor',
+        )
+        StudentRegisteredCourse.objects.create(
+            student_external=self.student, course=self.course, course_offering=self.offering,
+            session=self.session.name, semester=self.semester.name,
+        )
+        self.quiz = Quiz.objects.create(course=self.course, name='Term quiz', is_published=True)
+        self.assessment = Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='Term assessment', is_published=True,
+        )
+        QuizAttempt.objects.create(
+            quiz=self.quiz, user_external_id=self.student.external_id, attempt_number=1,
+            state='finished', total_score='78.00',
+        )
+        AssessmentAttempt.objects.create(
+            assessment=self.assessment, user_external_id=self.student.external_id, attempt_number=1,
+            state='finished', total_score='84.00',
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+
+    def test_admin_overview_returns_term_scoped_metrics(self):
+        response = self.client.get('/api/dashboard/admin/overview/', {
+            'session': '2025/2026', 'semester': 'First Semester',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['people']['staff'], 1)
+        self.assertEqual(response.data['people']['students'], 1)
+        self.assertEqual(response.data['people']['active_staff'], 1)
+        self.assertEqual(response.data['people']['active_students'], 1)
+        self.assertEqual(response.data['quizzes']['published'], 1)
+        self.assertEqual(response.data['quizzes']['completed_attempts'], 1)
+        self.assertEqual(response.data['assessments']['published'], 1)
+        self.assertEqual(response.data['assessments']['average_score'], 84.0)
+
+    def test_admin_directories_are_separate_and_paginated(self):
+        staff_response = self.client.get('/api/dashboard/admin/staff/', {'page': 1, 'page_size': 1})
+        student_response = self.client.get('/api/dashboard/admin/students/', {'search': 'student'})
+
+        self.assertEqual(staff_response.status_code, 200)
+        self.assertEqual(staff_response.data['count'], 1)
+        self.assertEqual(staff_response.data['results'][0]['external_id'], self.staff.external_id)
+        self.assertEqual(student_response.status_code, 200)
+        self.assertEqual(student_response.data['count'], 1)
+        self.assertEqual(student_response.data['results'][0]['external_id'], self.student.external_id)
+
+    def test_non_admin_cannot_access_admin_dashboard_data(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get('/api/dashboard/admin/overview/')
+
+        self.assertEqual(response.status_code, 403)

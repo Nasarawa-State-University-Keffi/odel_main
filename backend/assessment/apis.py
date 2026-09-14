@@ -5,7 +5,7 @@ REFACTORED: Separated Student and Staff endpoints with unified queryset logic.
 """
 import csv
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Avg, Count, Prefetch, Q
@@ -46,6 +46,7 @@ from .serializers import (
 )
 from .services import AssessmentService, QuizService, QuestionService, create_submission, submit_submission, upload_assignment_content, upload_submission_file, grade_assignment_submission
 from .permissions import IsInstructorOrReadOnly, IsPortalStudent
+from .reporting import build_class_report, build_student_report, excel_response
 
 
 # ==========================================
@@ -1650,3 +1651,128 @@ class StaffQuizExportView(APIView):
                 ])
                 
         return response
+
+
+class StaffQuizReportExportView(APIView):
+    """Download a complete quiz gradebook or a detailed student attempt report."""
+
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @extend_schema(
+        summary="Export a quiz report as Excel (staff)",
+        description="Downloads all course participants and scores, or one student's detailed attempt when attempt_id is supplied.",
+        parameters=[OpenApiParameter(name='attempt_id', type=str, location=OpenApiParameter.QUERY, required=False)],
+        responses={200: OpenApiResponse(description="Excel workbook download")},
+        tags=['Staff - Quizzes'],
+    )
+    def get(self, request, pk=None):
+        quiz = get_object_or_404(Quiz.objects.select_related('course'), id=pk)
+        if not StaffAssignedCourse.objects.filter(
+            staff_external_id=request.user.external_id,
+            course=quiz.course,
+        ).exists():
+            return Response({'detail': 'You are not assigned to this course.'}, status=status.HTTP_403_FORBIDDEN)
+
+        attempts = list(
+            QuizAttempt.objects.filter(quiz=quiz).prefetch_related(
+                Prefetch(
+                    'question_attempts',
+                    queryset=QuestionAttempt.objects.select_related('question').prefetch_related('question__answers'),
+                ),
+            ),
+        )
+        student_ids = set(StudentRegisteredCourse.objects.filter(course=quiz.course).values_list('student_external_id', flat=True))
+        student_ids.update(attempt.user_external_id for attempt in attempts)
+        users = {
+            user.external_id: user
+            for user in PortalUser.objects.filter(external_id__in=student_ids).only('external_id', 'full_name', 'email')
+        }
+        attempt_id = request.query_params.get('attempt_id')
+        if attempt_id:
+            attempt = next((item for item in attempts if str(item.id) == attempt_id), None)
+            if attempt is None:
+                raise Http404('Quiz attempt not found.')
+            question_marks = {
+                str(question_id): max_mark
+                for question_id, max_mark in QuizQuestion.objects.filter(quiz=quiz).values_list('question_id', 'max_mark')
+            }
+            workbook = build_student_report(
+                kind='Quiz',
+                item_name=quiz.name,
+                course_code=quiz.course.course_code,
+                user=users.get(attempt.user_external_id),
+                attempt=attempt,
+                question_marks=question_marks,
+            )
+            return excel_response(workbook, f'quiz-{quiz.name}-{attempt.user_external_id}-report')
+
+        workbook = build_class_report(
+            kind='Quiz',
+            item_name=quiz.name,
+            course_code=quiz.course.course_code,
+            max_grade=quiz.max_grade,
+            student_ids=student_ids,
+            users=users,
+            attempts=attempts,
+        )
+        return excel_response(workbook, f'quiz-{quiz.name}-scores')
+
+
+class StaffAssessmentReportExportView(APIView):
+    """Download a complete assessment gradebook or a detailed student attempt report."""
+
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @extend_schema(
+        summary="Export an assessment report as Excel (staff)",
+        description="Downloads all course participants and scores, or one student's detailed attempt when attempt_id is supplied.",
+        parameters=[OpenApiParameter(name='attempt_id', type=str, location=OpenApiParameter.QUERY, required=False)],
+        responses={200: OpenApiResponse(description="Excel workbook download")},
+        tags=['Staff - Assessments'],
+    )
+    def get(self, request, pk=None):
+        assessment = get_object_or_404(Assessment.objects.select_related('course'), id=pk)
+        if not StaffAssignedCourse.objects.filter(
+            staff_external_id=request.user.external_id,
+            course=assessment.course,
+        ).exists():
+            return Response({'detail': 'You are not assigned to this course.'}, status=status.HTTP_403_FORBIDDEN)
+
+        attempts = list(
+            AssessmentAttempt.objects.filter(assessment=assessment).prefetch_related(
+                Prefetch(
+                    'question_attempts',
+                    queryset=AssessmentQuestionAttempt.objects.select_related('question').prefetch_related('question__answers'),
+                ),
+            ),
+        )
+        student_ids = set(StudentRegisteredCourse.objects.filter(course=assessment.course).values_list('student_external_id', flat=True))
+        student_ids.update(attempt.user_external_id for attempt in attempts)
+        users = {
+            user.external_id: user
+            for user in PortalUser.objects.filter(external_id__in=student_ids).only('external_id', 'full_name', 'email')
+        }
+        attempt_id = request.query_params.get('attempt_id')
+        if attempt_id:
+            attempt = next((item for item in attempts if str(item.id) == attempt_id), None)
+            if attempt is None:
+                raise Http404('Assessment attempt not found.')
+            workbook = build_student_report(
+                kind='Assessment',
+                item_name=assessment.name,
+                course_code=assessment.course.course_code,
+                user=users.get(attempt.user_external_id),
+                attempt=attempt,
+            )
+            return excel_response(workbook, f'assessment-{assessment.name}-{attempt.user_external_id}-report')
+
+        workbook = build_class_report(
+            kind='Assessment',
+            item_name=assessment.name,
+            course_code=assessment.course.course_code,
+            max_grade=assessment.max_grade,
+            student_ids=student_ids,
+            users=users,
+            attempts=attempts,
+        )
+        return excel_response(workbook, f'assessment-{assessment.name}-scores')

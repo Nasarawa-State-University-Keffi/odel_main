@@ -14,7 +14,9 @@ CORRECTED VERSION - All tests should pass
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+from io import BytesIO
 from unittest.mock import patch
+from openpyxl import load_workbook
 from django.test import TestCase
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -33,7 +35,7 @@ from .models import (
     QuestionCategory, Question, QuestionAnswer,
     Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
     Assignment, AssignmentSubmission,
-    Assessment, AssessmentQuestion, AssessmentAttempt, Grade,
+    Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentQuestionAttempt, Grade,
 )
 from .services import AssessmentService, QuizService, QuestionService, calculate_student_total, get_gradebook_summary
 from .question_types import get_question_type_handler
@@ -1928,8 +1930,71 @@ class ExportAPITests(APITestCase):
         self.client.force_authenticate(user=self.student)
         response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/export/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        
+
         # Test unassigned instructor forbidden
         self.client.force_authenticate(user=self.other_instructor)
         response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/export/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_quiz_excel_reports_include_class_scores_and_student_responses(self):
+        category = QuestionCategory.objects.create(course=self.course, name='Quiz report bank')
+        question = Question.objects.create(
+            category=category,
+            qtype='shortanswer',
+            name='Math question',
+            question_text='What is two plus two?',
+            default_mark=Decimal('10.00'),
+        )
+        QuizQuestion.objects.create(quiz=self.quiz, question=question, order=1, max_mark=Decimal('10.00'))
+        attempt = QuizAttempt.objects.create(
+            quiz=self.quiz,
+            user_external_id=self.student.external_id,
+            attempt_number=1,
+            state='finished',
+            total_score=Decimal('90.00'),
+            finished_at=timezone.now(),
+        )
+        QuestionAttempt.objects.create(
+            quiz_attempt=attempt,
+            question=question,
+            display_order=1,
+            response={'text': '<p><math><msqrt><mn>4</mn></msqrt></math></p>'},
+            score=Decimal('10.00'),
+        )
+
+        self.client.force_authenticate(user=self.instructor)
+        class_response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/report/')
+        self.assertEqual(class_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(class_response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        class_book = load_workbook(BytesIO(class_response.content))
+        self.assertEqual(class_book.sheetnames, ['Summary', 'Scores'])
+        self.assertEqual(class_book['Scores']['A5'].value, self.student.external_id)
+        self.assertEqual(class_book['Scores']['G5'].value, 90)
+
+        student_response = self.client.get(f'/api/staff/assessment/quizzes/{self.quiz.id}/report/?attempt_id={attempt.id}')
+        self.assertEqual(student_response.status_code, status.HTTP_200_OK)
+        student_book = load_workbook(BytesIO(student_response.content))
+        self.assertEqual(student_book.sheetnames, ['Student report', 'Responses'])
+        self.assertEqual(student_book['Responses']['E5'].value, '4')
+
+    def test_assessment_excel_report_includes_started_students(self):
+        assessment = Assessment.objects.create(
+            course=self.course,
+            name='Assessment report',
+            max_grade=Decimal('50.00'),
+        )
+        AssessmentAttempt.objects.create(
+            assessment=assessment,
+            user_external_id=self.student.external_id,
+            attempt_number=1,
+            state='in_progress',
+            grade_scale=Decimal('50.00'),
+        )
+
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.get(f'/api/staff/assessment/assessments/{assessment.id}/report/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        workbook = load_workbook(BytesIO(response.content))
+        self.assertEqual(workbook.sheetnames, ['Summary', 'Scores'])
+        self.assertEqual(workbook['Scores']['A5'].value, self.student.external_id)
+        self.assertEqual(workbook['Scores']['D5'].value, 'In Progress')

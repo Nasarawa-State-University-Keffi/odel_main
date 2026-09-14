@@ -1,6 +1,6 @@
 import logging
 
-from django.db.models import Q
+from django.db.models import Avg, Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -9,9 +9,10 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 
-from courses.models import CourseCache, StaffAssignedCourse, StudentRegisteredCourse
+from courses.models import CourseCache, CourseOffering, StaffAssignedCourse, StudentRegisteredCourse
 from courses.services import resolve_academic_period
-from assessment.models import Assignment, AssignmentSubmission, Quiz
+from assessment.models import Assessment, AssessmentAttempt, Assignment, AssignmentSubmission, Quiz, QuizAttempt
+from portal_auth.models import PortalUser
 from portal_auth.services import (
     get_or_sync_staff_registered_courses,
     get_or_sync_student_registered_courses,
@@ -21,13 +22,34 @@ from .serializers import (
     CourseSummarySerializer,
     QuizSummarySerializer,
     TeachingAssignmentSummarySerializer,
+    AdminDirectoryUserSerializer,
 )
-from portal_auth.permissions import IsPortalStudent, IsPortalStaff
+from portal_auth.permissions import IsPortalAdmin, IsPortalStudent, IsPortalStaff
 
 
 from drf_spectacular.utils import OpenApiParameter
 
 logger = logging.getLogger(__name__)
+
+ADMIN_ROLE_NAMES = {'ADMIN', 'SUPER_ADMIN', 'PORTAL_ADMIN', 'PORTAL_ADMINS'}
+STAFF_ROLE_NAMES = {'STAFF', 'PORTAL_STAFF'}
+STUDENT_ROLE_NAMES = {'STUDENT', 'PORTAL_STUDENTS'}
+
+
+def normalized_roles(user):
+    return {str(role).upper() for role in (user.roles or [])}
+
+
+def user_audience(user):
+    """Classify a portal identity for administrator directories."""
+    roles = normalized_roles(user)
+    if roles & ADMIN_ROLE_NAMES:
+        return 'admin'
+    if user.is_staff or roles & STAFF_ROLE_NAMES:
+        return 'staff'
+    if roles & STUDENT_ROLE_NAMES:
+        return 'student'
+    return 'other'
 
 
 def get_active_quizzes(course_ids, now):
@@ -54,6 +76,132 @@ def get_active_assignments(course_ids, now):
             & (Q(close_at__isnull=True) | Q(close_at__gt=now))
         )
     ).order_by('due_at', 'title')
+
+
+class AdminDashboardOverviewView(APIView):
+    """Institution-wide counts and term-specific assessment activity."""
+
+    permission_classes = [IsAuthenticated, IsPortalAdmin]
+
+    @extend_schema(
+        tags=['Admin - Dashboard'],
+        summary='Administrator dashboard overview',
+        parameters=[
+            OpenApiParameter(name='session', type=str, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name='semester', type=str, location=OpenApiParameter.QUERY, required=False),
+        ],
+    )
+    def get(self, request):
+        session = request.query_params.get('session')
+        semester = request.query_params.get('semester')
+        if bool(session) != bool(semester):
+            return Response({'detail': 'session and semester must be supplied together'}, status=400)
+
+        users = list(PortalUser.objects.all().only('id', 'roles', 'is_staff', 'is_active'))
+        directory_counts = {
+            'staff': sum(user_audience(user) == 'staff' for user in users),
+            'students': sum(user_audience(user) == 'student' for user in users),
+            'active_users': sum(user.is_active for user in users),
+        }
+
+        context = {'session': None, 'semester': None}
+        offering_queryset = CourseOffering.objects.none()
+        if session and semester:
+            session, semester = resolve_academic_period(session, semester)
+            context = {'session': session, 'semester': semester}
+            offering_queryset = CourseOffering.objects.filter(
+                session__name=session,
+                semester__name=semester,
+                status='active',
+            )
+
+        course_ids = offering_queryset.values_list('course_id', flat=True)
+        quiz_queryset = Quiz.objects.filter(course_id__in=course_ids) if session else Quiz.objects.all()
+        assessment_queryset = Assessment.objects.filter(course_offering__in=offering_queryset) if session else Assessment.objects.all()
+        quiz_attempts = QuizAttempt.objects.filter(quiz__in=quiz_queryset)
+        assessment_attempts = AssessmentAttempt.objects.filter(assessment__in=assessment_queryset)
+
+        def assessment_metrics(queryset, attempts):
+            return {
+                'total': queryset.count(),
+                'published': queryset.filter(is_published=True).count(),
+                'attempts': attempts.count(),
+                'completed_attempts': attempts.filter(state='finished').count(),
+                'average_score': attempts.filter(state='finished', total_score__isnull=False).aggregate(value=Avg('total_score'))['value'],
+            }
+
+        active_students = (
+            StudentRegisteredCourse.objects.filter(session=session, semester=semester)
+            .values('student_external_id').distinct().count()
+            if session else directory_counts['students']
+        )
+        active_staff = (
+            StaffAssignedCourse.objects.filter(course_offering__in=offering_queryset)
+            .values('staff_external_id').distinct().count()
+            if session else directory_counts['staff']
+        )
+
+        return Response({
+            'context': context,
+            'people': {
+                **directory_counts,
+                'active_staff': active_staff,
+                'active_students': active_students,
+            },
+            'courses': {'active_offerings': offering_queryset.count() if session else CourseCache.objects.count()},
+            'quizzes': assessment_metrics(quiz_queryset, quiz_attempts),
+            'assessments': assessment_metrics(assessment_queryset, assessment_attempts),
+        })
+
+
+class AdminDirectoryView(APIView):
+    """A paginated, admin-only directory for staff or student identities."""
+
+    permission_classes = [IsAuthenticated, IsPortalAdmin]
+    audience = None
+
+    def get(self, request):
+        if self.audience not in {'staff', 'student'}:
+            return Response({'detail': 'Unknown directory'}, status=404)
+
+        query = request.query_params.get('search', '').strip().lower()
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+            page_size = min(100, max(1, int(request.query_params.get('page_size', 20))))
+        except ValueError:
+            return Response({'detail': 'page and page_size must be whole numbers'}, status=400)
+
+        users = [
+            user for user in PortalUser.objects.all().order_by('full_name', 'external_id')
+            if user_audience(user) == self.audience
+        ]
+        if query:
+            users = [
+                user for user in users
+                if query in user.full_name.lower()
+                or query in user.external_id.lower()
+                or query in (user.email or '').lower()
+            ]
+
+        count = len(users)
+        start = (page - 1) * page_size
+        results = users[start:start + page_size]
+        return Response({
+            'count': count,
+            'page': page,
+            'page_size': page_size,
+            'next': page + 1 if start + page_size < count else None,
+            'previous': page - 1 if page > 1 else None,
+            'results': AdminDirectoryUserSerializer(results, many=True).data,
+        })
+
+
+class AdminStaffDirectoryView(AdminDirectoryView):
+    audience = 'staff'
+
+
+class AdminStudentDirectoryView(AdminDirectoryView):
+    audience = 'student'
 
 
 class StudentDashboardView(APIView):
