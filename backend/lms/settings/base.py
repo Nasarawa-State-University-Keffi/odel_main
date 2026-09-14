@@ -165,8 +165,13 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/hour",
-        "user": "1000/hour",
+        # LMS sessions generate legitimate bursts: restoring a session, loading
+        # course data, autosaving quiz/assessment responses, and submitting an
+        # attempt can all happen within a short window. Keep anonymous traffic
+        # guarded, while giving authenticated learners and staff enough room to
+        # work without rate-limit interruptions.
+        "anon": "1000/hour",
+        "user": "10000/hour",
     },
     "EXCEPTION_HANDLER": "learning_resources.content.exceptions.custom_exception_handler",
 }
