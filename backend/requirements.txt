@@ -45,6 +45,7 @@ python-decouple>=3.8  # Optional: better env variable management
 # Utilities
 python-dateutil>=2.8
 pytz>=2023.3
+bleach>=6.2  # Sanitize rich question-bank HTML before it is persisted
 
 # Development Tools (optional - comment out in production if needed)
 django-extensions>=4.0  # Useful management commands

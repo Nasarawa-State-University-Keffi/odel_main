@@ -5,6 +5,7 @@ DRF serializers for the quiz and question bank system.
 """
 import uuid
 from decimal import Decimal
+import bleach
 from django.db.models import Sum
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
@@ -19,6 +20,33 @@ from .models import (
     Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentQuestionAttempt,
     Grade
 )
+
+
+RICH_QUESTION_TAGS = set(bleach.sanitizer.ALLOWED_TAGS).union({
+    'p', 'br', 'hr', 'div', 'span', 'figure', 'figcaption', 'img',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    'math', 'mrow', 'mi', 'mn', 'mo', 'mtext', 'msup', 'msub', 'msubsup',
+    'mfrac', 'msqrt', 'mroot', 'mtable', 'mtr', 'mtd', 'semantics', 'annotation',
+})
+
+RICH_QUESTION_ATTRIBUTES = {
+    '*': ['class', 'data-mathml'],
+    'a': ['href', 'title', 'target', 'rel'],
+    'img': ['src', 'alt', 'width', 'height', 'data-mathml'],
+    'td': ['colspan', 'rowspan'],
+    'th': ['colspan', 'rowspan'],
+}
+
+
+def sanitize_rich_question_html(value: str) -> str:
+    """Keep the authoring markup required by CKEditor/WIRIS and remove executable HTML."""
+    return bleach.clean(
+        value or '',
+        tags=RICH_QUESTION_TAGS,
+        attributes=RICH_QUESTION_ATTRIBUTES,
+        protocols=['http', 'https', 'mailto'],
+        strip=True,
+    )
 
 
 # ==========================================
@@ -294,6 +322,12 @@ class QuestionPublicSerializer(serializers.ModelSerializer):
 
 
 class QuestionAnswerCreateSerializer(serializers.ModelSerializer):
+    def validate_answer_text(self, value):
+        return sanitize_rich_question_html(value)
+
+    def validate_feedback(self, value):
+        return sanitize_rich_question_html(value)
+
     class Meta:
         model = QuestionAnswer
         fields = ['answer_text', 'fraction', 'feedback', 'order']
@@ -323,6 +357,12 @@ class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
             'id', 'category', 'qtype', 'name', 'question_text',
             'general_feedback', 'default_mark', 'penalty', 'answers'
         ]
+
+    def validate_question_text(self, value):
+        return sanitize_rich_question_html(value)
+
+    def validate_general_feedback(self, value):
+        return sanitize_rich_question_html(value)
     
     def validate(self, attrs):
         category = attrs.get('category') or (self.instance.category if self.instance else None)
