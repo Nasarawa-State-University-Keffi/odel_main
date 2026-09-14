@@ -1021,6 +1021,64 @@ class QuizAPITests(APITestCase):
             grade_type='assessment',
         ).exists())
 
+    def test_student_can_leave_and_resume_a_self_paced_assessment(self):
+        """Starting again restores the saved draft and does not use an attempt."""
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Resume assessment bank',
+        )
+        question = Question.objects.create(
+            category=category, qtype='truefalse', name='Resume question',
+            question_text='Saved work remains available.', default_mark=Decimal('1.00'),
+        )
+        correct = QuestionAnswer.objects.create(
+            question=question, answer_text='True', fraction=Decimal('1.00'), order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=question, answer_text='False', fraction=Decimal('0.00'), order=2,
+        )
+        assessment = Assessment.objects.create(
+            course=self.course,
+            course_offering=self.offering,
+            name='Self-paced checkpoint',
+            is_published=True,
+            max_grade=Decimal('10.00'),
+            max_attempts=1,
+            # This legacy configuration must not give assessment attempts a
+            # deadline now that they are self-paced.
+            time_limit=60,
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment, question=question, order=1, max_mark=Decimal('1.00'),
+        )
+
+        self.client.force_authenticate(user=self.student)
+        period = {'session': '2025/2026', 'semester': 'First Semester'}
+        started = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/start/', period, format='json',
+        )
+        self.assertEqual(started.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(started.data['deadline_at'])
+
+        saved = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{started.data["id"]}/submit/',
+            {'question_id': str(question.id), 'response': {'selected': str(correct.id)}}, format='json',
+        )
+        self.assertEqual(saved.status_code, status.HTTP_200_OK)
+
+        resumed = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/start/', period, format='json',
+        )
+        self.assertEqual(resumed.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resumed.data['id'], started.data['id'])
+        self.assertEqual(resumed.data['state'], 'in_progress')
+        self.assertEqual(resumed.data['question_attempts'][0]['response']['selected'], str(correct.id))
+        self.assertEqual(
+            AssessmentAttempt.objects.filter(
+                assessment=assessment, user_external_id=self.student.external_id,
+            ).count(),
+            1,
+        )
+
     def test_assessment_attempt_uses_frozen_question_and_mark_snapshot(self):
         """Editing a bank item later must never change an in-progress result."""
         category = QuestionCategory.objects.create(

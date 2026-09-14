@@ -1,12 +1,12 @@
-"""Lifecycle rules for timed, auto-graded assessments."""
+"""Lifecycle rules for self-paced, auto-graded assessments."""
 
 import random
-from datetime import timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from assessment.models import (
@@ -25,26 +25,44 @@ class AssessmentService:
 
     @staticmethod
     def get_attempt_deadline(attempt: AssessmentAttempt):
-        if attempt.deadline_at:
-            return attempt.deadline_at
-        deadlines = []
-        if attempt.assessment.time_limit:
-            deadlines.append(attempt.started_at + timedelta(seconds=attempt.assessment.time_limit))
-        if attempt.assessment.time_close:
-            deadlines.append(attempt.assessment.time_close)
-        return min(deadlines) if deadlines else None
+        """Assessments are self-paced; only quizzes enforce a running clock."""
+        return None
 
     @classmethod
     def is_attempt_expired(cls, attempt: AssessmentAttempt, *, now=None) -> bool:
-        deadline = cls.get_attempt_deadline(attempt)
-        return bool(deadline and (now or timezone.now()) >= deadline)
+        return False
 
     @classmethod
     def expire_attempt_if_needed(cls, attempt: AssessmentAttempt, *, now=None) -> bool:
-        if attempt.state != 'in_progress' or not cls.is_attempt_expired(attempt, now=now):
-            return False
-        cls.finish_attempt(attempt)
-        return True
+        """Kept as a compatibility hook; assessments never auto-submit."""
+        return False
+
+    @staticmethod
+    def _resume_legacy_timed_attempt(*, assessment: Assessment, user_external_id: str):
+        """Restore an attempt that an earlier timed-assessment release auto-finished.
+
+        Before assessments became self-paced, a timer could submit work that a
+        student had not chosen to submit.  Those rows have a deadline and a
+        completion timestamp at or after it.  Reopen only that specific legacy
+        shape; normally submitted assessments remain final.
+        """
+        attempt = AssessmentAttempt.objects.select_for_update().filter(
+            assessment=assessment,
+            user_external_id=user_external_id,
+            state='finished',
+            deadline_at__isnull=False,
+            finished_at__gte=F('deadline_at'),
+        ).order_by('-attempt_number').first()
+        if not attempt:
+            return None
+
+        Grade.objects.filter(assessment_attempt=attempt).delete()
+        attempt.state = 'in_progress'
+        attempt.finished_at = None
+        attempt.total_score = None
+        attempt.deadline_at = None
+        attempt.save(update_fields=['state', 'finished_at', 'total_score', 'deadline_at'])
+        return attempt
 
     @staticmethod
     def _question_snapshot(question: Question) -> dict:
@@ -109,23 +127,29 @@ class AssessmentService:
         if not question_slots:
             raise ValidationError('This assessment has no questions yet. Please contact your lecturer.')
 
-        now = timezone.now()
-        if assessment.time_open and now < assessment.time_open:
-            raise ValidationError(f'Assessment opens at {assessment.time_open}')
-        if assessment.time_close and now > assessment.time_close:
-            raise ValidationError(f'Assessment closed at {assessment.time_close}')
-
         active_attempt = AssessmentAttempt.objects.select_for_update().filter(
             assessment=assessment,
             user_external_id=user_external_id,
             state='in_progress',
         ).first()
-        if active_attempt and AssessmentService.expire_attempt_if_needed(active_attempt, now=now):
-            active_attempt = None
         if active_attempt:
-            raise ValidationError(
-                f'You already have an active assessment attempt (started {active_attempt.started_at}).'
-            )
+            # An active assessment is a saved draft.  Starting again is how a
+            # student resumes it from another device or a later session.
+            if active_attempt.deadline_at:
+                active_attempt.deadline_at = None
+                active_attempt.save(update_fields=['deadline_at'])
+            return active_attempt
+
+        legacy_attempt = AssessmentService._resume_legacy_timed_attempt(
+            assessment=assessment,
+            user_external_id=user_external_id,
+        )
+        if legacy_attempt:
+            return legacy_attempt
+
+        now = timezone.now()
+        if assessment.time_open and now < assessment.time_open:
+            raise ValidationError(f'Assessment opens at {assessment.time_open}')
 
         attempt_count = AssessmentAttempt.objects.filter(
             assessment=assessment,
@@ -137,16 +161,10 @@ class AssessmentService:
         if assessment.shuffle_questions:
             random.shuffle(question_slots)
 
-        deadlines = []
-        if assessment.time_limit:
-            deadlines.append(now + timedelta(seconds=assessment.time_limit))
-        if assessment.time_close:
-            deadlines.append(assessment.time_close)
         attempt = AssessmentAttempt.objects.create(
             assessment=assessment,
             user_external_id=user_external_id,
             attempt_number=attempt_count + 1,
-            deadline_at=min(deadlines) if deadlines else None,
             grade_scale=assessment.max_grade,
             show_feedback=assessment.show_feedback,
         )
@@ -169,8 +187,6 @@ class AssessmentService:
         attempt = AssessmentAttempt.objects.select_for_update().select_related('assessment').get(pk=attempt.pk)
         if attempt.state != 'in_progress':
             raise ValidationError(f'Cannot submit to a {attempt.state} attempt.')
-        if AssessmentService.expire_attempt_if_needed(attempt):
-            raise ValidationError('The assessment deadline has passed and your attempt was submitted automatically.')
 
         question_attempt = AssessmentQuestionAttempt.objects.select_for_update().get(
             assessment_attempt=attempt,
