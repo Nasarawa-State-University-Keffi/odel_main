@@ -1065,13 +1065,29 @@ class QuizAPITests(APITestCase):
         )
         self.assertEqual(saved.status_code, status.HTTP_200_OK)
 
+        added_question = Question.objects.create(
+            category=category, qtype='truefalse', name='Later question',
+            question_text='A lecturer may add this after the student starts.', default_mark=Decimal('1.00'),
+        )
+        QuestionAnswer.objects.create(
+            question=added_question, answer_text='True', fraction=Decimal('1.00'), order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=added_question, answer_text='False', fraction=Decimal('0.00'), order=2,
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment, question=added_question, order=2, max_mark=Decimal('1.00'),
+        )
+
         resumed = self.client.post(
             f'/api/student/assessment/assessments/{assessment.id}/start/', period, format='json',
         )
         self.assertEqual(resumed.status_code, status.HTTP_201_CREATED)
         self.assertEqual(resumed.data['id'], started.data['id'])
         self.assertEqual(resumed.data['state'], 'in_progress')
+        self.assertEqual(len(resumed.data['question_attempts']), 2)
         self.assertEqual(resumed.data['question_attempts'][0]['response']['selected'], str(correct.id))
+        self.assertEqual(resumed.data['question_attempts'][1]['question']['id'], str(added_question.id))
         self.assertEqual(
             AssessmentAttempt.objects.filter(
                 assessment=assessment, user_external_id=self.student.external_id,

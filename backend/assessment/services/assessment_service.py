@@ -113,6 +113,38 @@ class AssessmentService:
         )
 
     @staticmethod
+    def _append_new_question_slots(*, attempt: AssessmentAttempt, question_slots: list[AssessmentQuestion]):
+        """Make later additions available when a student resumes a draft.
+
+        Existing question attempts remain untouched so saved answers, marks, and
+        snapshots cannot change.  New slots are appended after that frozen set,
+        which lets a lecturer extend a self-paced assessment without making an
+        in-progress student lose work.
+        """
+        existing_question_ids = set(
+            attempt.question_attempts.values_list('question_id', flat=True),
+        )
+        new_slots = [slot for slot in question_slots if slot.question_id not in existing_question_ids]
+        if not new_slots:
+            return
+
+        next_display_order = max(
+            attempt.question_attempts.values_list('display_order', flat=True),
+            default=0,
+        ) + 1
+        AssessmentQuestionAttempt.objects.bulk_create([
+            AssessmentQuestionAttempt(
+                assessment_attempt=attempt,
+                question=slot.question,
+                display_order=next_display_order + index,
+                max_mark=slot.max_mark,
+                question_snapshot=AssessmentService._question_snapshot(slot.question),
+                response={},
+            )
+            for index, slot in enumerate(new_slots)
+        ])
+
+    @staticmethod
     @transaction.atomic
     def start_attempt(*, assessment: Assessment, user_external_id: str) -> AssessmentAttempt:
         # Lock the assessment itself. Locking only matching attempts does not
@@ -138,6 +170,10 @@ class AssessmentService:
             if active_attempt.deadline_at:
                 active_attempt.deadline_at = None
                 active_attempt.save(update_fields=['deadline_at'])
+            AssessmentService._append_new_question_slots(
+                attempt=active_attempt,
+                question_slots=question_slots,
+            )
             return active_attempt
 
         legacy_attempt = AssessmentService._resume_legacy_timed_attempt(
@@ -145,6 +181,10 @@ class AssessmentService:
             user_external_id=user_external_id,
         )
         if legacy_attempt:
+            AssessmentService._append_new_question_slots(
+                attempt=legacy_attempt,
+                question_slots=question_slots,
+            )
             return legacy_attempt
 
         now = timezone.now()
