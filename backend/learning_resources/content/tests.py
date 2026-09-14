@@ -67,6 +67,9 @@ class CourseModuleAPITestCase(APITestCase):
             course_title='Other Course',
             course_code='MOD502',
         )
+        self.academic_session = AcademicSession.objects.create(name='2025/2026')
+        AcademicSession.objects.create(name='2024/2025')
+        self.semester = Semester.objects.create(name='First')
         StudentRegisteredCourse.objects.create(
             student_external=self.student,
             course=self.course,
@@ -228,6 +231,53 @@ class CourseModuleAPITestCase(APITestCase):
             'content_type': 'note',
         }, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_staff_can_copy_modules_from_another_staff_teaching_period(self):
+        source_module = CourseModule.objects.create(
+            course=self.course,
+            programme_type_code='ODEL',
+            session='2024/2025',
+            semester='First',
+            title='Week 1',
+            order=1,
+            is_published=True,
+            created_by=self.staff,
+        )
+        LearningContent.objects.create(
+            course=self.course,
+            module=source_module,
+            title='Lecture note',
+            text_content='<p>Reusable notes</p>',
+            storage_path='',
+            original_filename='Lecture note',
+            storage_backend='text',
+            uploaded_by=self.staff,
+            is_published=True,
+        )
+
+        other_staff = PortalUser.objects.create(
+            external_id='new-module-staff', full_name='New Module Staff',
+            is_staff=True, roles=['STAFF'],
+        )
+        self.client.force_authenticate(user=other_staff)
+        response = self.client.post('/api/content/modules/copy/', {
+            'course_id': self.course.course_external_id,
+            'programme_type_code': 'ODEL',
+            'session': '2025/2026',
+            'semester': 'First',
+            'source_programme_type_code': 'ODEL',
+            'source_session': '2024/2025',
+            'source_semester': 'First',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        copied = CourseModule.objects.get(
+            course=self.course, session='2025/2026', semester='First',
+            programme_type_code='ODEL',
+        )
+        self.assertEqual(copied.created_by, other_staff)
+        self.assertEqual(copied.contents.count(), 1)
+        self.assertEqual(copied.contents.first().text_content, '<p>Reusable notes</p>')
 
 
 class ContentUploadAPITestCase(APITestCase):

@@ -68,6 +68,11 @@ class CourseModule(models.Model):
         on_delete=models.CASCADE,
         related_name='content_modules'
     )
+    # Modules are a teaching-period resource. A course can have a different
+    # lecturer and different material in every programme/session/semester.
+    programme_type_code = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    session = models.CharField(max_length=50, blank=True, default='', db_index=True)
+    semester = models.CharField(max_length=100, blank=True, default='', db_index=True)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     order = models.PositiveIntegerField(default=0, db_index=True)
@@ -85,7 +90,7 @@ class CourseModule(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['course', 'order', 'created_at']
+        ordering = ['course', 'programme_type_code', 'session', 'semester', 'order', 'created_at']
         indexes = [
             models.Index(
                 fields=['course', 'order'],
@@ -95,10 +100,15 @@ class CourseModule(models.Model):
                 fields=['course', 'is_published'],
                 name='content_mod_course_pub_idx'
             ),
+            models.Index(
+                fields=['course', 'programme_type_code', 'session', 'semester', 'order'],
+                name='content_mod_period_order_idx',
+            ),
         ]
 
     def __str__(self):
-        return f"{self.course.course_code} - Module {self.order}: {self.title}"
+        period = " / ".join(filter(None, [self.programme_type_code, self.session, self.semester]))
+        return f"{self.course.course_code} - {period or 'Legacy'} - Module {self.order}: {self.title}"
 
     def clean(self):
         if (
@@ -270,7 +280,11 @@ class LearningContent(models.Model):
         from learning_resources.storage import get_storage_engine
 
         try:
-            if self.storage_backend not in ('external', 'text'):
+            has_shared_resource = LearningContent.objects.filter(
+                storage_backend=self.storage_backend,
+                storage_path=self.storage_path,
+            ).exclude(pk=self.pk).exists()
+            if self.storage_backend not in ('external', 'text') and not has_shared_resource:
                 engine = get_storage_engine(self.storage_backend)
                 engine.delete(self.storage_path)
         except Exception:

@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, SAFE_METHODS
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.db import transaction
 from django.db.models import Sum, Count, Q, Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -31,6 +32,7 @@ from .models import (
 from .serializers import (
     CourseModuleSerializer,
     CourseModuleDetailSerializer,
+    CourseModuleCopySerializer,
     StudentCourseModuleSerializer,
     LearningContentSerializer,
     UnifiedLearningContentSerializer,
@@ -109,6 +111,16 @@ class CourseModuleListCreateAPIView(generics.ListCreateAPIView):
             if not course:
                 return queryset.none()
             queryset = queryset.filter(course=course)
+        programme_type_code = self.request.query_params.get('programme_type_code')
+        session = self.request.query_params.get('session')
+        semester = self.request.query_params.get('semester')
+        if bool(session) != bool(semester):
+            raise ValidationError({'detail': 'session and semester must be supplied together.'})
+        if session and semester:
+            session, semester = resolve_academic_period(session, semester)
+            queryset = queryset.filter(session=session, semester=semester)
+            if programme_type_code:
+                queryset = queryset.filter(programme_type_code=programme_type_code)
         return queryset
 
     def perform_create(self, serializer):
@@ -126,6 +138,105 @@ class CourseModuleDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     ).prefetch_related('contents__uploaded_by')
 
 
+@extend_schema(tags=['Staff - Course Modules'])
+class CourseModuleCopySourceAPIView(views.APIView):
+    """List reusable teaching periods for a course, regardless of staff owner."""
+
+    permission_classes = [IsAuthenticated, IsPortalStaff]
+
+    def get(self, request):
+        course = resolve_course_identifier(request.query_params.get('course_id'))
+        if not course:
+            raise NotFound('Course not found.')
+        sources = CourseModule.objects.filter(course=course).exclude(
+            session='', semester='', programme_type_code='',
+        ).values(
+            'programme_type_code', 'session', 'semester',
+        ).annotate(module_count=Count('id')).order_by(
+            '-session', 'semester', 'programme_type_code'
+        )
+        return Response({'results': list(sources)})
+
+
+@extend_schema(tags=['Staff - Course Modules'])
+class CourseModuleCopyAPIView(views.APIView):
+    """Copy an entire module/lesson structure from another teaching period."""
+
+    permission_classes = [IsAuthenticated, IsPortalStaff]
+
+    def post(self, request):
+        serializer = CourseModuleCopySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        course = data['course_id']
+        target_context = {
+            'programme_type_code': data['programme_type_code'],
+            'session': data['session'],
+            'semester': data['semester'],
+        }
+        source_context = {
+            'programme_type_code': data['source_programme_type_code'],
+            'session': data['source_session'],
+            'semester': data['source_semester'],
+        }
+        if CourseModule.objects.filter(course=course, **target_context).exists():
+            raise ValidationError({
+                'detail': 'This course already has modules in the selected teaching period. Copying would create duplicates.'
+            })
+
+        source_modules = CourseModule.objects.filter(
+            course=course, **source_context,
+        ).prefetch_related('contents').order_by('order', 'created_at')
+        if not source_modules.exists():
+            raise NotFound('No modules were found in the selected source teaching period.')
+
+        with transaction.atomic():
+            copied_modules = 0
+            copied_contents = 0
+            for source_module in source_modules:
+                target_module = CourseModule.objects.create(
+                    course=course,
+                    title=source_module.title,
+                    description=source_module.description,
+                    order=source_module.order,
+                    is_published=source_module.is_published,
+                    available_from=source_module.available_from,
+                    available_until=source_module.available_until,
+                    created_by=request.user,
+                    **target_context,
+                )
+                copied_modules += 1
+                for source_content in source_module.contents.all().order_by('order', 'created_at'):
+                    # File records deliberately share their immutable storage object.
+                    # LearningContent.delete only removes the object after its last
+                    # reference is gone, so copied material stays independent.
+                    LearningContent.objects.create(
+                        component=source_content.component,
+                        content_format=source_content.content_format,
+                        course=course,
+                        module=target_module,
+                        order=source_content.order,
+                        title=source_content.title,
+                        text_content=source_content.text_content,
+                        external_url=source_content.external_url,
+                        storage_path=source_content.storage_path,
+                        original_filename=source_content.original_filename,
+                        file_size=source_content.file_size,
+                        mime_type=source_content.mime_type,
+                        storage_backend=source_content.storage_backend,
+                        content_hash=source_content.content_hash,
+                        uploaded_by=source_content.uploaded_by,
+                        is_published=source_content.is_published,
+                    )
+                    copied_contents += 1
+
+        return Response({
+            'detail': 'Course modules copied successfully.',
+            'module_count': copied_modules,
+            'content_count': copied_contents,
+        }, status=status.HTTP_201_CREATED)
+
+
 @extend_schema(tags=['Student - Content'])
 class StudentCourseModulesAPIView(generics.ListAPIView):
     """Return the available module/content structure for an enrolled student."""
@@ -138,17 +249,35 @@ class StudentCourseModulesAPIView(generics.ListAPIView):
         if not course:
             raise NotFound('Course not found.')
 
-        if not self.request.user.is_staff:
-            is_enrolled = StudentRegisteredCourse.objects.filter(
-                student_external=self.request.user,
-                course=course,
-            ).exists()
-            if not is_enrolled:
-                raise PermissionDenied('You are not enrolled in this course.')
-
         queryset = CourseModule.objects.filter(course=course).select_related(
             'course', 'created_by'
         ).prefetch_related('contents__uploaded_by')
+
+        session = self.request.query_params.get('session')
+        semester = self.request.query_params.get('semester')
+        programme_type_code = self.request.query_params.get('programme_type_code')
+        if bool(session) != bool(semester):
+            raise ValidationError({'detail': 'session and semester must be supplied together.'})
+        if session and semester:
+            session, semester = resolve_academic_period(session, semester)
+            queryset = queryset.filter(session=session, semester=semester)
+            if programme_type_code:
+                queryset = queryset.filter(programme_type_code=programme_type_code)
+
+        if not self.request.user.is_staff:
+            registrations = StudentRegisteredCourse.objects.filter(
+                student_external=self.request.user,
+                course=course,
+            ).select_related('course_offering')
+            if session and semester:
+                registrations = registrations.filter(session=session, semester=semester)
+            if not registrations.exists():
+                raise PermissionDenied('You are not enrolled in this course.')
+            programme_codes = registrations.exclude(
+                course_offering__isnull=True,
+            ).values_list('course_offering__programme_type_code', flat=True)
+            if programme_codes.exists():
+                queryset = queryset.filter(programme_type_code__in=programme_codes)
 
         if not self.request.user.is_staff:
             now = timezone.now()

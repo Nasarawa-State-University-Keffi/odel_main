@@ -20,6 +20,7 @@ from .models import (
     StudyGroupCommentMention,
 )
 from courses.models import CourseCache
+from courses.services import resolve_academic_period
 from portal_auth.models import PortalUser
 
 
@@ -391,6 +392,7 @@ class CourseModuleSerializer(serializers.ModelSerializer):
         model = CourseModule
         fields = [
             'id', 'course_id', 'course_external_id', 'course_title',
+            'programme_type_code', 'session', 'semester',
             'title', 'description', 'order', 'is_published',
             'available_from', 'available_until', 'is_available',
             'content_count', 'created_by', 'created_by_name',
@@ -434,6 +436,24 @@ class CourseModuleSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'available_until': 'Must be later than available_from.'
             })
+
+        session = attrs.get('session', getattr(self.instance, 'session', ''))
+        semester = attrs.get('semester', getattr(self.instance, 'semester', ''))
+        if bool(session) != bool(semester):
+            raise serializers.ValidationError({
+                'detail': 'session and semester must be supplied together.'
+            })
+        if session and semester:
+            canonical_session, canonical_semester = resolve_academic_period(session, semester)
+            attrs['session'] = canonical_session
+            attrs['semester'] = canonical_semester
+        programme_type_code = attrs.get(
+            'programme_type_code', getattr(self.instance, 'programme_type_code', '')
+        )
+        if session and not programme_type_code:
+            raise serializers.ValidationError({
+                'programme_type_code': 'Programme type is required with an academic period.'
+            })
         return attrs
 
     def create(self, validated_data):
@@ -459,6 +479,41 @@ class CourseModuleDetailSerializer(CourseModuleSerializer):
         return LearningContentSerializer(contents, many=True, context=self.context).data
 
 
+class CourseModuleCopySerializer(serializers.Serializer):
+    """Validate a cross-term module-copy request for one portal course."""
+
+    course_id = serializers.CharField()
+    programme_type_code = serializers.CharField(max_length=100)
+    session = serializers.CharField(max_length=50)
+    semester = serializers.CharField(max_length=100)
+    source_programme_type_code = serializers.CharField(max_length=100)
+    source_session = serializers.CharField(max_length=50)
+    source_semester = serializers.CharField(max_length=100)
+
+    def validate_course_id(self, value):
+        course = resolve_course_identifier(value)
+        if not course:
+            raise serializers.ValidationError('Course not found.')
+        return course
+
+    def validate(self, attrs):
+        session, semester = resolve_academic_period(attrs['session'], attrs['semester'])
+        source_session, source_semester = resolve_academic_period(
+            attrs['source_session'], attrs['source_semester']
+        )
+        attrs['session'] = session
+        attrs['semester'] = semester
+        attrs['source_session'] = source_session
+        attrs['source_semester'] = source_semester
+        if (
+            attrs['programme_type_code'] == attrs['source_programme_type_code']
+            and session == source_session
+            and semester == source_semester
+        ):
+            raise serializers.ValidationError('Choose a different source teaching period.')
+        return attrs
+
+
 class StudentCourseModuleSerializer(serializers.ModelSerializer):
     course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
     course_title = serializers.CharField(source='course.course_title', read_only=True)
@@ -468,7 +523,8 @@ class StudentCourseModuleSerializer(serializers.ModelSerializer):
         model = CourseModule
         fields = [
             'id', 'course_external_id', 'course_title', 'title',
-            'description', 'order', 'available_from', 'available_until',
+            'description', 'programme_type_code', 'session', 'semester',
+            'order', 'available_from', 'available_until',
             'contents',
         ]
 

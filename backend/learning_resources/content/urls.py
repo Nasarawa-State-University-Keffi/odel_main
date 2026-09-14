@@ -7,6 +7,8 @@ from django.urls import path
 from .api import (
     CourseModuleListCreateAPIView,
     CourseModuleDetailAPIView,
+    CourseModuleCopySourceAPIView,
+    CourseModuleCopyAPIView,
     StudentCourseModulesAPIView,
     LearningContentListAPIView,
     LearningContentDetailAPIView,
@@ -31,6 +33,8 @@ from .api import (
 urlpatterns = [
     # Course modules
     path('modules/', CourseModuleListCreateAPIView.as_view(), name='course-module-list'),
+    path('modules/copy-sources/', CourseModuleCopySourceAPIView.as_view(), name='course-module-copy-sources'),
+    path('modules/copy/', CourseModuleCopyAPIView.as_view(), name='course-module-copy'),
     path('modules/<uuid:pk>/', CourseModuleDetailAPIView.as_view(), name='course-module-detail'),
 
     # Learning Content
