@@ -1101,8 +1101,9 @@ class StaffAssessmentQuestionListCreateView(StaffQuerySetMixin, generics.ListCre
         selected_offering = get_staff_assigned_offering(self.request, assessment.course)
         if assessment.course_offering_id != selected_offering.id:
             raise ValidationError({'assessment': 'Select the teaching period this assessment belongs to.'})
-        if assessment.attempts.exists():
-            raise ValidationError({'assessment': 'Questions are locked after a student starts an attempt. Create a new assessment for a revised version.'})
+        # Assessment attempts snapshot their linked question slots at the time
+        # they begin. Appending a new slot is therefore safe: it is visible only
+        # to attempts started afterwards, while existing work remains unchanged.
         serializer.save()
 
 
@@ -1114,7 +1115,7 @@ class StaffAssessmentQuestionDetailView(StaffQuerySetMixin, generics.RetrieveUpd
     def _ensure_questions_are_editable(self):
         if self.get_object().assessment.attempts.exists():
             raise ValidationError({
-                'detail': 'Questions are locked after a student starts an attempt. Create a new assessment for a revised version.',
+                'detail': 'Existing questions cannot be changed after a student starts an attempt. You may add questions for future attempts.',
             })
 
     def perform_update(self, serializer):
@@ -1124,7 +1125,7 @@ class StaffAssessmentQuestionDetailView(StaffQuerySetMixin, generics.RetrieveUpd
     def perform_destroy(self, instance):
         if instance.assessment.attempts.exists():
             raise ValidationError({
-                'detail': 'Questions are locked after a student starts an attempt. Create a new assessment for a revised version.',
+                'detail': 'Existing questions cannot be removed after a student starts an attempt. You may add questions for future attempts.',
             })
         instance.delete()
 

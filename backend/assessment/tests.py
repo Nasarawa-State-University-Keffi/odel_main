@@ -1077,6 +1077,70 @@ class QuizAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('max_mark', response.data)
 
+    def test_assessment_allows_appending_questions_but_locks_existing_slots_after_start(self):
+        """Started attempts keep their snapshot while staff can prepare later attempts."""
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Append-only bank',
+        )
+        first_question = Question.objects.create(
+            category=category, qtype='truefalse', name='First append-only question',
+            question_text='The first question is retained.', default_mark=Decimal('1.00'),
+        )
+        QuestionAnswer.objects.create(
+            question=first_question, answer_text='True', fraction=Decimal('1.00'), order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=first_question, answer_text='False', fraction=Decimal('0.00'), order=2,
+        )
+        assessment = Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='Append-only checkpoint',
+            is_published=True, max_grade=Decimal('10.00'),
+        )
+        first_slot = AssessmentQuestion.objects.create(
+            assessment=assessment, question=first_question, order=1, max_mark=Decimal('1.00'),
+        )
+
+        self.client.force_authenticate(user=self.student)
+        started = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/start/',
+            {'session': '2025/2026', 'semester': 'First Semester'}, format='json',
+        )
+        self.assertEqual(started.status_code, status.HTTP_201_CREATED)
+        attempt = AssessmentAttempt.objects.get(id=started.data['id'])
+        self.assertEqual(attempt.question_attempts.count(), 1)
+
+        later_question = Question.objects.create(
+            category=category, qtype='truefalse', name='Later append-only question',
+            question_text='This is added for later attempts.', default_mark=Decimal('1.00'),
+        )
+        QuestionAnswer.objects.create(
+            question=later_question, answer_text='True', fraction=Decimal('1.00'), order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=later_question, answer_text='False', fraction=Decimal('0.00'), order=2,
+        )
+        staff_period = 'programme_type_code=ODEL&session=2025/2026&semester=First%20Semester'
+        self.client.force_authenticate(user=self.instructor)
+        added = self.client.post(
+            f'/api/staff/assessment/assessments/questions/?{staff_period}',
+            {
+                'assessment': str(assessment.id),
+                'question': str(later_question.id),
+                'order': 2,
+                'max_mark': '1.00',
+            },
+            format='json',
+        )
+        self.assertEqual(added.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(assessment.assessment_questions.count(), 2)
+        self.assertEqual(attempt.question_attempts.count(), 1)
+
+        removed = self.client.delete(
+            f'/api/staff/assessment/assessments/questions/{first_slot.id}/?{staff_period}',
+        )
+        self.assertEqual(removed.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(AssessmentQuestion.objects.filter(id=first_slot.id).exists())
+
     def test_assessment_detail_is_limited_to_the_selected_staff_offering(self):
         second_semester = Semester.objects.create(name='Second Semester')
         second_offering = CourseOffering.objects.create(
