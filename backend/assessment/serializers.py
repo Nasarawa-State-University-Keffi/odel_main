@@ -450,6 +450,15 @@ class QuizQuestionSlotSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class QuizQuestionReorderSerializer(serializers.Serializer):
+    """A complete, ordered list of the slots that belong to one quiz."""
+    slot_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        help_text='Quiz question slot IDs in their new display order.',
+    )
+
+
 class BaseQuizSerializer(serializers.ModelSerializer, QuizMetricsMixin):
     """Base quiz serializer common to list and detail views."""
     questions_count = serializers.SerializerMethodField()

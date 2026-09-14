@@ -26,6 +26,7 @@ urlpatterns = [
     
     # Quizzes
     path('quizzes/', apis.StaffQuizListCreateView.as_view(), name='staff-quiz-list-create'),
+    path('quizzes/<uuid:pk>/reorder-questions/', apis.StaffQuizQuestionReorderView.as_view(), name='staff-quiz-question-reorder'),
     path('quizzes/<uuid:pk>/', apis.StaffQuizDetailView.as_view(), name='staff-quiz-detail'),
     path('quizzes/<uuid:pk>/gradebook/', apis.StaffQuizGradebookView.as_view(), name='staff-quiz-gradebook'),
     path('quizzes/questions/', apis.StaffQuizQuestionListCreateView.as_view(), name='staff-quiz-question-list-create'),

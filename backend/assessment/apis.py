@@ -36,7 +36,7 @@ from .serializers import (
     AssignmentContentUploadSerializer, AssignmentSubmissionFileUploadSerializer,
     QuestionCategorySerializer, QuestionTypeAvailabilitySerializer, QuestionSerializer, QuestionPublicSerializer, QuestionCreateUpdateSerializer,
     CopyAssessmentQuestionsSerializer,
-    QuizSerializer, QuizDetailSerializer, QuizQuestionSlotSerializer,
+    QuizSerializer, QuizDetailSerializer, QuizQuestionSlotSerializer, QuizQuestionReorderSerializer,
     QuizAttemptSerializer, QuizAttemptDetailSerializer, StudentQuizAttemptSerializer, StudentQuizAttemptDetailSerializer,
     AssessmentSerializer, AssessmentDetailSerializer, AssessmentQuestionSlotSerializer,
     AssessmentBuildSerializer,
@@ -941,6 +941,46 @@ class StaffQuizDetailView(StaffQuerySetMixin, generics.RetrieveUpdateDestroyAPIV
         if self.request.method == 'GET':
             return QuizDetailSerializer
         return QuizSerializer
+
+
+@extend_schema(tags=['Staff - Quizzes'])
+class StaffQuizQuestionReorderView(APIView):
+    """Persist a complete quiz-slot ordering without transient unique conflicts."""
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        assigned_course_ids = get_staff_assigned_course_ids(request)
+        quiz = get_object_or_404(Quiz, pk=pk, course_id__in=assigned_course_ids)
+        payload = QuizQuestionReorderSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        slot_ids = payload.validated_data['slot_ids']
+
+        if len(slot_ids) != len(set(slot_ids)):
+            raise ValidationError({'slot_ids': 'Each quiz question slot can only appear once.'})
+
+        slots = list(
+            QuizQuestion.objects.select_for_update()
+            .filter(quiz=quiz)
+            .select_related('question')
+        )
+        slots_by_id = {slot.id: slot for slot in slots}
+        if len(slot_ids) != len(slots) or set(slot_ids) != set(slots_by_id):
+            raise ValidationError({'slot_ids': 'Provide every question slot for this quiz exactly once.'})
+
+        # `quiz, order` is unique. Park every row above the current range before
+        # assigning the requested sequence, so swapping two slots is safe.
+        temporary_order_start = max((slot.order for slot in slots), default=0) + len(slots) + 1
+        for index, slot_id in enumerate(slot_ids):
+            slots_by_id[slot_id].order = temporary_order_start + index
+        QuizQuestion.objects.bulk_update(slots, ['order'])
+
+        ordered_slots = [slots_by_id[slot_id] for slot_id in slot_ids]
+        for index, slot in enumerate(ordered_slots, start=1):
+            slot.order = index
+        QuizQuestion.objects.bulk_update(ordered_slots, ['order'])
+
+        return Response(QuizQuestionSlotSerializer(ordered_slots, many=True).data)
 
 
 @extend_schema(tags=['Staff - Quizzes'])

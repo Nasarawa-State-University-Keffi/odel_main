@@ -705,6 +705,33 @@ class QuizAPITests(APITestCase):
         self.assertEqual(response.data['course_code'], self.course.course_code)
         self.assertEqual(len(response.data['quiz_questions']), 1)
         self.assertEqual(response.data['quiz_questions'][0]['question'], str(self.question.id))
+
+    def test_staff_can_reorder_every_quiz_question_slot(self):
+        second_question = Question.objects.create(
+            category=self.category,
+            qtype='shortanswer',
+            name='Second Question',
+            question_text='What is 3+3?',
+            default_mark=Decimal('10.00'),
+        )
+        second_slot = QuizQuestion.objects.create(
+            quiz=self.quiz,
+            question=second_question,
+            order=2,
+            max_mark=Decimal('10.00'),
+        )
+        first_slot = self.quiz.quiz_questions.get(question=self.question)
+        self.client.force_authenticate(user=self.instructor)
+
+        response = self.client.post(
+            f'/api/staff/assessment/quizzes/{self.quiz.id}/reorder-questions/',
+            {'slot_ids': [str(second_slot.id), str(first_slot.id)]},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item['id'] for item in response.data], [str(second_slot.id), str(first_slot.id)])
+        self.assertEqual(list(self.quiz.quiz_questions.order_by('order').values_list('id', flat=True)), [second_slot.id, first_slot.id])
     
     def test_create_quiz_instructor_only(self):
         """Test that only instructors can create quizzes"""
