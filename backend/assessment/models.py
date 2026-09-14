@@ -640,7 +640,7 @@ class Assessment(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        indexes = [models.Index(fields=['course', 'is_published'], name='assessment_course_published_idx')]
+        indexes = [models.Index(fields=['course', 'is_published'], name='assess_course_pub_idx')]
 
     def __str__(self):
         return self.name

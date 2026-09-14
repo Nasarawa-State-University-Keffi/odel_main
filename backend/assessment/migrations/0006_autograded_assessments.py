@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='assessment',
-            index=models.Index(fields=['course', 'is_published'], name='assessment_course_published_idx'),
+            index=models.Index(fields=['course', 'is_published'], name='assess_course_pub_idx'),
         ),
         migrations.AddIndex(
             model_name='assessmentattempt',
