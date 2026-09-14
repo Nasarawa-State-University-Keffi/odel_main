@@ -71,9 +71,9 @@ class TeachingAssignmentSummarySerializer(serializers.ModelSerializer):
 class QuizSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Quiz
-        fields = ["id", "name", "time_close"]
+        fields = ["id", "name", "time_open", "time_close"]
 
 class AssignmentSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ["id", "title", "due_at"]
+        fields = ["id", "title", "open_at", "due_at", "close_at", "allow_late_submission"]

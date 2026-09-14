@@ -1,5 +1,6 @@
 import logging
 
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -27,6 +28,32 @@ from portal_auth.permissions import IsPortalStudent, IsPortalStaff
 from drf_spectacular.utils import OpenApiParameter
 
 logger = logging.getLogger(__name__)
+
+
+def get_active_quizzes(course_ids, now):
+    """Return quizzes an enrolled student can begin right now."""
+    return Quiz.objects.filter(
+        course_id__in=course_ids,
+        is_published=True,
+    ).filter(
+        Q(time_open__isnull=True) | Q(time_open__lte=now),
+        Q(time_close__isnull=True) | Q(time_close__gt=now),
+    ).order_by('time_close', 'name')
+
+
+def get_active_assignments(course_ids, now):
+    """Return assignments whose submission window is currently open."""
+    return Assignment.objects.filter(
+        course_id__in=course_ids,
+        is_published=True,
+        open_at__lte=now,
+    ).filter(
+        Q(due_at__gt=now)
+        | (
+            Q(allow_late_submission=True)
+            & (Q(close_at__isnull=True) | Q(close_at__gt=now))
+        )
+    ).order_by('due_at', 'title')
 
 
 class StudentDashboardView(APIView):
@@ -123,17 +150,8 @@ class StudentDashboardView(APIView):
           # 3️⃣ Fetch course-scoped quizzes & assignments
         now = timezone.now()
 
-        pending_quizzes = Quiz.objects.filter(
-            course_id__in=course_ids,
-            is_published=True,
-            time_close__gt=now,
-        )
-
-        upcoming_assignments = Assignment.objects.filter(
-            course_id__in=course_ids,
-            due_at__gt=now,
-            is_published=True,
-        )
+        pending_quizzes = get_active_quizzes(course_ids, now)
+        upcoming_assignments = get_active_assignments(course_ids, now)
   
         data = {
             "user": {
@@ -405,16 +423,8 @@ class StudentDetailDashboardView(APIView):
         course_ids = [c.id for c in courses]
 
         now = timezone.now()
-        pending_quizzes = Quiz.objects.filter(
-            course_id__in=course_ids,
-            is_published=True,
-            time_close__gt=now,
-        )
-        upcoming_assignments = Assignment.objects.filter(
-            course_id__in=course_ids,
-            due_at__gt=now,
-            is_published=True,
-        )
+        pending_quizzes = get_active_quizzes(course_ids, now)
+        upcoming_assignments = get_active_assignments(course_ids, now)
 
         data = {
             "courses": CourseSummarySerializer(courses, many=True).data,

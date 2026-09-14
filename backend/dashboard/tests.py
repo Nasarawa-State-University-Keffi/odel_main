@@ -130,3 +130,90 @@ class InstructorDashboardErrorTests(TestCase):
             response.data['upcoming_assignments'][0]['title'],
             'Upcoming assignment',
         )
+
+
+class StudentDashboardAvailabilityTests(TestCase):
+    def setUp(self):
+        self.student = PortalUser.objects.create(
+            external_id='ST0002',
+            full_name='Dashboard Student',
+            roles=['STUDENT'],
+        )
+        self.course = CourseCache.objects.create(
+            course_external_id=102,
+            course_code='CSC102',
+            course_title='Dashboard Course',
+        )
+        self.enrollment = StudentRegisteredCourse.objects.create(
+            student_external_id=self.student.external_id,
+            course=self.course,
+            session='2025/2026',
+            semester='First Semester',
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.student)
+
+    @patch('dashboard.views.get_or_sync_student_registered_courses')
+    def test_dashboard_only_returns_work_open_to_the_enrolled_student(self, sync_courses):
+        sync_courses.return_value = [self.enrollment]
+        now = timezone.now()
+
+        Quiz.objects.create(
+            course=self.course,
+            name='Open-ended quiz',
+            is_published=True,
+        )
+        Quiz.objects.create(
+            course=self.course,
+            name='Future quiz',
+            is_published=True,
+            time_open=now + timezone.timedelta(hours=1),
+            time_close=now + timezone.timedelta(days=1),
+        )
+        Quiz.objects.create(
+            course=self.course,
+            name='Closed quiz',
+            is_published=True,
+            time_close=now - timezone.timedelta(minutes=1),
+        )
+        Assignment.objects.create(
+            course=self.course,
+            title='Open assignment',
+            open_at=now - timezone.timedelta(hours=1),
+            due_at=now + timezone.timedelta(days=1),
+            created_by=self.student,
+            is_published=True,
+        )
+        Assignment.objects.create(
+            course=self.course,
+            title='Future assignment',
+            open_at=now + timezone.timedelta(hours=1),
+            due_at=now + timezone.timedelta(days=1),
+            created_by=self.student,
+            is_published=True,
+        )
+        Assignment.objects.create(
+            course=self.course,
+            title='Late-window assignment',
+            open_at=now - timezone.timedelta(days=2),
+            due_at=now - timezone.timedelta(hours=1),
+            close_at=now + timezone.timedelta(days=1),
+            allow_late_submission=True,
+            created_by=self.student,
+            is_published=True,
+        )
+
+        response = self.client.get(
+            '/api/dashboard/students/',
+            {'session': '2025/2026', 'semester': 'First Semester'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            {quiz['name'] for quiz in response.data['pending_quizzes']},
+            {'Open-ended quiz'},
+        )
+        self.assertEqual(
+            {assignment['title'] for assignment in response.data['upcoming_assignments']},
+            {'Open assignment', 'Late-window assignment'},
+        )
