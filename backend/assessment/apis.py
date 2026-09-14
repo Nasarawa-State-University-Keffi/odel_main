@@ -40,7 +40,7 @@ from .serializers import (
     QuizAttemptSerializer, QuizAttemptDetailSerializer, StudentQuizAttemptSerializer, StudentQuizAttemptDetailSerializer,
     AssessmentSerializer, AssessmentDetailSerializer, AssessmentQuestionSlotSerializer,
     AssessmentBuildSerializer,
-    AssessmentAttemptSerializer, StudentAssessmentAttemptSerializer, StudentAssessmentAttemptDetailSerializer,
+    AssessmentAttemptSerializer, StaffAssessmentAttemptDetailSerializer, StudentAssessmentAttemptSerializer, StudentAssessmentAttemptDetailSerializer,
     StartQuizSerializer, SubmitResponseSerializer, ManualGradeSerializer, StartAssignmentSubmissionSerializer,
     SubmitAssignmentSerializer, GradeAssignmentSerializer, GradeSerializer
 )
@@ -1223,8 +1223,11 @@ class StaffAssessmentAttemptListView(StaffQuerySetMixin, generics.ListAPIView):
 
 @extend_schema(tags=['Staff - Assessments'])
 class StaffAssessmentAttemptDetailView(StaffQuerySetMixin, generics.RetrieveAPIView):
-    serializer_class = AssessmentAttemptSerializer
+    serializer_class = StaffAssessmentAttemptDetailSerializer
     permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related('question_attempts__question__answers')
 
 
 # ==========================================

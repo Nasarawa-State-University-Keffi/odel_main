@@ -599,7 +599,7 @@ class QuizQuestion(models.Model):
 # ==========================================
 
 class Assessment(models.Model):
-    """A timed, auto-graded course assessment built from the assessment bank."""
+    """A self-paced, auto-graded course assessment built from the assessment bank."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     course = models.ForeignKey(
@@ -635,8 +635,8 @@ class Assessment(models.Model):
         help_text='Maximum attempts allowed; zero means unlimited.',
     )
     show_feedback = models.BooleanField(
-        default=True,
-        help_text='Show marked responses after submission.',
+        default=False,
+        help_text='Release scores and marked responses to students after submission.',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -735,8 +735,8 @@ class AssessmentAttempt(models.Model):
         help_text='Assessment maximum grade frozen when this attempt starts.',
     )
     show_feedback = models.BooleanField(
-        default=True,
-        help_text='Feedback visibility policy frozen when this attempt starts.',
+        default=False,
+        help_text='Legacy score-release snapshot; assessment settings control visibility.',
     )
     total_score = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 

@@ -7,6 +7,7 @@ import uuid
 from decimal import Decimal
 import bleach
 from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 
@@ -902,7 +903,7 @@ class StudentAssessmentQuestionAttemptSerializer(serializers.ModelSerializer):
         return QuestionPublicSerializer(obj.question).data
 
     def _can_show_feedback(self, obj):
-        return obj.assessment_attempt.state == 'finished' and obj.assessment_attempt.show_feedback
+        return obj.assessment_attempt.state == 'finished' and obj.assessment_attempt.assessment.show_feedback
 
     def get_fraction(self, obj):
         return float(obj.fraction) if self._can_show_feedback(obj) and obj.fraction is not None else None
@@ -918,6 +919,7 @@ class StudentAssessmentAttemptSerializer(serializers.ModelSerializer):
     assessment_name = serializers.CharField(source='assessment.name', read_only=True)
     deadline_at = serializers.SerializerMethodField()
     total_score = serializers.SerializerMethodField()
+    show_feedback = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentAttempt
@@ -932,9 +934,13 @@ class StudentAssessmentAttemptSerializer(serializers.ModelSerializer):
         return deadline.isoformat() if deadline else None
 
     def get_total_score(self, obj):
-        if obj.state != 'finished' or not obj.show_feedback or obj.total_score is None:
+        if obj.state != 'finished' or not obj.assessment.show_feedback or obj.total_score is None:
             return None
         return float(obj.total_score)
+
+    def get_show_feedback(self, obj):
+        """Score release is a current teacher decision, not a frozen attempt setting."""
+        return obj.assessment.show_feedback
 
 
 class AssessmentAttemptSerializer(serializers.ModelSerializer):
@@ -953,6 +959,52 @@ class AssessmentAttemptSerializer(serializers.ModelSerializer):
         from .services import AssessmentService
         deadline = AssessmentService.get_attempt_deadline(obj)
         return deadline.isoformat() if deadline else None
+
+
+class StaffAssessmentQuestionAttemptSerializer(serializers.ModelSerializer):
+    """Full saved-response audit trail for teaching staff only."""
+
+    question = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentQuestionAttempt
+        fields = [
+            'id', 'question', 'display_order', 'response', 'max_mark',
+            'fraction', 'score', 'feedback', 'graded_at',
+        ]
+
+    def get_question(self, obj):
+        snapshot = obj.question_snapshot or {}
+        if snapshot:
+            return snapshot
+        return QuestionSerializer(obj.question).data
+
+
+class StaffAssessmentAttemptDetailSerializer(AssessmentAttemptSerializer):
+    """A staff-only view of one learner's progress and saved answers."""
+
+    question_attempts = StaffAssessmentQuestionAttemptSerializer(many=True, read_only=True)
+    participant_name = serializers.SerializerMethodField()
+    participant_email = serializers.SerializerMethodField()
+    time_taken_seconds = serializers.SerializerMethodField()
+
+    class Meta(AssessmentAttemptSerializer.Meta):
+        fields = AssessmentAttemptSerializer.Meta.fields + [
+            'participant_name', 'participant_email', 'time_taken_seconds', 'question_attempts',
+        ]
+
+    def get_participant_name(self, obj):
+        participant = PortalUser.objects.filter(external_id=obj.user_external_id).only('full_name').first()
+        return participant.full_name if participant else obj.user_external_id
+
+    def get_participant_email(self, obj):
+        participant = PortalUser.objects.filter(external_id=obj.user_external_id).only('email').first()
+        return participant.email if participant else None
+
+    def get_time_taken_seconds(self, obj):
+        if obj.finished_at:
+            return int((obj.finished_at - obj.started_at).total_seconds())
+        return int((timezone.now() - obj.started_at).total_seconds())
 
 
 class StudentAssessmentAttemptDetailSerializer(StudentAssessmentAttemptSerializer):

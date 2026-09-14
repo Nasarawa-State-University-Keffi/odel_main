@@ -978,6 +978,7 @@ class QuizAPITests(APITestCase):
             name='Boolean checkpoint',
             is_published=True,
             max_grade=Decimal('20.00'),
+            show_feedback=True,
         )
         AssessmentQuestion.objects.create(
             assessment=assessment,
@@ -1112,7 +1113,7 @@ class QuizAPITests(APITestCase):
         )
         assessment = Assessment.objects.create(
             course=self.course, course_offering=self.offering, name='Snapshot checkpoint',
-            is_published=True, max_grade=Decimal('10.00'),
+            is_published=True, max_grade=Decimal('10.00'), show_feedback=True,
         )
         AssessmentQuestion.objects.create(
             assessment=assessment, question=question, order=1, max_mark=Decimal('2.00'),
@@ -1144,8 +1145,8 @@ class QuizAPITests(APITestCase):
             status.HTTP_200_OK,
         )
 
-    def test_assessment_attempt_uses_frozen_feedback_release_policy(self):
-        """Changing feedback policy must only apply to attempts started later."""
+    def test_teacher_controls_score_release_for_finished_assessments(self):
+        """Scores stay hidden until the lecturer releases them, even after submission."""
         category = QuestionCategory.objects.create(
             course=self.course, bank='assessment', name='Feedback snapshot bank',
         )
@@ -1183,8 +1184,27 @@ class QuizAPITests(APITestCase):
             f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/', format='json',
         )
         self.assertEqual(completed.status_code, status.HTTP_200_OK)
-        self.assertTrue(completed.data['show_feedback'])
-        self.assertEqual(completed.data['total_score'], 10.0)
+        self.assertFalse(completed.data['show_feedback'])
+        self.assertIsNone(completed.data['total_score'])
+
+        assessment.show_feedback = True
+        assessment.save(update_fields=['show_feedback'])
+        released = self.client.get(
+            f'/api/student/assessment/assessment-attempts/{attempt_id}/',
+        )
+        self.assertEqual(released.status_code, status.HTTP_200_OK)
+        self.assertTrue(released.data['show_feedback'])
+        self.assertEqual(released.data['total_score'], 10.0)
+
+        self.client.force_authenticate(user=self.instructor)
+        staff_activity = self.client.get(
+            f'/api/staff/assessment/assessment-attempts/{attempt_id}/',
+            {'programme_type_code': 'ODEL', 'session': '2025/2026', 'semester': 'First Semester'},
+        )
+        self.assertEqual(staff_activity.status_code, status.HTTP_200_OK)
+        self.assertEqual(staff_activity.data['user_external_id'], self.student.external_id)
+        self.assertEqual(staff_activity.data['question_attempts'][0]['response']['selected'], str(correct.id))
+        self.assertEqual(staff_activity.data['question_attempts'][0]['question']['id'], str(question.id))
 
     def test_assessment_rejects_non_positive_slot_marks_through_the_api(self):
         category = QuestionCategory.objects.create(
