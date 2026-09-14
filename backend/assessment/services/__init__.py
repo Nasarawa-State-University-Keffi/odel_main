@@ -5,6 +5,7 @@ Service layer for quiz, question, assignment management, and grading.
 Implements business logic separate from views and models.
 """
 from .quiz_service import QuizService
+from .assessment_service import AssessmentService
 from .question_service import QuestionService
 from .assignment_service import (
     create_submission, 
@@ -24,11 +25,13 @@ from .grading_service import (
     get_gradebook_summary,
     get_best_assignment_grade,
     get_best_quiz_grade,
+    get_best_assessment_grade,
     bulk_grade_submissions
 )
 
 __all__ = [
     'QuizService', 
+    'AssessmentService',
     'QuestionService', 
     'create_submission', 
     'submit_submission',
@@ -45,5 +48,6 @@ __all__ = [
     'get_gradebook_summary',
     'get_best_assignment_grade',
     'get_best_quiz_grade',
+    'get_best_assessment_grade',
     'bulk_grade_submissions',
 ]

@@ -15,6 +15,7 @@ from .models import (
     Assignment, AssignmentContent, AssignmentSubmission, AssignmentSubmissionFile,
     QuestionCategory, QuestionTypeAvailability, Question, QuestionAnswer,
     Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
+    Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentQuestionAttempt,
     Grade
 )
 
@@ -232,14 +233,15 @@ class QuestionCategorySerializer(serializers.ModelSerializer, CourseSlugValidati
         help_text="List of question types available for this category's level"
     )
     course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
+    bank_display = serializers.CharField(source='get_bank_display', read_only=True)
     
     class Meta:
         model = QuestionCategory
         fields = [
-            'id', 'course_external_id', 'course_id', 'name', 'description', 'level', 'level_display',
+            'id', 'course_external_id', 'course_id', 'bank', 'bank_display', 'name', 'description', 'level', 'level_display',
             'questions_count', 'available_question_types', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['bank', 'created_at', 'updated_at']
     
     def get_available_question_types(self, obj) -> list:
         return QuestionTypeAvailability.get_available_question_types(obj.level)
@@ -265,12 +267,13 @@ class QuestionAnswerPublicSerializer(serializers.ModelSerializer):
 class QuestionSerializer(serializers.ModelSerializer):
     answers = QuestionAnswerSerializer(many=True, read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
+    bank = serializers.CharField(source='category.bank', read_only=True)
     qtype_display = serializers.CharField(source='get_qtype_display', read_only=True)
     
     class Meta:
         model = Question
         fields = [
-            'id', 'category', 'category_name', 'qtype', 'qtype_display',
+            'id', 'category', 'category_name', 'bank', 'qtype', 'qtype_display',
             'name', 'question_text', 'general_feedback', 'default_mark',
             'penalty', 'version', 'answers', 'created_at', 'updated_at'
         ]
@@ -308,6 +311,11 @@ class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         category = attrs.get('category') or (self.instance.category if self.instance else None)
         qtype = attrs.get('qtype') or (self.instance.qtype if self.instance else None)
+        expected_bank = self.context.get('question_bank')
+        if expected_bank and category and category.bank != expected_bank:
+            raise serializers.ValidationError({
+                'category': f'This question belongs in the {expected_bank} question bank.',
+            })
         
         if category and qtype:
             if not QuestionTypeAvailability.is_question_type_allowed(level=category.level, question_type=qtype):
@@ -363,6 +371,10 @@ class QuizQuestionSlotSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'question': 'Questions can only be added to quizzes in the same course.'
             })
+        if question and question.category.bank != 'quiz':
+            raise serializers.ValidationError({
+                'question': 'Quizzes can only use questions from the quiz question bank.'
+            })
         return attrs
 
 
@@ -416,6 +428,147 @@ class QuizDetailSerializer(BaseQuizSerializer):
             question_data['order'] = qq.order
             questions_data.append(question_data)
         return questions_data
+
+
+# ==========================================
+# ASSESSMENT SERIALIZERS
+# ==========================================
+
+class AssessmentQuestionSlotSerializer(serializers.ModelSerializer):
+    question_name = serializers.CharField(source='question.name', read_only=True)
+    question_type = serializers.CharField(source='question.qtype', read_only=True)
+
+    class Meta:
+        model = AssessmentQuestion
+        fields = ['id', 'assessment', 'question', 'question_name', 'question_type', 'order', 'max_mark']
+
+    def validate(self, attrs):
+        assessment = attrs.get('assessment') or getattr(self.instance, 'assessment', None)
+        question = attrs.get('question') or getattr(self.instance, 'question', None)
+        if assessment and question and question.category.course_id != assessment.course_id:
+            raise serializers.ValidationError({'question': 'Questions must belong to the assessment course.'})
+        if question and question.category.bank != 'assessment':
+            raise serializers.ValidationError({'question': 'Use a question from the assessment question bank.'})
+        if question and question.qtype == 'essay':
+            raise serializers.ValidationError({'question': 'Essay questions are not supported in auto-graded assessments.'})
+        max_mark = attrs.get('max_mark', getattr(self.instance, 'max_mark', None))
+        if max_mark is None or max_mark <= 0:
+            raise serializers.ValidationError({'max_mark': 'Maximum marks must be greater than zero.'})
+        return attrs
+
+
+class BaseAssessmentSerializer(serializers.ModelSerializer, QuizMetricsMixin):
+    questions_count = serializers.SerializerMethodField()
+    total_marks = serializers.SerializerMethodField()
+    course_external_id = serializers.IntegerField(source='course.course_external_id', read_only=True)
+
+    class Meta:
+        model = Assessment
+        fields = [
+            'id', 'course_external_id', 'name', 'description', 'time_open', 'time_close',
+            'time_limit', 'max_grade', 'shuffle_questions', 'max_attempts', 'is_published',
+            'show_feedback', 'questions_count', 'total_marks', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def get_questions_count(self, obj):
+        return obj.assessment_questions.count()
+
+    def get_total_marks(self, obj):
+        total = obj.assessment_questions.aggregate(total=Sum('max_mark'))['total']
+        return float(total) if total else 0.0
+
+
+class AssessmentSerializer(BaseAssessmentSerializer, CourseSlugValidationMixin):
+    course_id = serializers.CharField(write_only=True, help_text='Course external ID or UUID')
+
+    class Meta(BaseAssessmentSerializer.Meta):
+        fields = BaseAssessmentSerializer.Meta.fields + ['course_id']
+
+    def validate(self, attrs):
+        course_id = attrs.pop('course_id', None)
+        if course_id is not None:
+            attrs['course'] = self.validate_course_id(course_id)
+        elif not self.instance:
+            raise serializers.ValidationError({'course_id': 'This field is required.'})
+        time_open = attrs.get('time_open', getattr(self.instance, 'time_open', None))
+        time_close = attrs.get('time_close', getattr(self.instance, 'time_close', None))
+        time_limit = attrs.get('time_limit', getattr(self.instance, 'time_limit', None))
+        max_grade = attrs.get('max_grade', getattr(self.instance, 'max_grade', None))
+        if time_open and time_close and time_close <= time_open:
+            raise serializers.ValidationError({'time_close': 'Closing time must be after opening time.'})
+        if time_limit is not None and time_limit <= 0:
+            raise serializers.ValidationError({'time_limit': 'Time limit must be positive when supplied.'})
+        if max_grade is not None and max_grade <= 0:
+            raise serializers.ValidationError({'max_grade': 'Maximum grade must be positive.'})
+        return attrs
+
+
+class AssessmentBuildQuestionSerializer(serializers.Serializer):
+    question = serializers.UUIDField()
+    order = serializers.IntegerField(min_value=1)
+    max_mark = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0.01'))
+
+
+class AssessmentBuildSerializer(AssessmentSerializer):
+    """Atomically creates a term-scoped assessment and all of its question slots."""
+
+    questions = AssessmentBuildQuestionSerializer(many=True, write_only=True)
+
+    class Meta(AssessmentSerializer.Meta):
+        fields = AssessmentSerializer.Meta.fields + ['questions']
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        questions = attrs.get('questions') or []
+        if not questions:
+            raise serializers.ValidationError({'questions': 'Add at least one assessment-bank question before saving.'})
+        question_ids = [item['question'] for item in questions]
+        orders = [item['order'] for item in questions]
+        if len(question_ids) != len(set(question_ids)):
+            raise serializers.ValidationError({'questions': 'A question can only appear once in an assessment.'})
+        if len(orders) != len(set(orders)):
+            raise serializers.ValidationError({'questions': 'Each question must have a unique position.'})
+        selected_questions = {
+            question.id: question
+            for question in Question.objects.select_related('category').filter(id__in=question_ids)
+        }
+        if len(selected_questions) != len(question_ids):
+            raise serializers.ValidationError({'questions': 'One or more selected questions no longer exist.'})
+        course = attrs['course']
+        for item in questions:
+            question = selected_questions[item['question']]
+            if question.category.bank != 'assessment':
+                raise serializers.ValidationError({'questions': 'Only questions in the assessment bank may be used.'})
+            if question.category.course_id != course.id:
+                raise serializers.ValidationError({'questions': 'Every question must belong to the selected course.'})
+            if question.qtype == 'essay':
+                raise serializers.ValidationError({'questions': 'Essay questions require manual marking and cannot be used here.'})
+        return attrs
+
+
+class AssessmentDetailSerializer(BaseAssessmentSerializer):
+    assessment_questions = AssessmentQuestionSlotSerializer(many=True, read_only=True)
+    questions = serializers.SerializerMethodField()
+    time_limit_minutes = serializers.SerializerMethodField()
+
+    class Meta(BaseAssessmentSerializer.Meta):
+        fields = BaseAssessmentSerializer.Meta.fields + [
+            'assessment_questions', 'questions', 'time_limit_minutes',
+        ]
+
+    def get_time_limit_minutes(self, obj):
+        return obj.time_limit // 60 if obj.time_limit else None
+
+    def get_questions(self, obj):
+        slots = obj.assessment_questions.select_related('question').prefetch_related('question__answers').all()
+        result = []
+        for slot in slots:
+            data = QuestionPublicSerializer(slot.question).data
+            data['max_mark'] = float(slot.max_mark)
+            data['order'] = slot.order
+            result.append(data)
+        return result
 
 
 # ==========================================
@@ -615,6 +768,110 @@ class StudentQuizAttemptSerializer(serializers.ModelSerializer):
         return deadline.isoformat() if deadline else None
 
 
+class StudentAssessmentQuestionAttemptSerializer(serializers.ModelSerializer):
+    """Student-safe assessment answer state with no answers leaked mid-attempt."""
+
+    question = serializers.SerializerMethodField()
+    fraction = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
+    feedback = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentQuestionAttempt
+        fields = [
+            'id', 'question', 'display_order', 'response', 'max_mark',
+            'fraction', 'score', 'feedback', 'graded_at',
+        ]
+
+    def get_question(self, obj):
+        snapshot = obj.question_snapshot or {}
+        if snapshot:
+            return {
+                'id': snapshot.get('id'),
+                'name': snapshot.get('name', ''),
+                'qtype': snapshot.get('qtype'),
+                'question_text': snapshot.get('question_text', ''),
+                'answers': [
+                    {
+                        'id': answer['id'],
+                        'answer_text': answer['answer_text'],
+                        'order': answer.get('order', 0),
+                    }
+                    for answer in snapshot.get('answers', [])
+                ],
+            }
+        return QuestionPublicSerializer(obj.question).data
+
+    def _can_show_feedback(self, obj):
+        return obj.assessment_attempt.state == 'finished' and obj.assessment_attempt.show_feedback
+
+    def get_fraction(self, obj):
+        return float(obj.fraction) if self._can_show_feedback(obj) and obj.fraction is not None else None
+
+    def get_score(self, obj):
+        return float(obj.score) if self._can_show_feedback(obj) and obj.score is not None else None
+
+    def get_feedback(self, obj):
+        return obj.feedback if self._can_show_feedback(obj) else ''
+
+
+class StudentAssessmentAttemptSerializer(serializers.ModelSerializer):
+    assessment_name = serializers.CharField(source='assessment.name', read_only=True)
+    deadline_at = serializers.SerializerMethodField()
+    total_score = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentAttempt
+        fields = [
+            'id', 'assessment', 'assessment_name', 'attempt_number', 'state',
+            'started_at', 'finished_at', 'total_score', 'deadline_at', 'grade_scale', 'show_feedback',
+        ]
+
+    def get_deadline_at(self, obj):
+        from .services import AssessmentService
+        deadline = AssessmentService.get_attempt_deadline(obj)
+        return deadline.isoformat() if deadline else None
+
+    def get_total_score(self, obj):
+        if obj.state != 'finished' or not obj.show_feedback or obj.total_score is None:
+            return None
+        return float(obj.total_score)
+
+
+class AssessmentAttemptSerializer(serializers.ModelSerializer):
+    assessment_name = serializers.CharField(source='assessment.name', read_only=True)
+    deadline_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentAttempt
+        fields = [
+            'id', 'assessment', 'assessment_name', 'user_external_id', 'attempt_number',
+            'state', 'started_at', 'finished_at', 'total_score', 'deadline_at', 'grade_scale',
+        ]
+        read_only_fields = fields
+
+    def get_deadline_at(self, obj):
+        from .services import AssessmentService
+        deadline = AssessmentService.get_attempt_deadline(obj)
+        return deadline.isoformat() if deadline else None
+
+
+class StudentAssessmentAttemptDetailSerializer(StudentAssessmentAttemptSerializer):
+    assessment = AssessmentSerializer(read_only=True)
+    question_attempts = StudentAssessmentQuestionAttemptSerializer(many=True, read_only=True)
+    time_taken_seconds = serializers.SerializerMethodField()
+
+    class Meta(StudentAssessmentAttemptSerializer.Meta):
+        fields = StudentAssessmentAttemptSerializer.Meta.fields + [
+            'time_taken_seconds', 'question_attempts',
+        ]
+
+    def get_time_taken_seconds(self, obj):
+        if obj.finished_at:
+            return int((obj.finished_at - obj.started_at).total_seconds())
+        return None
+
+
 # ==========================================
 # REQUEST/RESPONSE SERIALIZERS
 # ==========================================
@@ -681,6 +938,8 @@ class StudentGradeSummarySerializer(serializers.Serializer):
     assignment_possible = serializers.DecimalField(max_digits=10, decimal_places=2)
     quiz_marks = serializers.DecimalField(max_digits=10, decimal_places=2)
     quiz_possible = serializers.DecimalField(max_digits=10, decimal_places=2)
+    assessment_marks = serializers.DecimalField(max_digits=10, decimal_places=2)
+    assessment_possible = serializers.DecimalField(max_digits=10, decimal_places=2)
     grade_count = serializers.IntegerField()
 
 
@@ -692,3 +951,4 @@ class GradebookSummarySerializer(serializers.Serializer) :
     percentage = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
     assignment_count = serializers.IntegerField()
     quiz_count = serializers.IntegerField()
+    assessment_count = serializers.IntegerField()

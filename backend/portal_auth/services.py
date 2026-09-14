@@ -57,6 +57,13 @@ def resolve_programme(identity_data):
 def normalize_portal_course(course: dict) -> dict:
     department = course.get("department") or {}
     level = course.get("level") or {}
+    programme = course.get("programme") or course.get("program") or {}
+    programme_type_code = (
+        course.get("programmeTypeCode")
+        or course.get("programme_type_code")
+        or (programme.get("typeCode") if isinstance(programme, dict) else None)
+        or (programme.get("programmeTypeCode") if isinstance(programme, dict) else None)
+    )
 
     return {
         "course_external_id": course["id"],
@@ -66,6 +73,7 @@ def normalize_portal_course(course: dict) -> dict:
         "department_id": department.get("id"),
         "department_name": department.get("name"),
         "level": level.get("title"),
+        "programme_type_code": str(programme_type_code).strip().upper() if programme_type_code else None,
     }
 
 
@@ -127,6 +135,8 @@ def get_or_sync_student_registered_courses(
 
     # 2️⃣ Sync DB safely
     with transaction.atomic():
+        academic_session, _ = AcademicSession.objects.get_or_create(name=session)
+        academic_semester, _ = Semester.objects.get_or_create(name=semester)
         for raw_course in raw_courses:
             normalized = normalize_portal_course(raw_course)
 
@@ -142,12 +152,29 @@ def get_or_sync_student_registered_courses(
                 },
             )
 
+            offering_queryset = CourseOffering.objects.filter(
+                course=course_obj,
+                session=academic_session,
+                semester=academic_semester,
+                status='active',
+            )
+            if normalized.get('programme_type_code'):
+                offering_queryset = offering_queryset.filter(
+                    programme_type_code__iexact=normalized['programme_type_code'],
+                )
+            offering_candidates = list(offering_queryset[:2])
+            course_offering = offering_candidates[0] if len(offering_candidates) == 1 else None
+
             enrollment, _ = StudentRegisteredCourse.objects.get_or_create(
                 student_external=student,
                 course=course_obj,
                 session=session,
                 semester=semester,
+                defaults={'course_offering': course_offering},
             )
+            if enrollment.course_offering_id != (course_offering.id if course_offering else None):
+                enrollment.course_offering = course_offering
+                enrollment.save(update_fields=['course_offering'])
 
             enrollments.append(enrollment)
 

@@ -53,9 +53,14 @@ class TrueFalseQuestionType(BaseQuestionType):
         if selected not in valid_answer_ids:
             return False, f"Invalid answer ID: {selected}"
         
-        # Verify exactly 2 answers exist
-        if len(valid_answer_ids) != 2:
+        # Verify a true/false question is genuinely binary and cannot award
+        # negative or partial credit through a malformed answer configuration.
+        answers = list(question.answers.all())
+        if len(answers) != 2:
             return False, "True/False questions must have exactly 2 answer options"
+        fractions = {Decimal(str(answer.fraction)) for answer in answers}
+        if fractions != {Decimal('0'), Decimal('1')}:
+            return False, "True/False questions need one correct and one incorrect answer"
         
         return True, ""
 
@@ -75,10 +80,10 @@ class TrueFalseQuestionType(BaseQuestionType):
         if not selected_id:
             return Decimal('0.0')
         
-        # Find the selected answer and return its fraction
+        # A malformed historical question must never create a negative score.
         for answer in question.answers.all():
             if str(answer.id) == selected_id:
-                return Decimal(str(answer.fraction))
+                return Decimal('1.0') if Decimal(str(answer.fraction)) == Decimal('1') else Decimal('0.0')
         
         return Decimal('0.0')
 

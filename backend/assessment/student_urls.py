@@ -22,4 +22,13 @@ urlpatterns = [
     path('attempts/<uuid:pk>/', apis.StudentAttemptDetailView.as_view(), name='student-attempt-detail'),
     path('quizzes/<uuid:pk>/attempts/<uuid:attempt_id>/submit/', apis.StudentQuizSubmitResponseView.as_view(), name='student-quiz-submit-response'),
     path('quizzes/<uuid:pk>/attempts/<uuid:attempt_id>/finish/', apis.StudentQuizFinishView.as_view(), name='student-quiz-finish'),
+
+    # Auto-graded assessments
+    path('assessments/', apis.StudentAssessmentListView.as_view(), name='student-assessment-list'),
+    path('assessments/<uuid:pk>/', apis.StudentAssessmentDetailView.as_view(), name='student-assessment-detail'),
+    path('assessments/<uuid:pk>/start/', apis.StudentAssessmentStartView.as_view(), name='student-assessment-start'),
+    path('assessments/<uuid:pk>/attempts/<uuid:attempt_id>/submit/', apis.StudentAssessmentSubmitResponseView.as_view(), name='student-assessment-submit-response'),
+    path('assessments/<uuid:pk>/attempts/<uuid:attempt_id>/finish/', apis.StudentAssessmentFinishView.as_view(), name='student-assessment-finish'),
+    path('assessment-attempts/', apis.StudentAssessmentAttemptListView.as_view(), name='student-assessment-attempt-list'),
+    path('assessment-attempts/<uuid:pk>/', apis.StudentAssessmentAttemptDetailView.as_view(), name='student-assessment-attempt-detail'),
 ]

@@ -58,4 +58,4 @@ class StudentRegisteredCourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentRegisteredCourse
-        fields = ['student_external_id', 'course', 'session', 'semester']
+        fields = ['student_external_id', 'course', 'course_offering', 'session', 'semester']

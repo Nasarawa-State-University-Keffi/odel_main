@@ -125,6 +125,14 @@ class StudentRegisteredCourse(models.Model):
     )
     course = models.ForeignKey(CourseCache, on_delete=models.CASCADE,
                                 related_name='student_enrollments', db_index=True)
+    course_offering = models.ForeignKey(
+        CourseOffering,
+        on_delete=models.PROTECT,
+        related_name='student_enrollments',
+        null=True,
+        blank=True,
+        help_text='Exact programme and teaching-period offering when supplied by the portal.',
+    )
     session = models.CharField(max_length=50, db_index=True)
     semester = models.CharField(max_length=100, db_index=True)
 

@@ -271,9 +271,20 @@ class QuestionCategory(models.Model):
         ('500', '500'),
         ('all', 'All Levels'),
     )
+    BANK_CHOICES = (
+        ('quiz', 'Quiz question bank'),
+        ('assessment', 'Assessment question bank'),
+    )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     course = models.ForeignKey('courses.CourseCache', on_delete=models.CASCADE, related_name='question_categories')
+    bank = models.CharField(
+        max_length=20,
+        choices=BANK_CHOICES,
+        default='quiz',
+        db_index=True,
+        help_text='Keeps quiz questions and assessment questions in separate banks.',
+    )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     level = models.CharField(
@@ -289,10 +300,10 @@ class QuestionCategory(models.Model):
         ordering = ['name']
         verbose_name = 'Question Category'
         verbose_name_plural = 'Question Categories'
-        unique_together = [['course', 'name']]
+        unique_together = [['course', 'bank', 'name']]
 
     def __str__(self):
-        return f"{self.course} - {self.name}"
+        return f"{self.course} - {self.get_bank_display()} - {self.name}"
 
 
 class QuestionTypeAvailability(models.Model):
@@ -580,6 +591,201 @@ class QuizQuestion(models.Model):
         return f"{self.quiz.name} - Q{self.order}: {self.question.name}"
 
 
+# ==========================================
+# AUTO-GRADED ASSESSMENTS
+# ==========================================
+
+class Assessment(models.Model):
+    """A timed, auto-graded course assessment built from the assessment bank."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(
+        'courses.CourseCache',
+        on_delete=models.CASCADE,
+        related_name='assessments',
+    )
+    course_offering = models.ForeignKey(
+        'courses.CourseOffering',
+        on_delete=models.PROTECT,
+        related_name='assessments',
+        null=True,
+        blank=True,
+        help_text='The programme, session, and semester delivery this assessment belongs to.',
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    is_published = models.BooleanField(
+        default=False,
+        help_text='Only published assessments are visible to enrolled students.',
+    )
+    time_open = models.DateTimeField(null=True, blank=True)
+    time_close = models.DateTimeField(null=True, blank=True)
+    time_limit = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='Time limit in seconds. Leave blank for no per-attempt limit.',
+    )
+    max_grade = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
+    shuffle_questions = models.BooleanField(default=False)
+    max_attempts = models.PositiveIntegerField(
+        default=1,
+        help_text='Maximum attempts allowed; zero means unlimited.',
+    )
+    show_feedback = models.BooleanField(
+        default=True,
+        help_text='Show marked responses after submission.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['course', 'is_published'], name='assessment_course_published_idx')]
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        errors = {}
+        if self.course_offering_id and self.course_offering.course_id != self.course_id:
+            errors['course_offering'] = 'The offering must belong to the selected course.'
+        if self.time_open and self.time_close and self.time_close <= self.time_open:
+            errors['time_close'] = 'Closing time must be after opening time.'
+        if self.time_limit is not None and self.time_limit <= 0:
+            errors['time_limit'] = 'Time limit must be positive when supplied.'
+        if self.max_grade is not None and self.max_grade <= 0:
+            errors['max_grade'] = 'Maximum grade must be positive.'
+        if errors:
+            raise ValidationError(errors)
+
+
+class AssessmentQuestion(models.Model):
+    """A position and mark allocation for one assessment-bank question."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assessment = models.ForeignKey(
+        Assessment,
+        on_delete=models.CASCADE,
+        related_name='assessment_questions',
+    )
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.PROTECT,
+        related_name='assessment_slots',
+    )
+    order = models.PositiveIntegerField()
+    max_mark = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+
+    class Meta:
+        ordering = ['assessment', 'order']
+        constraints = [
+            models.UniqueConstraint(fields=['assessment', 'question'], name='unique_assessment_question'),
+            models.UniqueConstraint(fields=['assessment', 'order'], name='unique_assessment_question_order'),
+            models.CheckConstraint(
+                condition=models.Q(max_mark__gt=0),
+                name='assessment_question_positive_mark',
+            ),
+        ]
+
+    def clean(self):
+        if self.question_id and self.question.category.bank != 'assessment':
+            raise ValidationError({'question': 'Assessments can only use the assessment question bank.'})
+        if self.question_id and self.assessment_id and self.question.category.course_id != self.assessment.course_id:
+            raise ValidationError({'question': 'Questions must belong to the assessment course.'})
+        if self.question_id and self.question.qtype == 'essay':
+            raise ValidationError({'question': 'Essay questions are not supported in auto-graded assessments.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class AssessmentAttempt(models.Model):
+    """One student attempt at an auto-graded assessment."""
+
+    STATE_CHOICES = (
+        ('in_progress', 'In Progress'),
+        ('finished', 'Finished'),
+        ('abandoned', 'Abandoned'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='attempts')
+    user_external_id = models.CharField(max_length=255, db_index=True)
+    attempt_number = models.PositiveIntegerField()
+    state = models.CharField(max_length=20, choices=STATE_CHOICES, default='in_progress', db_index=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    deadline_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Deadline frozen when this attempt starts.',
+    )
+    grade_scale = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('100.00'),
+        help_text='Assessment maximum grade frozen when this attempt starts.',
+    )
+    show_feedback = models.BooleanField(
+        default=True,
+        help_text='Feedback visibility policy frozen when this attempt starts.',
+    )
+    total_score = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['assessment', 'user_external_id', 'attempt_number'],
+                name='unique_assessment_attempt_number',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['assessment', 'user_external_id', '-attempt_number'], name='assessment_attempt_user_idx'),
+            models.Index(fields=['state', 'started_at'], name='assessment_attempt_state_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.user_external_id} - {self.assessment.name} (Attempt #{self.attempt_number})'
+
+
+class AssessmentQuestionAttempt(models.Model):
+    """A saved answer for one question during an assessment attempt."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assessment_attempt = models.ForeignKey(
+        AssessmentAttempt,
+        on_delete=models.CASCADE,
+        related_name='question_attempts',
+    )
+    question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name='assessment_attempts')
+    display_order = models.PositiveIntegerField(default=0)
+    max_mark = models.DecimalField(max_digits=10, decimal_places=2, default=1)
+    question_snapshot = JSONField(default=dict)
+    response = JSONField(default=dict)
+    fraction = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    score = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    graded_at = models.DateTimeField(null=True, blank=True)
+    feedback = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['assessment_attempt', 'display_order', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['assessment_attempt', 'question'],
+                name='unique_assessment_question_attempt',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Assessment attempt {self.assessment_attempt_id} - {self.question.name}'
+
+
 class QuizAttempt(models.Model):
     """
     A user's attempt at a quiz.
@@ -681,6 +887,7 @@ class Grade(models.Model):
     GRADE_TYPE_CHOICES = (
         ('assignment', 'Assignment'),
         ('quiz', 'Quiz'),
+        ('assessment', 'Assessment'),
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -722,6 +929,15 @@ class Grade(models.Model):
         blank=True,
         related_name='grades',
         help_text="Link to graded quiz attempt"
+    )
+
+    assessment_attempt = models.ForeignKey(
+        'AssessmentAttempt',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='grades',
+        help_text='Link to graded assessment attempt',
     )
     
     # Score information
@@ -773,6 +989,11 @@ class Grade(models.Model):
                 name='unique_quiz_attempt_grade',
                 condition=models.Q(quiz_attempt__isnull=False)
             ),
+            models.UniqueConstraint(
+                fields=['assessment_attempt'],
+                name='unique_assessment_attempt_grade',
+                condition=models.Q(assessment_attempt__isnull=False),
+            ),
         ]
         verbose_name = 'Grade'
         verbose_name_plural = 'Grades'
@@ -787,11 +1008,16 @@ class Grade(models.Model):
         """Validate that exactly one of assignment_submission or quiz_attempt is set"""
         from django.core.exceptions import ValidationError
         
-        if self.assignment_submission and self.quiz_attempt:
-            raise ValidationError("Grade cannot be linked to both assignment and quiz")
+        linked_items = [
+            self.assignment_submission,
+            self.quiz_attempt,
+            self.assessment_attempt,
+        ]
+        if sum(item is not None for item in linked_items) > 1:
+            raise ValidationError('Grade can only be linked to one graded item.')
         
-        if not self.assignment_submission and not self.quiz_attempt:
-            raise ValidationError("Grade must be linked to either assignment submission or quiz attempt")
+        if not any(linked_items):
+            raise ValidationError('Grade must be linked to an assignment, quiz, or assessment attempt.')
         
         # Validate grade_type matches the linked item
         if self.assignment_submission and self.grade_type != 'assignment':
@@ -799,12 +1025,17 @@ class Grade(models.Model):
         
         if self.quiz_attempt and self.grade_type != 'quiz':
             raise ValidationError("grade_type must be 'quiz' when quiz_attempt is set")
+
+        if self.assessment_attempt and self.grade_type != 'assessment':
+            raise ValidationError("grade_type must be 'assessment' when assessment_attempt is set")
     
     def __str__(self):
         if self.assignment_submission:
             item_name = self.assignment_submission.assignment.title
         elif self.quiz_attempt:
             item_name = self.quiz_attempt.quiz.name
+        elif self.assessment_attempt:
+            item_name = self.assessment_attempt.assessment.name
         else:
             item_name = "Unknown"
         
@@ -817,4 +1048,6 @@ class Grade(models.Model):
             return self.assignment_submission.assignment.title
         elif self.quiz_attempt:
             return self.quiz_attempt.quiz.name
+        elif self.assessment_attempt:
+            return self.assessment_attempt.assessment.name
         return "Unknown"

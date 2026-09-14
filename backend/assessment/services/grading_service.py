@@ -16,6 +16,7 @@ from typing import Optional, Dict, List
 
 from assessment.models import (
     Assignment, AssignmentSubmission,
+    Assessment, AssessmentAttempt,
     Quiz, QuizAttempt,
     Grade
 )
@@ -207,6 +208,7 @@ def get_student_grades(student_external_id: str, course_id: str) -> List[Grade]:
         ).select_related(
             'assignment_submission__assignment',
             'quiz_attempt__quiz',
+            'assessment_attempt__assessment',
             'course'
         ).order_by('-graded_at')
     )
@@ -225,7 +227,8 @@ def get_course_grades(course_id: str, grade_type: Optional[str] = None) -> List[
     """
     queryset = Grade.objects.filter(course_id=course_id).select_related(
         'assignment_submission__assignment',
-        'quiz_attempt__quiz'
+        'quiz_attempt__quiz',
+        'assessment_attempt__assessment',
     )
     
     if grade_type:
@@ -255,6 +258,8 @@ def calculate_student_total(student_external_id: str, course_id: str) -> Dict:
         - assignment_possible: Total possible from assignments
         - quiz_marks: Total from quizzes
         - quiz_possible: Total possible from quizzes
+        - assessment_marks: Total from assessments
+        - assessment_possible: Total possible from assessments
         - grade_count: Number of graded items
     """
     grades = Grade.objects.filter(
@@ -280,6 +285,10 @@ def calculate_student_total(student_external_id: str, course_id: str) -> Dict:
         quiz_marks=Sum('marks'),
         quiz_possible=Sum('total_possible')
     )
+    assessment_totals = grades.filter(grade_type='assessment').aggregate(
+        assessment_marks=Sum('marks'),
+        assessment_possible=Sum('total_possible')
+    )
     
     total_marks = overall['total_marks'] or Decimal('0.00')
     total_possible = overall['total_possible'] or Decimal('0.00')
@@ -296,6 +305,8 @@ def calculate_student_total(student_external_id: str, course_id: str) -> Dict:
         'assignment_possible': assignment_totals['assignment_possible'] or Decimal('0.00'),
         'quiz_marks': quiz_totals['quiz_marks'] or Decimal('0.00'),
         'quiz_possible': quiz_totals['quiz_possible'] or Decimal('0.00'),
+        'assessment_marks': assessment_totals['assessment_marks'] or Decimal('0.00'),
+        'assessment_possible': assessment_totals['assessment_possible'] or Decimal('0.00'),
         'grade_count': overall['grade_count'],
     }
 
@@ -351,6 +362,7 @@ def get_gradebook_summary(course_id: str) -> List[Dict]:
         - percentage
         - assignment_count
         - quiz_count
+        - assessment_count
     """
     from django.db.models import Case, When, IntegerField
     
@@ -371,6 +383,7 @@ def get_gradebook_summary(course_id: str) -> List[Dict]:
         
         assignment_count = grades.filter(grade_type='assignment').count()
         quiz_count = grades.filter(grade_type='quiz').count()
+        assessment_count = grades.filter(grade_type='assessment').count()
         
         summary.append({
             'student_external_id': student_id,
@@ -379,6 +392,7 @@ def get_gradebook_summary(course_id: str) -> List[Dict]:
             'percentage': totals['percentage'],
             'assignment_count': assignment_count,
             'quiz_count': quiz_count,
+            'assessment_count': assessment_count,
         })
     
     # Sort by percentage descending
@@ -424,6 +438,15 @@ def get_best_quiz_grade(student_external_id: str, quiz_id: str) -> Optional[Grad
         student_external_id=student_external_id,
         quiz_attempt__quiz_id=quiz_id,
         grade_type='quiz'
+    ).order_by('-percentage').first()
+
+
+def get_best_assessment_grade(student_external_id: str, assessment_id: str) -> Optional[Grade]:
+    """Return the highest completed grade when an assessment allows retries."""
+    return Grade.objects.filter(
+        student_external_id=student_external_id,
+        assessment_attempt__assessment_id=assessment_id,
+        grade_type='assessment',
     ).order_by('-percentage').first()
 
 

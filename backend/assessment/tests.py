@@ -32,9 +32,10 @@ from courses.models import (
 from .models import (
     QuestionCategory, Question, QuestionAnswer,
     Quiz, QuizQuestion, QuizAttempt, QuestionAttempt,
-    Assignment, AssignmentSubmission
+    Assignment, AssignmentSubmission,
+    Assessment, AssessmentQuestion, AssessmentAttempt, Grade,
 )
-from .services import QuizService, QuestionService
+from .services import AssessmentService, QuizService, QuestionService, calculate_student_total, get_gradebook_summary
 from .question_types import get_question_type_handler
 
 
@@ -166,6 +167,26 @@ class QuestionTypePluginTests(TestCase):
         response = {'selected': str(true_ans.id)}
         fraction = handler.grade(question, response)
         self.assertEqual(fraction, Decimal('0.0'))
+
+    def test_true_false_rejects_invalid_scoring_configuration(self):
+        question = Question.objects.create(
+            category=self.category,
+            qtype='truefalse',
+            name='Invalid Boolean configuration',
+            question_text='This must never create a negative score.',
+            default_mark=Decimal('5.00'),
+        )
+        selected = QuestionAnswer.objects.create(
+            question=question, answer_text='True', fraction=Decimal('-1.00'), order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=question, answer_text='False', fraction=Decimal('0.50'), order=2,
+        )
+        handler = get_question_type_handler('truefalse')
+        valid, message = handler.validate_response(question, {'selected': str(selected.id)})
+        self.assertFalse(valid)
+        self.assertIn('one correct and one incorrect', message)
+        self.assertEqual(handler.grade(question, {'selected': str(selected.id)}), Decimal('0.0'))
     
     def test_short_answer_case_insensitive(self):
         """Test short answer with case-insensitive matching"""
@@ -559,8 +580,8 @@ class QuizAPITests(APITestCase):
             full_name='Student One',
             roles=['STUDENT'],
         )
-        AcademicSession.objects.create(name='2025/2026')
-        Semester.objects.create(name='First Semester')
+        self.session = AcademicSession.objects.create(name='2025/2026')
+        self.semester = Semester.objects.create(name='First Semester')
         
         # Create test data
         self.course = CourseCache.objects.create(
@@ -569,10 +590,18 @@ class QuizAPITests(APITestCase):
             course_code='TEST101'
         )
         
+        self.offering = CourseOffering.objects.create(
+            course=self.course,
+            session=self.session,
+            semester=self.semester,
+            programme_type_code='ODEL',
+        )
         # Setup enrollments
         StaffAssignedCourse.objects.create(
             staff_external_id=self.instructor.external_id,
             course=self.course,
+            course_offering=self.offering,
+            programme_type_code='ODEL',
             role='instructor'
         )
         self.student_enrollment = StudentRegisteredCourse.objects.create(
@@ -863,6 +892,271 @@ class QuizAPITests(APITestCase):
         )
         
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_student_can_complete_an_auto_graded_assessment_from_the_separate_bank(self):
+        assessment_category = QuestionCategory.objects.create(
+            course=self.course,
+            bank='assessment',
+            name='Assessment Fundamentals',
+        )
+        question = Question.objects.create(
+            category=assessment_category,
+            qtype='multichoice',
+            name='Binary MCQ',
+            question_text='Which value represents true in a Boolean expression?',
+            default_mark=Decimal('5.00'),
+        )
+        correct_answer = QuestionAnswer.objects.create(
+            question=question,
+            answer_text='True',
+            fraction=Decimal('1.00'),
+            order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=question,
+            answer_text='False',
+            fraction=Decimal('0.00'),
+            order=2,
+        )
+        assessment = Assessment.objects.create(
+            course=self.course,
+            course_offering=self.offering,
+            name='Boolean checkpoint',
+            is_published=True,
+            max_grade=Decimal('20.00'),
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment,
+            question=question,
+            order=1,
+            max_mark=Decimal('5.00'),
+        )
+
+        self.client.force_authenticate(user=self.student)
+        period = {'session': '2025/2026', 'semester': 'First Semester'}
+        start_response = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/start/',
+            period,
+            format='json',
+        )
+
+        self.assertEqual(start_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(start_response.data['question_attempts'][0]['question']['id'], str(question.id))
+        self.assertIsNone(start_response.data['question_attempts'][0]['fraction'])
+        attempt_id = start_response.data['id']
+
+        submit_response = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/submit/',
+            {
+                'question_id': str(question.id),
+                'response': {'selected': [str(correct_answer.id)]},
+            },
+            format='json',
+        )
+        self.assertEqual(submit_response.status_code, status.HTTP_200_OK)
+
+        finish_response = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/',
+            format='json',
+        )
+        self.assertEqual(finish_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(finish_response.data['state'], 'finished')
+        self.assertEqual(finish_response.data['total_score'], 20.0)
+        self.assertTrue(Grade.objects.filter(
+            assessment_attempt_id=attempt_id,
+            grade_type='assessment',
+        ).exists())
+
+    def test_assessment_attempt_uses_frozen_question_and_mark_snapshot(self):
+        """Editing a bank item later must never change an in-progress result."""
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Snapshot bank',
+        )
+        question = Question.objects.create(
+            category=category, qtype='truefalse', name='Snapshot question',
+            question_text='The original answer remains true.', default_mark=Decimal('2.00'),
+        )
+        correct = QuestionAnswer.objects.create(
+            question=question, answer_text='True', fraction=Decimal('1.00'), order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=question, answer_text='False', fraction=Decimal('0.00'), order=2,
+        )
+        assessment = Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='Snapshot checkpoint',
+            is_published=True, max_grade=Decimal('10.00'),
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment, question=question, order=1, max_mark=Decimal('2.00'),
+        )
+        self.client.force_authenticate(user=self.student)
+        period = {'session': '2025/2026', 'semester': 'First Semester'}
+        started = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/start/', period, format='json',
+        )
+        self.assertEqual(started.status_code, status.HTTP_201_CREATED)
+        question.answers.filter(id=correct.id).update(fraction=Decimal('0.00'))
+        AssessmentQuestion.objects.filter(assessment=assessment, question=question).update(max_mark=Decimal('99.00'))
+        attempt_id = started.data['id']
+        saved = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/submit/',
+            {'question_id': str(question.id), 'response': {'selected': str(correct.id)}}, format='json',
+        )
+        self.assertEqual(saved.status_code, status.HTTP_200_OK)
+        finished = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/', format='json',
+        )
+        self.assertEqual(finished.status_code, status.HTTP_200_OK)
+        self.assertEqual(finished.data['total_score'], 10.0)
+        # The retry is safe even when the browser's deadline and submit button race.
+        self.assertEqual(
+            self.client.post(
+                f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/', format='json',
+            ).status_code,
+            status.HTTP_200_OK,
+        )
+
+    def test_assessment_attempt_uses_frozen_feedback_release_policy(self):
+        """Changing feedback policy must only apply to attempts started later."""
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Feedback snapshot bank',
+        )
+        question = Question.objects.create(
+            category=category, qtype='truefalse', name='Feedback snapshot question',
+            question_text='This score is frozen.', default_mark=Decimal('1.00'),
+        )
+        correct = QuestionAnswer.objects.create(
+            question=question, answer_text='True', fraction=Decimal('1.00'), order=1,
+        )
+        QuestionAnswer.objects.create(
+            question=question, answer_text='False', fraction=Decimal('0.00'), order=2,
+        )
+        assessment = Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='Feedback snapshot',
+            is_published=True, max_grade=Decimal('10.00'), show_feedback=True,
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment, question=question, order=1, max_mark=Decimal('1.00'),
+        )
+        self.client.force_authenticate(user=self.student)
+        started = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/start/',
+            {'session': '2025/2026', 'semester': 'First Semester'}, format='json',
+        )
+        self.assertEqual(started.status_code, status.HTTP_201_CREATED)
+        assessment.show_feedback = False
+        assessment.save(update_fields=['show_feedback'])
+        attempt_id = started.data['id']
+        self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/submit/',
+            {'question_id': str(question.id), 'response': {'selected': str(correct.id)}}, format='json',
+        )
+        completed = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/', format='json',
+        )
+        self.assertEqual(completed.status_code, status.HTTP_200_OK)
+        self.assertTrue(completed.data['show_feedback'])
+        self.assertEqual(completed.data['total_score'], 10.0)
+
+    def test_assessment_rejects_non_positive_slot_marks_through_the_api(self):
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Slot validation bank',
+        )
+        question = Question.objects.create(
+            category=category, qtype='shortanswer', name='Slot question',
+            question_text='Name a data type.', default_mark=Decimal('1.00'),
+        )
+        QuestionAnswer.objects.create(question=question, answer_text='String', fraction=Decimal('1.00'), order=1)
+        assessment = Assessment.objects.create(course=self.course, course_offering=self.offering, name='Slot validation')
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.post(
+            '/api/staff/assessment/assessments/questions/?programme_type_code=ODEL&session=2025/2026&semester=First%20Semester',
+            {'assessment': str(assessment.id), 'question': str(question.id), 'order': 1, 'max_mark': '0'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('max_mark', response.data)
+
+    def test_assessment_detail_is_limited_to_the_selected_staff_offering(self):
+        second_semester = Semester.objects.create(name='Second Semester')
+        second_offering = CourseOffering.objects.create(
+            course=self.course, session=self.session, semester=second_semester, programme_type_code='ODEL',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id, course=self.course,
+            course_offering=second_offering, programme_type_code='ODEL', role='INSTRUCTOR',
+        )
+        assessment = Assessment.objects.create(course=self.course, course_offering=self.offering, name='First-term only')
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.get(
+            f'/api/staff/assessment/assessments/{assessment.id}/',
+            {'programme_type_code': 'ODEL', 'session': '2025/2026', 'semester': 'Second Semester'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_student_assessment_list_excludes_ambiguous_legacy_enrolment(self):
+        """A course shared by two programme offerings must not leak either assessment."""
+        CourseOffering.objects.create(
+            course=self.course, session=self.session, semester=self.semester, programme_type_code='CAMPUS',
+        )
+        Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='ODEL-only checkpoint', is_published=True,
+        )
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(
+            '/api/student/assessment/assessments/',
+            {'session': '2025/2026', 'semester': 'First Semester'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 0)
+
+    def test_assessment_with_slots_cannot_be_moved_to_another_course(self):
+        other_course = CourseCache.objects.create(course_external_id=909, course_title='Other course', course_code='OTHER909')
+        other_offering = CourseOffering.objects.create(
+            course=other_course, session=self.session, semester=self.semester, programme_type_code='ODEL',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id, course=other_course,
+            course_offering=other_offering, programme_type_code='ODEL', role='INSTRUCTOR',
+        )
+        category = QuestionCategory.objects.create(course=self.course, bank='assessment', name='Move protection bank')
+        question = Question.objects.create(category=category, qtype='shortanswer', name='Move protection question', question_text='Answer.', default_mark=Decimal('1.00'))
+        QuestionAnswer.objects.create(question=question, answer_text='Answer', fraction=Decimal('1.00'), order=1)
+        assessment = Assessment.objects.create(course=self.course, course_offering=self.offering, name='Cannot move')
+        AssessmentQuestion.objects.create(assessment=assessment, question=question, order=1, max_mark=Decimal('1.00'))
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.patch(
+            f'/api/staff/assessment/assessments/{assessment.id}/?programme_type_code=ODEL&session=2025/2026&semester=First%20Semester',
+            {'course_id': str(other_course.course_external_id)}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('course_id', response.data)
+
+    def test_assessment_gradebook_reports_assessment_breakdown(self):
+        category = QuestionCategory.objects.create(course=self.course, bank='assessment', name='Gradebook assessment bank')
+        question = Question.objects.create(category=category, qtype='truefalse', name='Gradebook question', question_text='A is A.', default_mark=Decimal('1.00'))
+        correct = QuestionAnswer.objects.create(question=question, answer_text='True', fraction=Decimal('1.00'), order=1)
+        QuestionAnswer.objects.create(question=question, answer_text='False', fraction=Decimal('0.00'), order=2)
+        assessment = Assessment.objects.create(course=self.course, course_offering=self.offering, name='Gradebook assessment', max_grade=Decimal('20.00'))
+        AssessmentQuestion.objects.create(assessment=assessment, question=question, order=1, max_mark=Decimal('1.00'))
+        attempt = AssessmentService.start_attempt(assessment=assessment, user_external_id=self.student.external_id)
+        AssessmentService.submit_response(attempt=attempt, question=question, response={'selected': str(correct.id)})
+        AssessmentService.finish_attempt(attempt)
+        totals = calculate_student_total(self.student.external_id, self.course.id)
+        summary = get_gradebook_summary(self.course.id)[0]
+        self.assertEqual(totals['assessment_marks'], Decimal('20.00'))
+        self.assertEqual(totals['assessment_possible'], Decimal('20.00'))
+        self.assertEqual(summary['assessment_count'], 1)
+
+    def test_assessment_rejects_quiz_question_bank_items(self):
+        assessment = Assessment.objects.create(course=self.course, name='Separate bank check')
+        with self.assertRaises(ValidationError):
+            AssessmentQuestion.objects.create(
+                assessment=assessment,
+                question=self.question,
+                order=1,
+                max_mark=Decimal('10.00'),
+            )
 
 
 class QuestionAPITests(APITestCase):

@@ -1,0 +1,257 @@
+"""Lifecycle rules for timed, auto-graded assessments."""
+
+import random
+from datetime import timedelta
+from decimal import Decimal
+from types import SimpleNamespace
+
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
+
+from assessment.models import (
+    Assessment,
+    AssessmentAttempt,
+    AssessmentQuestion,
+    AssessmentQuestionAttempt,
+    Grade,
+    Question,
+)
+from assessment.services.question_service import QuestionService
+
+
+class AssessmentService:
+    """Create, save, grade, and finish a student's assessment attempt."""
+
+    @staticmethod
+    def get_attempt_deadline(attempt: AssessmentAttempt):
+        if attempt.deadline_at:
+            return attempt.deadline_at
+        deadlines = []
+        if attempt.assessment.time_limit:
+            deadlines.append(attempt.started_at + timedelta(seconds=attempt.assessment.time_limit))
+        if attempt.assessment.time_close:
+            deadlines.append(attempt.assessment.time_close)
+        return min(deadlines) if deadlines else None
+
+    @classmethod
+    def is_attempt_expired(cls, attempt: AssessmentAttempt, *, now=None) -> bool:
+        deadline = cls.get_attempt_deadline(attempt)
+        return bool(deadline and (now or timezone.now()) >= deadline)
+
+    @classmethod
+    def expire_attempt_if_needed(cls, attempt: AssessmentAttempt, *, now=None) -> bool:
+        if attempt.state != 'in_progress' or not cls.is_attempt_expired(attempt, now=now):
+            return False
+        cls.finish_attempt(attempt)
+        return True
+
+    @staticmethod
+    def _question_snapshot(question: Question) -> dict:
+        """Persist the question and answer key used for an attempt.
+
+        Staff can safely improve a bank question after students begin an
+        assessment; previous attempts must continue to use the version the
+        student saw.
+        """
+        return {
+            'id': str(question.id),
+            'name': question.name,
+            'qtype': question.qtype,
+            'question_text': question.question_text,
+            'general_feedback': question.general_feedback,
+            'answers': [
+                {
+                    'id': str(answer.id),
+                    'answer_text': answer.answer_text,
+                    'fraction': str(answer.fraction),
+                    'feedback': answer.feedback,
+                    'order': answer.order,
+                }
+                for answer in question.answers.all()
+            ],
+        }
+
+    @staticmethod
+    def _question_from_snapshot(snapshot: dict) -> Question:
+        """Build the small Question-shaped object QuestionService needs."""
+        answers = [
+            SimpleNamespace(
+                id=answer['id'],
+                answer_text=answer['answer_text'],
+                fraction=Decimal(str(answer['fraction'])),
+                feedback=answer.get('feedback', ''),
+                order=answer.get('order', 0),
+            )
+            for answer in snapshot.get('answers', [])
+        ]
+        return SimpleNamespace(
+            id=snapshot['id'],
+            name=snapshot.get('name', ''),
+            qtype=snapshot['qtype'],
+            question_text=snapshot.get('question_text', ''),
+            general_feedback=snapshot.get('general_feedback', ''),
+            answers=SimpleNamespace(all=lambda: answers),
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def start_attempt(*, assessment: Assessment, user_external_id: str) -> AssessmentAttempt:
+        # Lock the assessment itself. Locking only matching attempts does not
+        # protect the max-attempt count when two browser tabs start together.
+        assessment = Assessment.objects.select_for_update().get(pk=assessment.pk)
+        question_slots = list(
+            AssessmentQuestion.objects.filter(assessment=assessment)
+            .select_related('question')
+            .prefetch_related('question__answers')
+            .order_by('order', 'id')
+        )
+        if not question_slots:
+            raise ValidationError('This assessment has no questions yet. Please contact your lecturer.')
+
+        now = timezone.now()
+        if assessment.time_open and now < assessment.time_open:
+            raise ValidationError(f'Assessment opens at {assessment.time_open}')
+        if assessment.time_close and now > assessment.time_close:
+            raise ValidationError(f'Assessment closed at {assessment.time_close}')
+
+        active_attempt = AssessmentAttempt.objects.select_for_update().filter(
+            assessment=assessment,
+            user_external_id=user_external_id,
+            state='in_progress',
+        ).first()
+        if active_attempt and AssessmentService.expire_attempt_if_needed(active_attempt, now=now):
+            active_attempt = None
+        if active_attempt:
+            raise ValidationError(
+                f'You already have an active assessment attempt (started {active_attempt.started_at}).'
+            )
+
+        attempt_count = AssessmentAttempt.objects.filter(
+            assessment=assessment,
+            user_external_id=user_external_id,
+        ).count()
+        if assessment.max_attempts > 0 and attempt_count >= assessment.max_attempts:
+            raise ValidationError(f'Maximum attempts ({assessment.max_attempts}) reached for this assessment.')
+
+        if assessment.shuffle_questions:
+            random.shuffle(question_slots)
+
+        deadlines = []
+        if assessment.time_limit:
+            deadlines.append(now + timedelta(seconds=assessment.time_limit))
+        if assessment.time_close:
+            deadlines.append(assessment.time_close)
+        attempt = AssessmentAttempt.objects.create(
+            assessment=assessment,
+            user_external_id=user_external_id,
+            attempt_number=attempt_count + 1,
+            deadline_at=min(deadlines) if deadlines else None,
+            grade_scale=assessment.max_grade,
+            show_feedback=assessment.show_feedback,
+        )
+        AssessmentQuestionAttempt.objects.bulk_create([
+            AssessmentQuestionAttempt(
+                assessment_attempt=attempt,
+                question=slot.question,
+                display_order=display_order,
+                max_mark=slot.max_mark,
+                question_snapshot=AssessmentService._question_snapshot(slot.question),
+                response={},
+            )
+            for display_order, slot in enumerate(question_slots, start=1)
+        ])
+        return attempt
+
+    @staticmethod
+    @transaction.atomic
+    def submit_response(*, attempt: AssessmentAttempt, question: Question, response: dict) -> AssessmentQuestionAttempt:
+        attempt = AssessmentAttempt.objects.select_for_update().select_related('assessment').get(pk=attempt.pk)
+        if attempt.state != 'in_progress':
+            raise ValidationError(f'Cannot submit to a {attempt.state} attempt.')
+        if AssessmentService.expire_attempt_if_needed(attempt):
+            raise ValidationError('The assessment deadline has passed and your attempt was submitted automatically.')
+
+        question_attempt = AssessmentQuestionAttempt.objects.select_for_update().get(
+            assessment_attempt=attempt,
+            question=question,
+        )
+        if question_attempt.question_snapshot:
+            frozen_question = AssessmentService._question_from_snapshot(question_attempt.question_snapshot)
+        else:
+            # Compatibility for attempts created before snapshots were added.
+            frozen_question = Question.objects.prefetch_related('answers').get(pk=question.pk)
+
+        is_valid, message = QuestionService.validate_response(frozen_question, response)
+        if not is_valid:
+            raise ValidationError(f'Invalid response: {message}')
+        fraction, score = QuestionService.grade_question(frozen_question, response, question_attempt.max_mark)
+
+        question_attempt.response = response
+        question_attempt.fraction = fraction
+        question_attempt.score = score
+        question_attempt.graded_at = timezone.now()
+        question_attempt.feedback = QuestionService.get_feedback(frozen_question, response, fraction)
+        question_attempt.save(update_fields=['response', 'fraction', 'score', 'graded_at', 'feedback'])
+        return question_attempt
+
+    @staticmethod
+    def calculate_final_grade(attempt: AssessmentAttempt) -> Decimal:
+        raw_score = sum(
+            question_attempt.score or Decimal('0')
+            for question_attempt in attempt.question_attempts.all()
+        )
+        total_possible = sum(
+            question_attempt.max_mark
+            for question_attempt in attempt.question_attempts.all()
+        )
+        if not total_possible:
+            return Decimal('0.00')
+        return (raw_score / total_possible * attempt.grade_scale).quantize(Decimal('0.01'))
+
+    @staticmethod
+    @transaction.atomic
+    def finish_attempt(attempt: AssessmentAttempt) -> AssessmentAttempt:
+        attempt = AssessmentAttempt.objects.select_for_update().select_related('assessment').get(pk=attempt.pk)
+        # Finishing is intentionally idempotent: browsers may race a timer
+        # with the student pressing Submit, or retry after a lost response.
+        if attempt.state == 'finished':
+            return attempt
+        if attempt.state != 'in_progress':
+            raise ValidationError(f'Attempt is already {attempt.state}.')
+
+        attempt.state = 'finished'
+        attempt.finished_at = timezone.now()
+        attempt.total_score = AssessmentService.calculate_final_grade(attempt)
+        attempt.save(update_fields=['state', 'finished_at', 'total_score'])
+
+        Grade.objects.update_or_create(
+            assessment_attempt=attempt,
+            defaults={
+                'student_external_id': attempt.user_external_id,
+                'course': attempt.assessment.course,
+                'grade_type': 'assessment',
+                'marks': attempt.total_score,
+                'total_possible': attempt.grade_scale,
+                'graded_at': attempt.finished_at,
+            },
+        )
+        return attempt
+
+    @classmethod
+    def get_attempt_summary(cls, attempt: AssessmentAttempt) -> dict:
+        question_attempts = attempt.question_attempts.all()
+        deadline = cls.get_attempt_deadline(attempt)
+        return {
+            'attempt_id': str(attempt.id),
+            'assessment_name': attempt.assessment.name,
+            'attempt_number': attempt.attempt_number,
+            'state': attempt.state,
+            'started_at': attempt.started_at,
+            'finished_at': attempt.finished_at,
+            'deadline_at': deadline,
+            'total_questions': question_attempts.count(),
+            'answered_questions': question_attempts.exclude(response={}).count(),
+            'total_score': float(attempt.total_score) if attempt.total_score is not None else None,
+            'max_grade': float(attempt.grade_scale),
+        }
