@@ -706,6 +706,23 @@ class QuizAPITests(APITestCase):
         self.assertEqual(len(response.data['quiz_questions']), 1)
         self.assertEqual(response.data['quiz_questions'][0]['question'], str(self.question.id))
 
+    def test_staff_can_publish_quiz_without_resubmitting_course(self):
+        """A partial publication update must not require the create-only course_id."""
+        self.quiz.is_published = False
+        self.quiz.save(update_fields=['is_published'])
+        self.client.force_authenticate(user=self.instructor)
+
+        response = self.client.patch(
+            f'/api/staff/assessment/quizzes/{self.quiz.id}/',
+            {'is_published': True},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['is_published'])
+        self.quiz.refresh_from_db()
+        self.assertTrue(self.quiz.is_published)
+
     def test_staff_can_reorder_every_quiz_question_slot(self):
         second_question = Question.objects.create(
             category=self.category,

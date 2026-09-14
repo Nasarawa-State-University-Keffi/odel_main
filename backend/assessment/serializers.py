@@ -485,7 +485,10 @@ class QuizSerializer(BaseQuizSerializer, CourseSlugValidationMixin):
     
     def validate(self, attrs):
         course_id = attrs.pop('course_id', None)
-        attrs['course'] = self.validate_course_id(course_id)
+        if course_id is not None:
+            attrs['course'] = self.validate_course_id(course_id)
+        elif not self.instance:
+            raise serializers.ValidationError({'course_id': 'This field is required.'})
         return attrs
 
 
