@@ -209,6 +209,62 @@ class CourseModuleAPITestCase(APITestCase):
             'Visible Note',
         )
 
+    def test_legacy_modules_remain_visible_when_a_teaching_period_is_selected(self):
+        legacy_module = CourseModule.objects.create(
+            course=self.course,
+            title='Legacy course materials',
+            order=1,
+            is_published=True,
+            created_by=self.staff,
+        )
+        scoped_module = CourseModule.objects.create(
+            course=self.course,
+            title='Current period materials',
+            programme_type_code='ODEL',
+            session='2025/2026',
+            semester='First',
+            order=2,
+            is_published=True,
+            created_by=self.staff,
+        )
+        CourseModule.objects.create(
+            course=self.course,
+            title='Different period materials',
+            programme_type_code='ODEL',
+            session='2024/2025',
+            semester='First',
+            order=3,
+            is_published=True,
+            created_by=self.staff,
+        )
+        query = {
+            'programme_type_code': 'ODEL',
+            'session': '2025/2026',
+            'semester': 'First',
+        }
+
+        self.client.force_authenticate(user=self.staff)
+        staff_response = self.client.get(
+            f'/api/content/modules/?course_id={self.course.course_external_id}',
+            query,
+        )
+        self.assertEqual(staff_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {item['id'] for item in staff_response.data['results']},
+            {str(legacy_module.id), str(scoped_module.id)},
+        )
+
+        self.client.force_authenticate(user=self.student)
+        student_response = self.client.get(
+            f'/api/content/course/{self.course.course_external_id}/modules/',
+            query,
+        )
+        self.assertEqual(student_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {item['id'] for item in student_response.data['results']},
+            {str(legacy_module.id), str(scoped_module.id)},
+        )
+
     def test_unenrolled_student_cannot_consume_course_modules(self):
         self.client.force_authenticate(user=self.outsider)
         response = self.client.get(

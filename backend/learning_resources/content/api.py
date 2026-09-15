@@ -78,6 +78,26 @@ def _required_period(request):
     return resolve_academic_period(session, semester)
 
 
+def _with_current_or_legacy_module_context(queryset, programme_type_code, session, semester):
+    """Keep pre-context modules visible while scoping newly created modules.
+
+    Course modules gained programme/session/semester fields after content was
+    already in use. Those records have empty context values and must remain
+    available to the course rather than disappearing when a staff member picks
+    an academic period. New modules always use the exact selected context.
+    """
+    current_context = Q(session=session, semester=semester)
+    if programme_type_code:
+        current_context &= Q(programme_type_code=programme_type_code)
+
+    legacy_context = Q(
+        programme_type_code='',
+        session='',
+        semester='',
+    )
+    return queryset.filter(current_context | legacy_context)
+
+
 def _ensure_group_member(request, group):
     _require_student(request)
     is_registered = StudentRegisteredCourse.objects.filter(
@@ -118,9 +138,12 @@ class CourseModuleListCreateAPIView(generics.ListCreateAPIView):
             raise ValidationError({'detail': 'session and semester must be supplied together.'})
         if session and semester:
             session, semester = resolve_academic_period(session, semester)
-            queryset = queryset.filter(session=session, semester=semester)
-            if programme_type_code:
-                queryset = queryset.filter(programme_type_code=programme_type_code)
+            queryset = _with_current_or_legacy_module_context(
+                queryset,
+                programme_type_code,
+                session,
+                semester,
+            )
         return queryset
 
     def perform_create(self, serializer):
@@ -258,9 +281,12 @@ class StudentCourseModulesAPIView(generics.ListAPIView):
             raise ValidationError({'detail': 'session and semester must be supplied together.'})
         if session and semester:
             session, semester = resolve_academic_period(session, semester)
-            queryset = queryset.filter(session=session, semester=semester)
-            if programme_type_code:
-                queryset = queryset.filter(programme_type_code=programme_type_code)
+            queryset = _with_current_or_legacy_module_context(
+                queryset,
+                programme_type_code,
+                session,
+                semester,
+            )
 
         if not self.request.user.is_staff:
             registrations = StudentRegisteredCourse.objects.filter(
@@ -275,7 +301,14 @@ class StudentCourseModulesAPIView(generics.ListAPIView):
                 course_offering__isnull=True,
             ).values_list('course_offering__programme_type_code', flat=True)
             if programme_codes.exists():
-                queryset = queryset.filter(programme_type_code__in=programme_codes)
+                programme_filter = Q(programme_type_code__in=programme_codes)
+                if session and semester:
+                    programme_filter |= Q(
+                        programme_type_code='',
+                        session='',
+                        semester='',
+                    )
+                queryset = queryset.filter(programme_filter)
 
         if not self.request.user.is_staff:
             now = timezone.now()
