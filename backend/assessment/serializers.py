@@ -534,8 +534,6 @@ class AssessmentQuestionSlotSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'question': 'Questions must belong to the assessment course.'})
         if question and question.category.bank != 'assessment':
             raise serializers.ValidationError({'question': 'Use a question from the assessment question bank.'})
-        if question and question.qtype == 'essay':
-            raise serializers.ValidationError({'question': 'Essay questions are not supported in auto-graded assessments.'})
         max_mark = attrs.get('max_mark', getattr(self.instance, 'max_mark', None))
         if max_mark is None or max_mark <= 0:
             raise serializers.ValidationError({'max_mark': 'Maximum marks must be greater than zero.'})
@@ -627,8 +625,6 @@ class AssessmentBuildSerializer(AssessmentSerializer):
                 raise serializers.ValidationError({'questions': 'Only questions in the assessment bank may be used.'})
             if question.category.course_id != course.id:
                 raise serializers.ValidationError({'questions': 'Every question must belong to the selected course.'})
-            if question.qtype == 'essay':
-                raise serializers.ValidationError({'questions': 'Essay questions require manual marking and cannot be used here.'})
         return attrs
 
 
@@ -893,7 +889,7 @@ class StudentAssessmentQuestionAttemptSerializer(serializers.ModelSerializer):
         model = AssessmentQuestionAttempt
         fields = [
             'id', 'question', 'display_order', 'response', 'max_mark',
-            'fraction', 'score', 'feedback', 'graded_at',
+            'fraction', 'score', 'feedback', 'graded_at', 'manually_graded',
         ]
 
     def get_question(self, obj):

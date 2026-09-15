@@ -699,8 +699,6 @@ class AssessmentQuestion(models.Model):
             raise ValidationError({'question': 'Assessments can only use the assessment question bank.'})
         if self.question_id and self.assessment_id and self.question.category.course_id != self.assessment.course_id:
             raise ValidationError({'question': 'Questions must belong to the assessment course.'})
-        if self.question_id and self.question.qtype == 'essay':
-            raise ValidationError({'question': 'Essay questions are not supported in auto-graded assessments.'})
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -774,6 +772,10 @@ class AssessmentQuestionAttempt(models.Model):
     fraction = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     score = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     graded_at = models.DateTimeField(null=True, blank=True)
+    manually_graded = models.BooleanField(
+        default=False,
+        help_text='True when a staff member has marked this response manually (for example, an essay).',
+    )
     feedback = models.TextField(blank=True)
 
     class Meta:

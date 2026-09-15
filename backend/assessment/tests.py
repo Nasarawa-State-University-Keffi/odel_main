@@ -1195,12 +1195,12 @@ class QuizAPITests(APITestCase):
         self.assertEqual(finished.status_code, status.HTTP_200_OK)
         self.assertEqual(finished.data['total_score'], 10.0)
         # The retry is safe even when the browser's deadline and submit button race.
-        self.assertEqual(
-            self.client.post(
-                f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/', format='json',
-            ).status_code,
-            status.HTTP_200_OK,
+        finished = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/', format='json',
         )
+        self.assertEqual(finished.status_code, status.HTTP_200_OK)
+        self.assertTrue(finished.data['show_feedback'])
+        self.assertIsNone(finished.data['total_score'])
 
     def test_teacher_controls_score_release_for_finished_assessments(self):
         """Scores stay hidden until the lecturer releases them, even after submission."""
@@ -1262,6 +1262,141 @@ class QuizAPITests(APITestCase):
         self.assertEqual(staff_activity.data['user_external_id'], self.student.external_id)
         self.assertEqual(staff_activity.data['question_attempts'][0]['response']['selected'], str(correct.id))
         self.assertEqual(staff_activity.data['question_attempts'][0]['question']['id'], str(question.id))
+
+    def test_assessment_essay_is_saved_and_can_be_manually_marked(self):
+        """Assessment essays are retained, then graded by the assigned lecturer."""
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Essay assessment bank',
+        )
+        essay = Question.objects.create(
+            category=category, qtype='essay', name='Explain normalization',
+            question_text='Explain why database normalization matters.', default_mark=Decimal('10.00'),
+        )
+        assessment = Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='Written checkpoint',
+            is_published=True, max_grade=Decimal('10.00'), show_feedback=True,
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment, question=essay, order=1, max_mark=Decimal('10.00'),
+        )
+
+        self.client.force_authenticate(user=self.student)
+        period = {'session': '2025/2026', 'semester': 'First Semester'}
+        started = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/start/', period, format='json',
+        )
+        self.assertEqual(started.status_code, status.HTTP_201_CREATED)
+        attempt_id = started.data['id']
+        saved = self.client.post(
+            f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/submit/',
+            {'question_id': str(essay.id), 'response': {'text': 'It reduces duplication and update anomalies.'}},
+            format='json',
+        )
+        self.assertEqual(saved.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self.client.post(
+                f'/api/student/assessment/assessments/{assessment.id}/attempts/{attempt_id}/finish/', format='json',
+            ).status_code,
+            status.HTTP_200_OK,
+        )
+
+        question_attempt = AssessmentQuestionAttempt.objects.get(assessment_attempt_id=attempt_id, question=essay)
+        self.assertIsNone(question_attempt.score)
+        self.assertIsNone(AssessmentAttempt.objects.get(id=attempt_id).total_score)
+        self.assertFalse(Grade.objects.filter(assessment_attempt_id=attempt_id).exists())
+        self.client.force_authenticate(user=self.instructor)
+        marked = self.client.post(
+            f'/api/staff/assessment/assessment-attempts/{attempt_id}/questions/{question_attempt.id}/grade/',
+            {'fraction': '0.80', 'feedback': 'Strong explanation; add an example next time.'},
+            format='json',
+        )
+        self.assertEqual(marked.status_code, status.HTTP_200_OK)
+        self.assertEqual(marked.data['score'], 8.0)
+        question_attempt.refresh_from_db()
+        self.assertTrue(question_attempt.manually_graded)
+        self.assertEqual(question_attempt.score, Decimal('8.00'))
+        self.assertEqual(question_attempt.feedback, 'Strong explanation; add an example next time.')
+        self.assertEqual(AssessmentAttempt.objects.get(id=attempt_id).total_score, Decimal('8.00'))
+        self.assertTrue(Grade.objects.filter(assessment_attempt_id=attempt_id, marks=Decimal('8.00')).exists())
+
+    def test_assessment_manual_grading_requires_the_assigned_offering(self):
+        """A same-course assignment in another term cannot mark this attempt."""
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Offering-scoped essay bank',
+        )
+        essay = Question.objects.create(
+            category=category, qtype='essay', name='Term-specific essay',
+            question_text='Explain the first-term topic.', default_mark=Decimal('10.00'),
+        )
+        assessment = Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='First-term essay', is_published=True,
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment, question=essay, order=1, max_mark=Decimal('10.00'),
+        )
+        attempt = AssessmentService.start_attempt(assessment=assessment, user_external_id=self.student.external_id)
+        AssessmentService.submit_response(attempt=attempt, question=essay, response={'text': 'My response.'})
+        AssessmentService.finish_attempt(attempt)
+        question_attempt = AssessmentQuestionAttempt.objects.get(assessment_attempt=attempt, question=essay)
+
+        second_semester = Semester.objects.create(name='Second Semester')
+        second_offering = CourseOffering.objects.create(
+            course=self.course, session=self.session, semester=second_semester, programme_type_code='ODEL',
+        )
+        StaffAssignedCourse.objects.filter(
+            staff_external_id=self.instructor.external_id,
+            course=self.course,
+        ).delete()
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.instructor.external_id,
+            course=self.course,
+            course_offering=second_offering,
+            programme_type_code='ODEL',
+            role='INSTRUCTOR',
+        )
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.post(
+            f'/api/staff/assessment/assessment-attempts/{attempt.id}/questions/{question_attempt.id}/grade/',
+            {'fraction': '1.00'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        question_attempt.refresh_from_db()
+        self.assertFalse(question_attempt.manually_graded)
+
+    def test_assessment_score_waits_for_every_essay_mark(self):
+        """One marked essay must not publish a partial final assessment score."""
+        category = QuestionCategory.objects.create(
+            course=self.course, bank='assessment', name='Multiple essay assessment bank',
+        )
+        first_essay = Question.objects.create(
+            category=category, qtype='essay', name='First essay', question_text='First response.', default_mark=Decimal('5.00'),
+        )
+        second_essay = Question.objects.create(
+            category=category, qtype='essay', name='Second essay', question_text='Second response.', default_mark=Decimal('5.00'),
+        )
+        assessment = Assessment.objects.create(
+            course=self.course, course_offering=self.offering, name='Two essays', max_grade=Decimal('10.00'),
+        )
+        AssessmentQuestion.objects.create(assessment=assessment, question=first_essay, order=1, max_mark=Decimal('5.00'))
+        AssessmentQuestion.objects.create(assessment=assessment, question=second_essay, order=2, max_mark=Decimal('5.00'))
+        attempt = AssessmentService.start_attempt(assessment=assessment, user_external_id=self.student.external_id)
+        AssessmentService.submit_response(attempt=attempt, question=first_essay, response={'text': 'First answer.'})
+        AssessmentService.submit_response(attempt=attempt, question=second_essay, response={'text': 'Second answer.'})
+        AssessmentService.finish_attempt(attempt)
+
+        first_attempt = AssessmentQuestionAttempt.objects.get(assessment_attempt=attempt, question=first_essay)
+        second_attempt = AssessmentQuestionAttempt.objects.get(assessment_attempt=attempt, question=second_essay)
+        AssessmentService.manually_grade_question_attempt(first_attempt, Decimal('1.00'))
+        attempt.refresh_from_db()
+        self.assertIsNone(attempt.total_score)
+        self.assertFalse(Grade.objects.filter(assessment_attempt=attempt).exists())
+
+        AssessmentService.manually_grade_question_attempt(second_attempt, Decimal('0.50'))
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.total_score, Decimal('7.50'))
+        self.assertTrue(Grade.objects.filter(assessment_attempt=attempt, marks=Decimal('7.50')).exists())
 
     def test_assessment_rejects_non_positive_slot_marks_through_the_api(self):
         category = QuestionCategory.objects.create(

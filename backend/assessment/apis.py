@@ -1279,6 +1279,49 @@ class StaffAssessmentAttemptDetailView(StaffQuerySetMixin, generics.RetrieveAPIV
         return super().get_queryset().prefetch_related('question_attempts__question__answers')
 
 
+class StaffAssessmentManualGradeView(APIView):
+    """Manually mark an essay response in an assessment attempt."""
+
+    permission_classes = [IsAuthenticated, IsInstructorOrReadOnly]
+
+    @extend_schema(
+        summary='Manually grade an assessment essay response',
+        request=ManualGradeSerializer,
+        tags=['Staff - Assessments'],
+    )
+    def post(self, request, pk=None, question_attempt_id=None):
+        question_attempt = get_object_or_404(
+            AssessmentQuestionAttempt.objects.select_related('assessment_attempt__assessment__course', 'question'),
+            id=question_attempt_id,
+            assessment_attempt_id=pk,
+        )
+        if not StaffAssignedCourse.objects.filter(
+            staff_external_id=request.user.external_id,
+            course=question_attempt.assessment_attempt.assessment.course,
+            course_offering=question_attempt.assessment_attempt.assessment.course_offering,
+        ).exists():
+            return Response({'error': 'You do not have permission to grade this assessment.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ManualGradeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            marked = AssessmentService.manually_grade_question_attempt(
+                question_attempt,
+                serializer.validated_data['fraction'],
+                serializer.validated_data.get('feedback', ''),
+            )
+            return Response({
+                'success': True,
+                'fraction': float(marked.fraction),
+                'score': float(marked.score),
+                'feedback': marked.feedback,
+                'manually_graded': marked.manually_graded,
+            })
+        except DjangoValidationError as exc:
+            message = exc.messages[0] if exc.messages else str(exc)
+            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+
+
 # ==========================================
 # STAFF - QUESTION BANK APIs
 

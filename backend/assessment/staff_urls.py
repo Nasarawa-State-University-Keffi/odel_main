@@ -40,6 +40,7 @@ urlpatterns = [
     path('assessments/questions/<uuid:pk>/', apis.StaffAssessmentQuestionDetailView.as_view(), name='staff-assessment-question-detail'),
     path('assessment-attempts/', apis.StaffAssessmentAttemptListView.as_view(), name='staff-assessment-attempt-list'),
     path('assessment-attempts/<uuid:pk>/', apis.StaffAssessmentAttemptDetailView.as_view(), name='staff-assessment-attempt-detail'),
+    path('assessment-attempts/<uuid:pk>/questions/<uuid:question_attempt_id>/grade/', apis.StaffAssessmentManualGradeView.as_view(), name='staff-assessment-manual-grade'),
     
     # Quiz Attempts
     path('attempts/', apis.StaffQuizAttemptListView.as_view(), name='staff-attempt-list'),

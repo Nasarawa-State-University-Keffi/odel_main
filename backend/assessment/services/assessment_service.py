@@ -247,9 +247,77 @@ class AssessmentService:
         question_attempt.fraction = fraction
         question_attempt.score = score
         question_attempt.graded_at = timezone.now()
+        question_attempt.manually_graded = False
         question_attempt.feedback = QuestionService.get_feedback(frozen_question, response, fraction)
-        question_attempt.save(update_fields=['response', 'fraction', 'score', 'graded_at', 'feedback'])
+        question_attempt.save(update_fields=['response', 'fraction', 'score', 'graded_at', 'manually_graded', 'feedback'])
         return question_attempt
+
+    @classmethod
+    @transaction.atomic
+    def manually_grade_question_attempt(
+        cls,
+        question_attempt: AssessmentQuestionAttempt,
+        fraction: Decimal,
+        feedback: str = '',
+    ) -> AssessmentQuestionAttempt:
+        """Record a staff mark for an essay and refresh a completed attempt's grade."""
+        question_attempt = AssessmentQuestionAttempt.objects.select_for_update().select_related(
+            'assessment_attempt__assessment', 'question',
+        ).get(pk=question_attempt.pk)
+        if question_attempt.question.qtype != 'essay':
+            raise ValidationError('Only essay responses require manual assessment marking.')
+        if question_attempt.assessment_attempt.state != 'finished':
+            raise ValidationError('An essay can be marked after the student submits the assessment.')
+
+        question_attempt.fraction = fraction
+        question_attempt.score = (fraction * question_attempt.max_mark).quantize(Decimal('0.01'))
+        question_attempt.feedback = feedback
+        question_attempt.manually_graded = True
+        question_attempt.graded_at = timezone.now()
+        question_attempt.save(update_fields=[
+            'fraction', 'score', 'feedback', 'manually_graded', 'graded_at',
+        ])
+
+        cls._sync_final_grade(question_attempt.assessment_attempt, graded_at=timezone.now())
+        return question_attempt
+
+    @classmethod
+    def _has_pending_manual_grading(cls, attempt: AssessmentAttempt) -> bool:
+        """Return whether the completed attempt still has an unmarked essay."""
+        return attempt.question_attempts.filter(
+            question__qtype='essay',
+            manually_graded=False,
+        ).exists()
+
+    @classmethod
+    def _sync_final_grade(cls, attempt: AssessmentAttempt, *, graded_at):
+        """Persist a final grade only after every manually marked item is ready.
+
+        Essays deliberately have no automatic score. Treating their ``None``
+        score as zero would make a submitted response look like a failed one
+        and could expose a provisional result when score release is enabled.
+        """
+        if cls._has_pending_manual_grading(attempt):
+            if attempt.total_score is not None:
+                attempt.total_score = None
+                attempt.save(update_fields=['total_score'])
+            Grade.objects.filter(assessment_attempt=attempt).delete()
+            return None
+
+        attempt.total_score = cls.calculate_final_grade(attempt)
+        attempt.save(update_fields=['total_score'])
+        Grade.objects.update_or_create(
+            assessment_attempt=attempt,
+            defaults={
+                'student_external_id': attempt.user_external_id,
+                'course': attempt.assessment.course,
+                'grade_type': 'assessment',
+                'marks': attempt.total_score,
+                'total_possible': attempt.grade_scale,
+                'graded_at': graded_at,
+            },
+        )
+        return attempt.total_score
 
     @staticmethod
     def calculate_final_grade(attempt: AssessmentAttempt) -> Decimal:
@@ -278,20 +346,8 @@ class AssessmentService:
 
         attempt.state = 'finished'
         attempt.finished_at = timezone.now()
-        attempt.total_score = AssessmentService.calculate_final_grade(attempt)
-        attempt.save(update_fields=['state', 'finished_at', 'total_score'])
-
-        Grade.objects.update_or_create(
-            assessment_attempt=attempt,
-            defaults={
-                'student_external_id': attempt.user_external_id,
-                'course': attempt.assessment.course,
-                'grade_type': 'assessment',
-                'marks': attempt.total_score,
-                'total_possible': attempt.grade_scale,
-                'graded_at': attempt.finished_at,
-            },
-        )
+        attempt.save(update_fields=['state', 'finished_at'])
+        AssessmentService._sync_final_grade(attempt, graded_at=attempt.finished_at)
         return attempt
 
     @classmethod
