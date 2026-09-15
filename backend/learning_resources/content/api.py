@@ -148,9 +148,7 @@ class CourseModuleCopySourceAPIView(views.APIView):
         course = resolve_course_identifier(request.query_params.get('course_id'))
         if not course:
             raise NotFound('Course not found.')
-        sources = CourseModule.objects.filter(course=course).exclude(
-            session='', semester='', programme_type_code='',
-        ).values(
+        sources = CourseModule.objects.filter(course=course).values(
             'programme_type_code', 'session', 'semester',
         ).annotate(module_count=Count('id')).order_by(
             '-session', 'semester', 'programme_type_code'

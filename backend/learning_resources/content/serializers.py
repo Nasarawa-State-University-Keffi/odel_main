@@ -486,9 +486,9 @@ class CourseModuleCopySerializer(serializers.Serializer):
     programme_type_code = serializers.CharField(max_length=100)
     session = serializers.CharField(max_length=50)
     semester = serializers.CharField(max_length=100)
-    source_programme_type_code = serializers.CharField(max_length=100)
-    source_session = serializers.CharField(max_length=50)
-    source_semester = serializers.CharField(max_length=100)
+    source_programme_type_code = serializers.CharField(max_length=100, allow_blank=True)
+    source_session = serializers.CharField(max_length=50, allow_blank=True)
+    source_semester = serializers.CharField(max_length=100, allow_blank=True)
 
     def validate_course_id(self, value):
         course = resolve_course_identifier(value)
@@ -498,14 +498,26 @@ class CourseModuleCopySerializer(serializers.Serializer):
 
     def validate(self, attrs):
         session, semester = resolve_academic_period(attrs['session'], attrs['semester'])
-        source_session, source_semester = resolve_academic_period(
-            attrs['source_session'], attrs['source_semester']
-        )
+        source_values = [
+            attrs['source_programme_type_code'],
+            attrs['source_session'],
+            attrs['source_semester'],
+        ]
+        if any(source_values) and not all(source_values):
+            raise serializers.ValidationError(
+                'A source teaching period must include programme, session, and semester.'
+            )
+        if all(source_values):
+            source_session, source_semester = resolve_academic_period(
+                attrs['source_session'], attrs['source_semester']
+            )
+        else:
+            source_session = source_semester = ''
         attrs['session'] = session
         attrs['semester'] = semester
         attrs['source_session'] = source_session
         attrs['source_semester'] = source_semester
-        if (
+        if all(source_values) and (
             attrs['programme_type_code'] == attrs['source_programme_type_code']
             and session == source_session
             and semester == source_semester
