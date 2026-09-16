@@ -3,6 +3,7 @@ URL configuration for the LMS content API.
 """
 
 from django.urls import path
+from .forum import ForumsAPI, ForumAPI, ForumJoinAPI, ForumAdminsAPI, ForumPostsAPI, ForumPostAPI
 
 from .api import (
     CourseModuleListCreateAPIView,
@@ -31,6 +32,12 @@ from .api import (
 )
 
 urlpatterns = [
+    path('forums/', ForumsAPI.as_view()),
+    path('forums/<uuid:pk>/', ForumAPI.as_view()),
+    path('forums/<uuid:pk>/join/', ForumJoinAPI.as_view()),
+    path('forums/<uuid:pk>/admins/', ForumAdminsAPI.as_view()),
+    path('forums/<uuid:pk>/posts/', ForumPostsAPI.as_view()),
+    path('forums/<uuid:pk>/posts/<uuid:post_id>/', ForumPostAPI.as_view()),
     # Course modules
     path('modules/', CourseModuleListCreateAPIView.as_view(), name='course-module-list'),
     path('modules/copy-sources/', CourseModuleCopySourceAPIView.as_view(), name='course-module-copy-sources'),

@@ -382,6 +382,69 @@ class LessonComment(models.Model):
         return f"Comment on {self.content.title} by {self.author or 'former user'}"
 
 
+class Forum(models.Model):
+    """Staff/student community, independent of private student study groups."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=120)
+    description = models.TextField(max_length=1200, blank=True)
+    created_by = models.ForeignKey(PortalUser, on_delete=models.SET_NULL, null=True, related_name='created_forums')
+    is_closed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class ForumMembership(models.Model):
+    forum = models.ForeignKey(Forum, on_delete=models.CASCADE, related_name='memberships')
+    user = models.ForeignKey(PortalUser, on_delete=models.CASCADE, related_name='forum_memberships')
+    is_admin = models.BooleanField(default=False)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['forum', 'user'], name='unique_forum_member')]
+
+
+class ForumPost(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    forum = models.ForeignKey(Forum, on_delete=models.CASCADE, related_name='posts')
+    author = models.ForeignKey(PortalUser, on_delete=models.SET_NULL, null=True)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    body = models.TextField(max_length=10000)
+    storage_path = models.CharField(max_length=512, blank=True)
+    storage_backend = models.CharField(max_length=20, default='local')
+    filename = models.CharField(max_length=255, blank=True)
+    attachment_url = models.URLField(max_length=2048, blank=True)
+    resource_type = models.CharField(max_length=20, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_delete, sender=ForumPost)
+def remove_forum_attachment(sender, instance, **kwargs):
+    if not instance.storage_path:
+        return
+    from django.db import transaction
+    from learning_resources.storage import get_storage_engine
+    def cleanup():
+        try:
+            engine = get_storage_engine(instance.storage_backend)
+            if instance.storage_backend == 'cloudinary' and instance.resource_type:
+                engine.delete_document(instance.storage_path, instance.resource_type)
+            else:
+                engine.delete(instance.storage_path)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Could not remove deleted forum attachment')
+    transaction.on_commit(cleanup)
+
+
 class StudyGroup(models.Model):
     """A student-owned collaboration space for one course in one teaching period."""
 

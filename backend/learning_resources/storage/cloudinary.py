@@ -88,6 +88,28 @@ class CloudinaryStorageEngine(BaseStorageEngine):
         except Exception as e:
             raise StorageException(f"Failed to upload to Cloudinary: {str(e)}")
     
+    def save_document(self, file_obj: BinaryIO, path: str) -> dict:
+        """Return the exact identity and delivery URL for forum attachments."""
+        import cloudinary.uploader
+        from pathlib import Path
+        resource_type = 'image' if Path(path).suffix.lower() in {'.png', '.jpg', '.jpeg'} else 'raw'
+        public_id = path.rsplit('.', 1)[0] if resource_type == 'image' else path
+        try:
+            result = cloudinary.uploader.upload(file_obj, public_id=public_id,
+                                                resource_type=resource_type, overwrite=False)
+            return {'path': result['public_id'], 'url': result['secure_url'],
+                    'resource_type': result['resource_type']}
+        except Exception as exc:
+            raise StorageException(f'Failed to upload forum document: {exc}') from exc
+
+    def delete_document(self, path: str, resource_type: str) -> bool:
+        import cloudinary.uploader
+        try:
+            result = cloudinary.uploader.destroy(path, resource_type=resource_type, invalidate=True)
+            return result.get('result') in {'ok', 'not found'}
+        except Exception as exc:
+            raise StorageException(f'Failed to delete forum document: {exc}') from exc
+
     def delete(self, path: str) -> bool:
         """Delete file from Cloudinary."""
         try:
