@@ -109,6 +109,11 @@ class LearningContentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'module': 'The selected module belongs to a different course.'
             })
+        original_module = getattr(self.instance, 'module', None)
+        if original_module and original_module.session and (not module or not module.session):
+            raise serializers.ValidationError({
+                'module': 'A teaching-period lesson must remain in a teaching-period module.'
+            })
         return attrs
 
 
@@ -453,6 +458,10 @@ class CourseModuleSerializer(serializers.ModelSerializer):
         if session and not programme_type_code:
             raise serializers.ValidationError({
                 'programme_type_code': 'Programme type is required with an academic period.'
+            })
+        if self.instance and self.instance.session and not session:
+            raise serializers.ValidationError({
+                'session': 'A teaching-period module must retain its academic period.'
             })
         return attrs
 

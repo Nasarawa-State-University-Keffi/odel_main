@@ -12,11 +12,12 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 from django.db.models import Sum, Count, Q, Prefetch
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
+
+from .access import ensure_can_manage, student_modules, visible_contents
 
 from .models import (
     CourseModule,
@@ -147,6 +148,7 @@ class CourseModuleListCreateAPIView(generics.ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
+        ensure_can_manage(self.request.user, serializer.validated_data['course_id'], context=serializer.validated_data)
         serializer.save(created_by=self.request.user)
 
 
@@ -159,6 +161,24 @@ class CourseModuleDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = CourseModule.objects.select_related(
         'course', 'created_by'
     ).prefetch_related('contents__uploaded_by')
+
+    def perform_update(self, serializer):
+        module = serializer.instance
+        ensure_can_manage(self.request.user, module.course, module=module)
+        context = {field: serializer.validated_data.get(field, getattr(module, field))
+                   for field in ('programme_type_code', 'session', 'semester')}
+        ensure_can_manage(self.request.user, module.course, context=context)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            module = CourseModule.objects.select_for_update().get(pk=instance.pk)
+            ensure_can_manage(self.request.user, module.course, module=module)
+            if module.session and module.contents.exists():
+                raise ValidationError({
+                    'detail': 'Move or delete this teaching-period module’s lessons before deleting the module.'
+                })
+            module.delete()
 
 
 @extend_schema(tags=['Staff - Course Modules'])
@@ -195,6 +215,7 @@ class CourseModuleCopyAPIView(views.APIView):
             'session': data['session'],
             'semester': data['semester'],
         }
+        ensure_can_manage(request.user, course, context=target_context)
         source_context = {
             'programme_type_code': data['source_programme_type_code'],
             'session': data['source_session'],
@@ -290,34 +311,15 @@ class StudentCourseModulesAPIView(generics.ListAPIView):
 
         if not self.request.user.is_staff:
             registrations = StudentRegisteredCourse.objects.filter(
-                student_external=self.request.user,
-                course=course,
-            ).select_related('course_offering')
+                student_external=self.request.user, course=course,
+            )
             if session and semester:
                 registrations = registrations.filter(session=session, semester=semester)
             if not registrations.exists():
                 raise PermissionDenied('You are not enrolled in this course.')
-            programme_codes = registrations.exclude(
-                course_offering__isnull=True,
-            ).values_list('course_offering__programme_type_code', flat=True)
-            if programme_codes.exists():
-                programme_filter = Q(programme_type_code__in=programme_codes)
-                if session and semester:
-                    programme_filter |= Q(
-                        programme_type_code='',
-                        session='',
-                        semester='',
-                    )
-                queryset = queryset.filter(programme_filter)
-
-        if not self.request.user.is_staff:
-            now = timezone.now()
-            queryset = queryset.filter(
-                is_published=True,
-            ).filter(
-                Q(available_from__isnull=True) | Q(available_from__lte=now),
-                Q(available_until__isnull=True) | Q(available_until__gte=now),
-            )
+            queryset = queryset.filter(pk__in=student_modules(
+                self.request.user, session, semester,
+            ))
 
         return queryset.order_by('order', 'created_at')
 
@@ -353,23 +355,16 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
         return LearningContentSerializer
     
     def get_queryset(self):
-        queryset = LearningContent.objects.all()
+        session = self.request.query_params.get('session')
+        semester = self.request.query_params.get('semester')
+        if not self.request.user.is_staff and (not session or not semester):
+            raise ValidationError({'detail': 'session and semester are required for student content'})
+        if bool(session) != bool(semester):
+            raise ValidationError({'detail': 'session and semester must be supplied together.'})
+        if session and semester:
+            session, semester = resolve_academic_period(session, semester)
+        queryset = visible_contents(self.request.user, session, semester)
 
-        if not self.request.user.is_staff:
-            session = self.request.query_params.get('session')
-            semester = self.request.query_params.get('semester')
-            if not session or not semester:
-                raise ValidationError({
-                    'detail': 'session and semester are required for student content',
-                })
-
-            enrolled_course_ids = StudentRegisteredCourse.objects.filter(
-                student_external=self.request.user,
-                session=session,
-                semester=semester,
-            ).values_list('course_id', flat=True)
-            queryset = queryset.filter(course_id__in=enrolled_course_ids)
-        
         course_id = self.request.query_params.get('course_id')
         if course_id:
             course = resolve_course_identifier(course_id)
@@ -401,6 +396,7 @@ class LearningContentListAPIView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         course = resolve_course_identifier(data['course_id'])
+        ensure_can_manage(request.user, course, module=data.get('module'))
         content = create_unified_content(
             course=course, user=request.user,
             title=data['title'],
@@ -433,12 +429,13 @@ class CourseContentAPIView(generics.ListAPIView):
         if not course:
             return LearningContent.objects.none()
 
-        queryset = LearningContent.objects.filter(course=course)
-        
-        if not self.request.user.is_staff:
-            queryset = queryset.filter(is_published=True)
-            
-        return queryset.select_related('course', 'module', 'uploaded_by')
+        session = self.request.query_params.get('session')
+        semester = self.request.query_params.get('semester')
+        if bool(session) != bool(semester):
+            raise ValidationError({'detail': 'session and semester must be supplied together.'})
+        if session and semester:
+            session, semester = resolve_academic_period(session, semester)
+        return visible_contents(self.request.user, session, semester).filter(course=course)
 
 
 @extend_schema(tags=['Global - Content'])
@@ -456,7 +453,18 @@ class LearningContentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
             permission_classes.append(IsPortalStaff)
         return [permission() for permission in permission_classes]
 
+    def get_queryset(self):
+        return visible_contents(self.request.user)
+
+    def perform_update(self, serializer):
+        content = serializer.instance
+        ensure_can_manage(self.request.user, content.course, module=content.module)
+        ensure_can_manage(self.request.user, content.course,
+                          module=serializer.validated_data.get('module', content.module))
+        serializer.save()
+
     def perform_destroy(self, instance):
+        ensure_can_manage(self.request.user, instance.course, module=instance.module)
         delete_learning_content(instance.id)
 
 
@@ -477,6 +485,8 @@ class LearningContentUploadAPIView(views.APIView):
     def post(self, request):
         serializer = LearningContentUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        ensure_can_manage(request.user, resolve_course_identifier(data['course_id']), module=data.get('module'))
         
         try:
             course_id = serializer.validated_data['course_id']
@@ -525,6 +535,8 @@ class YouTubeVideoAddAPIView(views.APIView):
     def post(self, request):
         serializer = YouTubeVideoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        ensure_can_manage(request.user, resolve_course_identifier(data['course_id']), module=data.get('module'))
         
         try:
             course_id = serializer.validated_data['course_id']
@@ -584,7 +596,7 @@ class LearningContentLogAccessAPIView(views.APIView):
         }
     )
     def post(self, request, pk):
-        content = get_object_or_404(LearningContent, pk=pk)
+        content = get_object_or_404(visible_contents(request.user), pk=pk)
         action_type = request.data.get('action', 'view')
         
         if action_type not in ['view', 'download']:
@@ -614,29 +626,10 @@ class LessonDiscussionAPIView(generics.ListCreateAPIView):
     def get_content(self):
         if not hasattr(self, '_content'):
             self._content = get_object_or_404(
-                LearningContent.objects.select_related('course', 'module'),
+                visible_contents(self.request.user),
                 pk=self.kwargs['pk'],
             )
-            self._ensure_discussion_access(self._content)
         return self._content
-
-    def _ensure_discussion_access(self, content):
-        if self.request.user.is_staff:
-            return
-
-        if not content.is_published:
-            raise PermissionDenied('This lesson is not available for discussion.')
-
-        is_enrolled = StudentRegisteredCourse.objects.filter(
-            student_external=self.request.user,
-            course=content.course,
-        ).exists()
-        if not is_enrolled:
-            raise PermissionDenied('You are not enrolled in this course.')
-
-        module = content.module
-        if module and not module.is_available:
-            raise PermissionDenied('This lesson is not currently available.')
 
     def get_queryset(self):
         content = self.get_content()

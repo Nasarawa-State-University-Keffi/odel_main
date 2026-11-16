@@ -115,6 +115,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
+RESOURCE_LIBRARY_MAX_UPLOAD_SIZE_BYTES = int(
+    os.environ.get('RESOURCE_LIBRARY_MAX_UPLOAD_SIZE_BYTES', 50 * 1024 * 1024)
+)
+
 # Study-group resources are intended for notes and small course materials. Keep
 # this independent from server-wide request limits so deployments can tune it.
 STUDY_GROUP_MAX_UPLOAD_SIZE_BYTES = int(

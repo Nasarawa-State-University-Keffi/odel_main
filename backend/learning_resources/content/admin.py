@@ -3,6 +3,7 @@ Admin interface for LMS learning-content management.
 """
 
 from django.contrib import admin
+from django.db import transaction
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
@@ -13,6 +14,8 @@ from .models import (
     LearningContent,
     ContentAccessLog,
     LessonComment,
+    ResourceCategory,
+    LibraryResource,
 )
 
 
@@ -318,3 +321,33 @@ class LessonCommentAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(ResourceCategory)
+class ResourceCategoryAdmin(admin.ModelAdmin):
+    search_fields = ['name']
+
+
+@admin.register(LibraryResource)
+class LibraryResourceAdmin(admin.ModelAdmin):
+    list_display = ['title', 'category', 'resource_type', 'is_published', 'created_by']
+    list_filter = ['is_published', 'resource_type', 'category']
+    search_fields = ['title', 'description']
+    readonly_fields = ['storage_backend', 'storage_path', 'original_filename', 'file_size', 'mime_type']
+
+    def delete_model(self, request, obj):
+        from .library_storage import remove_file
+
+        backend, path = obj.storage_backend, obj.storage_path
+        with transaction.atomic():
+            super().delete_model(request, obj)
+            transaction.on_commit(lambda: remove_file(backend, path))
+
+    def delete_queryset(self, request, queryset):
+        from .library_storage import remove_file
+
+        with transaction.atomic():
+            attachments = list(queryset.select_for_update().values_list('storage_backend', 'storage_path'))
+            super().delete_queryset(request, queryset)
+            for backend, path in attachments:
+                transaction.on_commit(lambda backend=backend, path=path: remove_file(backend, path))

@@ -5,6 +5,7 @@ Production-ready Learning Management System with Zoom integration, classroom man
 ## Features
 
 - Classroom and course management
+- Shared Resource Library, independent of courses and teaching periods
 - Assignment and submission tracking
 - Student portal synchronization
 - Celery-based async task processing
@@ -345,3 +346,35 @@ docker-compose exec nginx nginx -t
 ## Support
 
 For issues and questions, please open an issue on GitHub or contact the development team.
+
+## Shared Resource Library
+
+The LMS frontend exposes `/resource-library` to students, staff, and administrators.
+Students can browse published resources without enrolling in a course or selecting an
+academic period. Only administrators can add, edit, publish, or delete resources
+and manage categories. Staff and students can read published resources. A related
+course is optional and informational.
+
+Resources support a file, an external/YouTube link, or both, with categories, tags,
+search, type/category/status filters, and pagination. Administrators can create
+categories in the library and rename/delete them in Django admin or through the API.
+
+Deploy the backend and frontend together and run `python manage.py migrate` to apply
+`content.0013_resource_library`. API routes are under `/api/resource-library/`:
+`resources/` (CRUD), `resources/{id}/file/` (authenticated preview/download),
+`categories/`, and `courses/` (eligible optional associations).
+
+Attachments use the configured local, S3, or Cloudinary storage backend. S3 objects
+have no public ACL and Cloudinary raw files use private delivery. The YouTube-only
+storage backend accepts external links but cannot store uploaded attachments. The
+upload limit defaults to 50 MB and can be changed using
+`RESOURCE_LIBRARY_MAX_UPLOAD_SIZE_BYTES`. Match reverse-proxy request limits to it.
+Local media must reach Django's authenticated `/media/` route; do not configure a
+public static alias for the media directory. Downloads use authenticated URLs and
+private, non-cacheable responses.
+
+Run the resource regression suite with `python manage.py test learning_resources`
+using an isolated test database and configured test dependencies. It includes
+admin-only management, publication visibility, validation, filters, pagination, file
+replacement/deletion, and mocked S3/Cloudinary adapters. Remote adapters still need
+a deployment smoke test with the site's actual storage credentials.

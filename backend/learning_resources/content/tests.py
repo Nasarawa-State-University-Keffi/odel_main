@@ -15,7 +15,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
-from courses.models import AcademicSession, CourseCache, Semester, StudentRegisteredCourse
+from courses.models import AcademicSession, CourseCache, CourseOffering, Semester, StaffAssignedCourse, StudentRegisteredCourse
 from .models import (
     CourseModule,
     LearningContent,
@@ -70,7 +70,16 @@ class CourseModuleAPITestCase(APITestCase):
         self.academic_session = AcademicSession.objects.create(name='2025/2026')
         AcademicSession.objects.create(name='2024/2025')
         self.semester = Semester.objects.create(name='First')
+        offering = CourseOffering.objects.create(
+            course=self.course, session=self.academic_session,
+            semester=self.semester, programme_type_code='ODEL',
+        )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.staff.external_id, course=self.course,
+            course_offering=offering, programme_type_code='ODEL', role='LECTURER',
+        )
         StudentRegisteredCourse.objects.create(
+            course_offering=offering,
             student_external=self.student,
             course=self.course,
             session='2025/2026',
@@ -174,7 +183,6 @@ class CourseModuleAPITestCase(APITestCase):
             course=self.course,
             module=available_module,
             order=2,
-            content_type='note',
             title='Visible Note',
             storage_path='courses/501/note/visible.pdf',
             original_filename='visible.pdf',
@@ -186,7 +194,6 @@ class CourseModuleAPITestCase(APITestCase):
             course=self.course,
             module=available_module,
             order=1,
-            content_type='resource',
             title='Hidden Resource',
             storage_path='courses/501/resource/hidden.pdf',
             original_filename='hidden.pdf',
@@ -315,6 +322,11 @@ class CourseModuleAPITestCase(APITestCase):
             external_id='new-module-staff', full_name='New Module Staff',
             is_staff=True, roles=['STAFF'],
         )
+        StaffAssignedCourse.objects.create(
+            staff_external_id=other_staff.external_id, course=self.course,
+            course_offering=CourseOffering.objects.get(course=self.course),
+            programme_type_code='ODEL', role='LECTURER',
+        )
         self.client.force_authenticate(user=other_staff)
         response = self.client.post('/api/content/modules/copy/', {
             'course_id': self.course.course_external_id,
@@ -360,6 +372,10 @@ class ContentUploadAPITestCase(APITestCase):
 
         # Set up API client
         self.client = APIClient()
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.user.external_id, course=self.course,
+            programme_type_code='ODEL', role='LECTURER',
+        )
         self.client.force_authenticate(user=self.user)
 
     def tearDown(self):
@@ -385,14 +401,14 @@ class ContentUploadAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], 'Lecture 1 Notes')
-        self.assertEqual(response.data['content_type'], 'note')
+        self.assertEqual(response.data['content_format'], 'file')
         self.assertEqual(response.data['original_filename'], 'lecture1.pdf')
 
         # Verify database record
         content = LearningContent.objects.get(id=response.data['id'])
         # Verify attributes
         self.assertEqual(content.course.course_external_id, 101)
-        self.assertEqual(content.content_type, 'note')
+        self.assertEqual(content.content_format, 'file')
         self.assertEqual(content.uploaded_by, self.user)
 
     def test_upload_video_file_success(self):
@@ -412,7 +428,7 @@ class ContentUploadAPITestCase(APITestCase):
         }, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['content_type'], 'video')
+        self.assertEqual(response.data['is_video'], True)
         self.assertEqual(response.data['original_filename'], 'lecture_video.mp4')
         self.assertTrue(response.data['is_video'])
 
@@ -450,14 +466,14 @@ class ContentUploadAPITestCase(APITestCase):
         }, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_upload_invalid_content_type(self):
-        """Test upload fails with invalid content_type."""
+    def test_upload_invalid_storage_backend(self):
+        """Test upload rejects an unsupported storage backend."""
         file = self._create_test_file()
 
         response = self.client.post('/api/content/upload/', {
             'file': file,
             'course_id': 101,
-            'content_type': 'invalid_type'
+            'storage_backend': 'invalid_backend'
         }, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -504,14 +520,14 @@ class ContentUploadAPITestCase(APITestCase):
         self.assertIsNotNone(response.data['file_size'])
         self.assertGreater(response.data['file_size'], 100000)
 
-    def test_direct_post_blocked(self):
-        """Test that direct POST to list endpoint is blocked."""
+    def test_direct_post_requires_content(self):
+        """The unified creation endpoint requires actual lesson content."""
         response = self.client.post('/api/content/', {
             'title': 'Test',
             'course_id': 101
         })
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         pass  # Custom error format now
 
 
@@ -529,6 +545,10 @@ class YouTubeVideoAPITestCase(APITestCase):
         StorageSettings.objects.create(backend='youtube', is_active=True)
 
         self.client = APIClient()
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.user.external_id, course=self.course,
+            programme_type_code='ODEL', role='LECTURER',
+        )
         self.client.force_authenticate(user=self.user)
 
     @patch.dict(os.environ, {'YOUTUBE_API_KEY': 'test_api_key'})
@@ -542,7 +562,7 @@ class YouTubeVideoAPITestCase(APITestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['content_type'], 'video')
+        self.assertEqual(response.data['is_video'], True)
         self.assertEqual(response.data['storage_backend'], 'youtube')
 
     @patch.dict(os.environ, {'YOUTUBE_API_KEY': 'test_api_key'})
@@ -600,10 +620,9 @@ class ContentServiceLayerTestCase(TestCase):
         content = upload_learning_content(
             file_obj=file_obj,
             course=self.course,
-            content_type='note',
             user=self.user,
             title='Test Note',
-            description='Test description'
+            text_content='Test description'
         )
 
         self.assertIsInstance(content, LearningContent)
@@ -612,19 +631,16 @@ class ContentServiceLayerTestCase(TestCase):
         self.assertEqual(content.uploaded_by, self.user)
         self.assertTrue(content.is_published)
 
-    def test_upload_with_invalid_content_type(self):
-        """Test upload fails with invalid content type."""
-        file_obj = SimpleUploadedFile('test.pdf', b'content')
-
-        with self.assertRaises(ValueError) as context:
+    def test_upload_rejects_a_module_from_another_course(self):
+        other_course = CourseCache.objects.create(
+            course_external_id=102, course_title='Other', course_code='CS102',
+        )
+        module = CourseModule.objects.create(course=other_course, title='Other module')
+        with self.assertRaisesMessage(ValueError, 'different course'):
             upload_learning_content(
-                file_obj=file_obj,
-                course=self.course,
-                content_type='invalid',
-                user=self.user
+                file_obj=SimpleUploadedFile('test.pdf', b'content'),
+                course=self.course, user=self.user, module=module,
             )
-
-        self.assertIn('Invalid content_type', str(context.exception))
 
     def test_delete_learning_content(self):
         """Test content deletion removes file and database record."""
@@ -632,7 +648,6 @@ class ContentServiceLayerTestCase(TestCase):
         content = upload_learning_content(
             file_obj=file_obj,
             course=self.course,
-            content_type='note',
             user=self.user
         )
         content_id = content.id
@@ -650,7 +665,6 @@ class ContentServiceLayerTestCase(TestCase):
         content = upload_learning_content(
             file_obj=file_obj,
             course=self.course,
-            content_type='note',
             user=self.user
         )
 
@@ -741,13 +755,16 @@ class ContentAccessLogTestCase(APITestCase):
             course_title='Test Course',
             course_code='CS101'
         )
+        StudentRegisteredCourse.objects.create(
+            student_external=self.user, course=self.course,
+            session='2025/2026', semester='First',
+        )
         StorageSettings.objects.create(backend='local', is_active=True)
 
         file_obj = SimpleUploadedFile('test.pdf', b'content')
         self.content = upload_learning_content(
             file_obj=file_obj,
             course=self.course,
-            content_type='note',
             user=self.user
         )
 
@@ -811,6 +828,9 @@ class ContentQueryFilterTestCase(APITestCase):
             session='2025/2026',
             semester='Second',
         )
+        AcademicSession.objects.create(name='2025/2026')
+        Semester.objects.create(name='First')
+        Semester.objects.create(name='Second')
         # Create multiple content items using the current unified content model.
         for i in range(3):
             LearningContent.objects.create(
@@ -904,6 +924,10 @@ class ErrorHandlingTestCase(APITestCase):
         StorageSettings.objects.create(backend='local', is_active=True)
 
         self.client = APIClient()
+        StaffAssignedCourse.objects.create(
+            staff_external_id=self.user.external_id, course=self.course,
+            programme_type_code='ODEL', role='LECTURER',
+        )
         self.client.force_authenticate(user=self.user)
 
     def test_upload_empty_file(self):
@@ -1022,14 +1046,14 @@ class LessonDiscussionAPITestCase(APITestCase):
     def test_outsider_cannot_read_or_post_to_discussion(self):
         self.client.force_authenticate(user=self.outsider)
         response = self.client.get(self.discussion_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         response = self.client.post(
             self.discussion_url,
             {'body': 'I should not be able to post here.'},
             format='json',
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class StudyGroupAPITestCase(APITestCase):
@@ -1140,7 +1164,7 @@ class StudyGroupAPITestCase(APITestCase):
             format='json',
         )
         self.assertEqual(invalid_mention_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('mention_external_ids', invalid_mention_response.data)
+        self.assertIn('mention_external_ids', str(invalid_mention_response.data))
 
         self.client.force_authenticate(user=self.owner)
         reply_response = self.client.post(

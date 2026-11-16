@@ -49,6 +49,7 @@ urlpatterns = [
     
     # Learning Content APIs
     path('api/content/', include('learning_resources.content.urls')),
+    path('api/resource-library/', include('learning_resources.content.library_urls')),
 
     # Dashboard endpoint urls
     path('api/dashboard/', include('dashboard.urls')),
@@ -63,7 +64,7 @@ urlpatterns = [
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
     # Serve media files for local file storage (both development & production)
-    re_path(r'^media/(?P<path>.*)$', serve_media, {'document_root': settings.MEDIA_ROOT}),
+    re_path(r'^media/(?P<path>.*)$', serve_media),
 ]
 
 # Serve static files in development (in production, WhiteNoise handles static files)

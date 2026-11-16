@@ -5,6 +5,7 @@ Implements Moodle-style file areas and storage abstraction.
 
 import uuid
 from django.db import models
+from django.db.models.functions import Lower
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
@@ -599,3 +600,59 @@ class StudyGroupCommentMention(models.Model):
                 name='unique_study_group_comment_mention',
             ),
         ]
+
+
+class ResourceCategory(models.Model):
+    """A shared library category, independent of teaching periods."""
+
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ['name', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                Lower('name'), name='library_category_name_ci',
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class LibraryResource(models.Model):
+    """A shared resource with optional, informational course association."""
+
+    RESOURCE_TYPES = [(kind, kind.title()) for kind in ('document', 'image', 'video', 'audio', 'link')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    category = models.ForeignKey(
+        ResourceCategory, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='resources',
+    )
+    tags = models.JSONField(default=list, blank=True)
+    course = models.ForeignKey(
+        CourseCache, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='library_resources',
+    )
+    external_url = models.URLField(max_length=2048, blank=True)
+    resource_type = models.CharField(max_length=20, choices=RESOURCE_TYPES, default='link', db_index=True)
+    storage_backend = models.CharField(max_length=20, blank=True)
+    storage_path = models.CharField(max_length=512, blank=True, db_index=True)
+    original_filename = models.CharField(max_length=512, blank=True)
+    mime_type = models.CharField(max_length=100, blank=True)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    is_published = models.BooleanField(default=False, db_index=True)
+    created_by = models.ForeignKey(
+        PortalUser, on_delete=models.SET_NULL, null=True, related_name='library_resources',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        indexes = [models.Index(fields=['category', 'is_published'], name='library_category_published_idx')]
+
+    def __str__(self):
+        return self.title
