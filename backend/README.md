@@ -351,13 +351,15 @@ For issues and questions, please open an issue on GitHub or contact the developm
 
 The LMS frontend exposes `/resource-library` to students, staff, and administrators.
 Students can browse published resources without enrolling in a course or selecting an
-academic period. Only administrators can add, edit, publish, or delete resources
-and manage categories. Staff and students can read published resources. A related
-course is optional and informational.
+academic period. Administrators and staff assigned the portal `LIBRARY` role can
+add, edit, publish, or delete resources and manage categories. Other staff and
+students can read published resources. A related course is optional and
+informational.
 
 Resources support a file, an external/YouTube link, or both, with categories, tags,
-search, type/category/status filters, and pagination. Administrators can create
-categories in the library and rename/delete them in Django admin or through the API.
+search, type/category/status filters, and pagination. Library managers can create
+categories in the library and rename/delete them through the API. Django
+administrators can also manage categories in Django admin.
 
 Deploy the backend and frontend together and run `python manage.py migrate` to apply
 `content.0013_resource_library`. API routes are under `/api/resource-library/`:
@@ -375,6 +377,13 @@ private, non-cacheable responses.
 
 Run the resource regression suite with `python manage.py test learning_resources`
 using an isolated test database and configured test dependencies. It includes
-admin-only management, publication visibility, validation, filters, pagination, file
+library-role management, publication visibility, validation, filters, pagination, file
 replacement/deletion, and mocked S3/Cloudinary adapters. Remote adapters still need
 a deployment smoke test with the site's actual storage credentials.
+
+Assign `LIBRARY` through the portal staff create/edit form. Portal provisioning
+adds `PORTAL_LIBRARY` alongside `PORTAL_STAFF` in Authentik and removes that group
+when the role is revoked. The LMS maps `PORTAL_LIBRARY` to `LIBRARY` at SSO login;
+no LMS administrator role is granted. Existing staff need their Authentik roles
+resynchronized and must sign out of the LMS and sign back in to refresh their
+permissions. Staff sessions retain their last synchronized roles until then.

@@ -18,7 +18,7 @@ import re
 
 logger = logging.getLogger(__name__)
 
-STAFF_ROLES = {"ADMIN", "SUPER_ADMIN", "STAFF"}
+STAFF_ROLES = {"ADMIN", "SUPER_ADMIN", "STAFF", "LIBRARY"}
 
 
 def extract_level_title(level_data):

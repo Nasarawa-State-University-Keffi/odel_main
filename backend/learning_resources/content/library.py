@@ -1,4 +1,4 @@
-"""Course-independent library API, metadata validation, and admin management."""
+"""Course-independent library API and administrator/library-staff management."""
 
 from urllib.parse import urlparse
 
@@ -21,7 +21,8 @@ from .library_storage import open_remote_file, remove_file, save_resource
 
 
 def is_library_manager(user):
-    return is_resource_admin(user)
+    roles = {str(role).strip().upper() for role in user.roles}
+    return is_resource_admin(user) or bool(user.is_staff and "LIBRARY" in roles)
 
 
 def is_library_reader(user):
@@ -39,7 +40,7 @@ def visible_resources(user):
     )
     if not is_library_reader(user):
         return queryset.none()
-    if is_resource_admin(user):
+    if is_library_manager(user):
         return queryset
     return queryset.filter(is_published=True)
 
@@ -205,13 +206,13 @@ class ResourceCategoryViewSet(viewsets.ModelViewSet):
             raise ValidationError({'name': 'This category already exists.'})
 
     def perform_update(self, serializer):
-        if not is_resource_admin(self.request.user):
-            raise PermissionDenied('Only administrators can rename categories.')
+        if not is_library_manager(self.request.user):
+            raise PermissionDenied('Only library managers can rename categories.')
         self.perform_create(serializer)
 
     def perform_destroy(self, instance):
-        if not is_resource_admin(self.request.user):
-            raise PermissionDenied('Only administrators can delete categories.')
+        if not is_library_manager(self.request.user):
+            raise PermissionDenied('Only library managers can delete categories.')
         instance.delete()
 
 
@@ -222,7 +223,7 @@ class LibraryCourseViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = CourseCache.objects.all()
-        if is_resource_admin(self.request.user):
+        if is_library_manager(self.request.user):
             return queryset
         return queryset.filter(
             staff_enrollments__staff_external_id=self.request.user.external_id

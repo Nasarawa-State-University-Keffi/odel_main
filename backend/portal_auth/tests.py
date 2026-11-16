@@ -199,6 +199,34 @@ class OIDCAuthTests(TestCase):
 
 
 class OIDCUserMappingTests(TestCase):
+    def test_library_aliases_are_normalized_without_admin_privileges(self):
+        user = sync_user_from_claims({
+            "portal_user_id": "LIB001",
+            "groups": ["PORTAL_USERS", "PORTAL_STAFF", "portal_library", "LIBRARY"],
+        })
+        self.assertEqual(user.roles, ["STAFF", "LIBRARY"])
+        self.assertTrue(user.is_staff)
+        from .permissions import IsPortalAdmin
+        from types import SimpleNamespace
+        self.assertFalse(IsPortalAdmin().has_permission(SimpleNamespace(user=user), None))
+
+    def test_library_role_alone_identifies_a_non_academic_staff_member(self):
+        user = sync_user_from_claims({
+            "portal_user_id": "LIB002",
+            "groups": ["PORTAL_USERS", "PORTAL_LIBRARY"],
+        })
+        self.assertEqual(user.roles, ["LIBRARY"])
+        self.assertTrue(user.is_staff)
+
+    def test_login_resync_removes_revoked_library_access(self):
+        user = sync_user_from_claims({"portal_user_id": "LIB003", "groups": ["PORTAL_STAFF", "PORTAL_LIBRARY"]})
+        from learning_resources.content.library import is_library_manager
+        self.assertTrue(is_library_manager(user))
+        updated = sync_user_from_claims({"portal_user_id": "LIB003", "groups": ["PORTAL_STAFF"]})
+        self.assertEqual(updated.pk, user.pk)
+        self.assertEqual(updated.roles, ["STAFF"])
+        self.assertFalse(is_library_manager(updated))
+
     def test_sync_user_from_claims_maps_authentik_group_aliases(self):
         user = sync_user_from_claims({
             "preferred_username": "admin001",

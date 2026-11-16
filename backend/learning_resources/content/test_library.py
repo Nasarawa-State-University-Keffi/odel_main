@@ -641,3 +641,82 @@ class LibraryAPITests(APITestCase):
         self.assertFalse(
             LibraryResource.objects.filter(title__startswith='Forbidden').exists()
         )
+
+    def test_library_staff_can_manage_the_shared_collection_without_admin_access(self):
+        from portal_auth.oidc import sync_user_from_claims
+        from .access import is_resource_admin
+
+        library_staff = sync_user_from_claims(
+            {
+                'portal_user_id': 'library-officer',
+                'name': 'Library Officer',
+                'groups': ['PORTAL_USERS', 'PORTAL_STAFF', 'PORTAL_LIBRARY'],
+            }
+        )
+        self.assertFalse(is_resource_admin(library_staff))
+        self.client.force_authenticate(library_staff)
+        self.assertEqual(self.client.get(self.base + 'resources/').data['count'], 2)
+        detail = self.client.get(self.url(self.draft))
+        self.assertEqual(detail.status_code, 200)
+        self.assertTrue(detail.data['can_manage'])
+        self.assertEqual(
+            self.client.patch(
+                self.url(self.draft), {'is_published': True}, format='json'
+            ).status_code,
+            200,
+        )
+        resource, _ = self.upload()
+        self.assertEqual(resource.created_by, library_staff)
+        response = self.client.get('/media/' + resource.storage_path)
+        self.assertEqual(response.status_code, 200)
+        response.close()
+        category = self.client.post(
+            self.base + 'categories/', {'name': 'Library references'}, format='json'
+        )
+        self.assertEqual(category.status_code, 201)
+        category_url = f"{self.base}categories/{category.data['id']}/"
+        self.assertEqual(
+            self.client.patch(
+                category_url, {'name': 'Reference guides'}, format='json'
+            ).status_code,
+            200,
+        )
+        self.assertEqual(self.client.delete(category_url).status_code, 204)
+        self.assertEqual(self.client.delete(self.url(self.draft)).status_code, 204)
+
+    def test_library_role_on_a_non_staff_account_does_not_allow_management(self):
+        self.student.roles.append('LIBRARY')
+        self.student.save()
+        self.client.force_authenticate(self.student)
+        self.assertEqual(self.client.get(self.url(self.draft)).status_code, 404)
+        self.assertFalse(self.client.get(self.url(self.published)).data['can_manage'])
+        self.assertEqual(
+            self.client.post(
+                self.base + 'resources/',
+                {'title': 'Forbidden', 'external_url': 'https://example.edu'},
+                format='json',
+            ).status_code,
+            403,
+        )
+
+    def test_revoking_library_role_removes_draft_file_and_write_access(self):
+        resource, _ = self.upload()
+        self.staff.roles.append('LIBRARY')
+        self.staff.save()
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url(resource) + 'file/')
+        self.assertEqual(response.status_code, 200)
+        response.close()
+        self.staff.roles.remove('LIBRARY')
+        self.staff.save()
+        self.assertEqual(self.client.get(self.url(resource)).status_code, 404)
+        self.assertEqual(self.client.get(self.url(resource) + 'file/').status_code, 404)
+        self.assertEqual(
+            self.client.get('/media/' + resource.storage_path).status_code, 404
+        )
+        self.assertEqual(
+            self.client.patch(
+                self.url(resource), {'is_published': True}, format='json'
+            ).status_code,
+            403,
+        )
