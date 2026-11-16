@@ -20,6 +20,8 @@ The compose file builds the Django backend from the current `backend` directory,
 Create a new Docker Compose application in Dokploy with:
 
 ```text
+Repository: Nasarawa-State-University-Keffi/odel_main
+Git branch: backend
 Compose file path: backend/docker-compose.yml
 Service for domain routing: web
 Container port: 8000
@@ -206,3 +208,26 @@ Use Dokploy volume backups for `media_data`. Back up the bare-metal Postgres dat
 - Keep `SESSION_COOKIE_SAMESITE=Lax` and `CSRF_COOKIE_SAMESITE=Lax` for same-site subdomain deployments.
 - The frontend must call backend APIs with credentials enabled.
 - The frontend should get `csrfToken` from `GET /auth/me` and send it as `X-CSRFToken` on `POST`, `PUT`, `PATCH`, and `DELETE` requests.
+
+## Resource Library deployment check
+
+The standalone library is on the `backend` branch. The frontend and Django web
+service must both be rebuilt from releases containing the library routes. In
+Dokploy, confirm the repository and branch above, rebuild/redeploy the web service,
+and verify that `RUN_MIGRATIONS=1` applies the content migrations on startup. A
+container restart by itself does not rebuild an old image.
+
+Unauthenticated checks against the API domain should return JSON HTTP 401:
+
+```sh
+curl -i -H 'Accept: application/json' https://YOUR_API_DOMAIN/api/resource-library/resources/
+curl -i -H 'Accept: application/json' https://YOUR_API_DOMAIN/api/resource-library/categories/
+```
+
+HTML HTTP 404 responses on both routes mean those routes are not being served by
+the deployed backend (or domain routing points to another service). This differs
+from an empty library, which returns a successful paginated result after login.
+The `/health/` endpoint alone does not prove a feature release is deployed. If
+content APIs work but library APIs return 404, inspect the deployed commit and
+rebuild the latest `backend` branch; do not change frontend resource URLs to
+course-content URLs.

@@ -3,7 +3,7 @@
 ###############################################
 
 # Stage 1: Builder - Compile dependencies
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Prevents Python from writing pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,9 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies
+# Resolve the complete dependency graph before building the wheelhouse.
+# --no-deps would select incompatible versions of direct/transitive requirements.
 COPY requirements.txt .
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+RUN python -m pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
 
 # Stage 2: Final production image
@@ -52,8 +53,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/requirements.txt .
 
-# Install dependencies from wheels
-RUN pip install --no-cache /wheels/*
+# Install the resolved graph offline instead of treating every wheel as a pinned request.
+RUN python -m pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
+    && python -m pip check
 
 # Copy project files
 COPY --chown=appuser:appuser . .
